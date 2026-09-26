@@ -2,10 +2,11 @@
 
 ## 현재 상태
 - 완료 단계: **M0-A — iPad 빈 페이지 필기·로컬 저장·복원**
-- 작업 공간: `/Users/minwookim/.codex/worktrees/ipad-foundation/MiNote`
-- 브랜치: `codex/ipad-foundation`
+- 작업 공간: `/Users/minwookim/Documents/GitHub/MiNote`
+- 브랜치: `main`
 - 시작 기준 커밋: `9695ab6`; 사전 모델·저장소 체크포인트: `dfa943d`
 - M0-A 구현 커밋: `fedd789` (`feat(ipad): complete M0-A writing and local recovery`)
+- main 통합: `origin/codex/ipad-foundation`에서 `b07e9e2`까지 fast-forward 병합. 원격 `main` 동기화가 다음 작업이다.
 - 다음 단계: M0-B PDF 가져오기·필기·내보내기. 상세 계획은 `docs/superpowers/plans/2026-09-26-m0-b-pdf-annotation.md`에 작성했으며 구현은 시작하지 않았다.
 
 ## M0-A 완료 결과
@@ -18,9 +19,9 @@
 - PencilKit의 기본 획에서 실제로 쓰이는 `secondaryScale`을 공통 모델에 추가했다. 기존 schema v1 문서에 값이 없으면 기본값 1로 읽는다.
 
 ## 검증 근거
-- `swift test --package-path Packages/MiNoteCore`: 16개 테스트, 0 실패. 로그: `/private/tmp/minote-core-final-green.log`.
-- iPad Pro 11 M4 / iPadOS 18.6, `xcodebuild ... test`: 앱 단위 테스트 11개와 UI 테스트 1개 통과. 로그: `/private/tmp/minote-review18-final2.log`; 결과: `/private/tmp/minote-review18-final2.xcresult`.
-- iPad Pro 11 M5 / iPadOS 26.4, 동일 전체 테스트: 앱 단위 테스트 11개와 UI 테스트 1개 통과. 로그: `/private/tmp/minote-review26-final2.log`; 결과: `/private/tmp/minote-review26-final2.xcresult`.
+- `swift test --package-path Packages/MiNoteCore`: 16개 테스트, 0 실패. main 체크아웃 로그: `/private/tmp/minote-main-core.log`.
+- iPad Pro 11 M4 / iPadOS 18.6, main 체크아웃 `xcodebuild ... test`: 앱 단위 테스트 11개와 UI 테스트 1개 통과. 로그: `/private/tmp/minote-main18.log`; 결과: `/private/tmp/minote-main18.xcresult`.
+- iPad Pro 11 M5 / iPadOS 26.4, main 체크아웃 전체 테스트: 앱 단위 테스트 11개와 UI 테스트 1개 통과. 로그: `/private/tmp/minote-main26.log`; 결과: `/private/tmp/minote-main26.xcresult`.
 - UI 테스트에서 획 입력, undo/redo, `저장 완료`, 앱 재실행 후 복원을 확인했다.
 - 빌드된 `MiNote.app/Info.plist`에서 `UIApplicationSupportsMultipleScenes = false`, `CFBundleExecutable = MiNote`를 확인했다. 빌드 로그: `/private/tmp/minote-scene-review-build3.log`.
 - `git diff --check` 통과.
@@ -31,6 +32,7 @@
 - M0-A 코드와 검증 근거는 `fedd789`에 있다. 최종 테스트 로그는 위 검증 항목을 따른다.
 - M0-B 실행 계획이 저장소와 Notion에 있다. 다음 작업에서는 PDFKit overlay API를 iOS 18에서 확인하고, 회전·crop box를 포함한 좌표 fixture를 만드는 기술 검증부터 시작한다.
 - M0-B 구현은 별도 단계로 유지한다. PDF 페이지 매핑 검증 전에 문서 모델이나 캔버스 구조를 확정하지 않는다.
+- 사용자는 이후 코딩을 모두 기본 저장소의 `main`에서 진행하도록 지정했다. 새 브랜치·worktree·PR을 만들지 않는다.
 
 ## 계속 적용할 규칙
 - 재개 시 이 문서, Git 상태, 마지막 검증 로그를 대조하고 진행 중 변경을 먼저 확인한다.
