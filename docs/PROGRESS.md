@@ -1,39 +1,44 @@
-# MiNote 개발 진행
+# MiNote 개발 진행 기록
 
 ## 현재 상태
-- 단계: M0-A — 진행 중
-- 작업 위치: /Users/minwookim/.codex/worktrees/ipad-foundation/MiNote
-- 브랜치: codex/ipad-foundation
-- 기준 커밋: 9695ab6
-- 승인: 직접 구현, 단계 말 별도 리뷰, 저장소 기록 + Notion 요약, iPadOS 18+, 시뮬레이터 우선
-- 현재 작업: 모델·저장소·PencilKit 변환 검증 완료, 편집 세션·UI 개발
-- 다음 시작점: EditorSession 실패·재시도 테스트 작성 후 화면 연결
+- 완료 단계: **M0-A — iPad 빈 페이지 필기·로컬 저장·복원**
+- 작업 공간: `/Users/minwookim/.codex/worktrees/ipad-foundation/MiNote`
+- 브랜치: `codex/ipad-foundation`
+- 시작 기준 커밋: `9695ab6`; 사전 모델·저장소 체크포인트: `dfa943d`
+- M0-A 최종 변경: 구현과 리뷰 수정은 완료, 최종 커밋·Notion 반영을 마무리하는 중
+- 다음 단계: M0-B PDF 가져오기·필기·내보내기. 구현은 시작하지 않았으며 상세 계획은 `docs/superpowers/plans/2026-09-26-m0-b-pdf-annotation.md`에 둔다.
 
-## 작업 상태
-- [x] 관리 작업 공간·브랜치 준비
-- [x] 작업 재개 지침·구현 계획 작성
-- [x] A1 공통 모델·앱 구성 (실행 셸까지)
-- [ ] A2/A3 필기 화면·PencilKit 변환
-- [ ] A4 저장·복원·오류 처리
-- [ ] A5 두 OS 검증·코드 리뷰·Notion 기록
+## M0-A 완료 결과
+- SwiftUI·UIKit·PencilKit 앱과 Foundation 전용 `MiNoteCore` Swift Package를 구성했다. 외부 라이브러리는 없다.
+- A4 한 페이지에 펜·형광펜·획 지우개, 색상·두께 조절, 실행 취소·다시 실행, 손가락 입력 전환, 확대·스크롤을 구현했다.
+- 획의 제어점, 시간, 압력, 크기, 불투명도, 기울기, 색상, 도구, 변환 정보, PencilKit seed와 ID를 플랫폼 독립 JSON 문서에 보존한다.
+- 편집 후 자동 저장, 최신 리비전 검사, 원자 교체, 직전 정상본 백업, 오류 표시·재시도를 구현했다. 손상되거나 지원하지 않는 스키마는 빈 문서로 덮어쓰지 않는다.
+- 앱은 하나의 편집 창으로 제한했다. M0-A 저장소가 단일 actor/파일을 전제로 하고 있어, 별도 앱 창이 같은 리비전을 읽고 마지막 저장이 앞선 편집을 덮어쓸 가능성을 제거한다.
+- 코드 리뷰 후 JSON 손상·문서 무결성 오류일 때만 백업 복구를 허용했다. 실제 파일 읽기·접근 오류는 그대로 전파하고 원본과 백업을 보존한다.
+- PencilKit의 기본 획에서 실제로 쓰이는 `secondaryScale`을 공통 모델에 추가했다. 기존 schema v1 문서에 값이 없으면 기본값 1로 읽는다.
 
-## 검증
-- Xcode 27 / Swift 6.4 확인. 설치된 시뮬레이터: iPadOS 18.6, 26.4 포함.
-- swift test --package-path Packages/MiNoteCore: 5개 통과 (2026-09-26). RED에서 모델 타입 부재를 확인한 뒤 구현. 로그: /private/tmp/minote-core-green.log
-- Xcode 프로젝트 생성 완료. iPadOS 18.6 어댑터 테스트 RED: 미구현 변환으로 4개 실패, 미지원 입력 거부 1개 통과.
-- 저장 테스트 RED: DocumentStore 타입 부재로 실패 확인. 이후 구현 완료, GREEN 검증 예정.
-- 실기기 Pencil 지연·손바닥 입력·발열: 확인 대기.
+## 검증 근거
+- `swift test --package-path Packages/MiNoteCore`: 16개 테스트, 0 실패. 로그: `/private/tmp/minote-core-final-green.log`.
+- iPad Pro 11 M4 / iPadOS 18.6, `xcodebuild ... test`: 앱 단위 테스트 11개와 UI 테스트 1개 통과. 로그: `/private/tmp/minote-review18-final2.log`; 결과: `/private/tmp/minote-review18-final2.xcresult`.
+- iPad Pro 11 M5 / iPadOS 26.4, 동일 전체 테스트: 앱 단위 테스트 11개와 UI 테스트 1개 통과. 로그: `/private/tmp/minote-review26-final2.log`; 결과: `/private/tmp/minote-review26-final2.xcresult`.
+- UI 테스트에서 획 입력, undo/redo, `저장 완료`, 앱 재실행 후 복원을 확인했다.
+- 빌드된 `MiNote.app/Info.plist`에서 `UIApplicationSupportsMultipleScenes = false`, `CFBundleExecutable = MiNote`를 확인했다. 빌드 로그: `/private/tmp/minote-scene-review-build3.log`.
+- `git diff --check` 통과.
+- 별도 리뷰의 데이터 손실 우려 2건을 각각 회귀 테스트·실제 빌드 설정 검증으로 수정했다. 저장소는 파일 없음만 따로 판별하며, 손상 JSON만 백업 복구하고 접근 오류·디렉터리 경로는 그대로 보존한다.
+- 미실행 검증: 실기기 Apple Pencil 지연, 손바닥 입력 거부, 발열. 물리 iPad에서 확인해야 한다.
 
-## 결정 및 제한
-- 한 문서·한 A4 페이지를 구현. 공통 데이터는 JSON, PencilKit 바이트가 원본이 아님.
-- 작업 기록은 이 추적 파일에 영구 보존한다. Superpowers 임시 로그 정리는 이 파일에 적용하지 않는다.
-- 자동 원격 push·배포는 이번 범위에 없음.
+## 현재 위치와 다음 행동
+- 코드·테스트·진행 문서 변경을 검토한 뒤 M0-A 최종 커밋을 만든다.
+- 기존 MiNote 제품 계획서에 M0-A의 구현 사실, 결정, 두 OS 검증, 실기기 미검증 항목과 커밋을 추가한다. 목표 로드맵과 완료 기능을 혼합해 쓰지 않는다.
+- Notion 반영 뒤 이 문서의 마지막 반영 시각과 최종 M0-A 커밋을 기록한다.
+- 다음 구현 시작은 사용자가 요청한 뒤 M0-B 계획의 기술 검증 순서부터 진행한다. 특히 PDF 페이지 회전·crop box의 좌표 매핑 검증 전에 문서 모델이나 캔버스 구조를 확정하지 않는다.
+
+## 계속 적용할 규칙
+- 재개 시 이 문서, Git 상태, 마지막 검증 로그를 대조하고 진행 중 변경을 먼저 확인한다.
+- 장시간 작업 전과 작은 작업 직후 진행 상태를 갱신한다. 통과하지 않은 검증은 완료로 표시하지 않는다.
+- 단계 종료마다 앱에서 작동하는 결과, 기술 결정, 테스트 근거, 제한, 다음 시작점을 Notion과 저장소에 기록한다.
+- 원격 push·배포는 승인된 범위에 포함하지 않는다.
 
 ## Notion
-- 마지막 반영: 2026-09-26 제품 계획서. M0-A 구현 결과는 단계 종료 시 반영.
-
-## 체크포인트 — 데이터 기반 완료
-- 공통 패키지: 모델/코덱 5개 + 저장소 8개 = 13개 테스트 통과. 로그 /private/tmp/minote-core-green.log.
-- xcodebuild test, MiNoteTests, iPadOS 18.6: 어댑터 5개 테스트 통과. 로그 /private/tmp/minote-adapter-green.log.
-- 앱 화면은 아직 Text 셸이며 UI 테스트는 미실행. 26.4 검증도 대기.
-- 결정: 화면의 실제 오류·재시도 연결을 위해 Task 3의 저장소를 Task 2 화면보다 먼저 구현. 저장 성공은 Void, 로드 결과는 문서와 백업 복구 여부로 최소화.
+- 문서: [MiNote 제품 계획서](https://app.notion.com/p/3e76538f55f68051a2fad6f22562bd3d?pvs=204)
+- 마지막 반영: 제품 계획 단계. M0-A 구현 결과는 이 단계 종료 시 새 섹션으로 추가한다.

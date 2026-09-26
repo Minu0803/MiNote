@@ -53,10 +53,38 @@ public struct InkPoint: Codable, Hashable, Sendable {
     public var x: Double; public var y: Double; public var timeOffset: Double
     public var width: Double; public var height: Double; public var opacity: Double
     public var force: Double; public var azimuth: Double; public var altitude: Double
+    /// PencilKit's per-point secondary width scale (defaults to 1 for schema-v1 files).
+    public var secondaryScale: Double
     public init(x: Double, y: Double, timeOffset: Double, width: Double, height: Double,
-                opacity: Double, force: Double, azimuth: Double, altitude: Double) {
+                opacity: Double, force: Double, azimuth: Double, altitude: Double, secondaryScale: Double = 1) {
         self.x = x; self.y = y; self.timeOffset = timeOffset; self.width = width; self.height = height
         self.opacity = opacity; self.force = force; self.azimuth = azimuth; self.altitude = altitude
+        self.secondaryScale = secondaryScale
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case x, y, timeOffset, width, height, opacity, force, azimuth, altitude, secondaryScale
+    }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(x: try values.decode(Double.self, forKey: .x),
+                  y: try values.decode(Double.self, forKey: .y),
+                  timeOffset: try values.decode(Double.self, forKey: .timeOffset),
+                  width: try values.decode(Double.self, forKey: .width),
+                  height: try values.decode(Double.self, forKey: .height),
+                  opacity: try values.decode(Double.self, forKey: .opacity),
+                  force: try values.decode(Double.self, forKey: .force),
+                  azimuth: try values.decode(Double.self, forKey: .azimuth),
+                  altitude: try values.decode(Double.self, forKey: .altitude),
+                  secondaryScale: try values.decodeIfPresent(Double.self, forKey: .secondaryScale) ?? 1)
+    }
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(x, forKey: .x); try values.encode(y, forKey: .y)
+        try values.encode(timeOffset, forKey: .timeOffset); try values.encode(width, forKey: .width)
+        try values.encode(height, forKey: .height); try values.encode(opacity, forKey: .opacity)
+        try values.encode(force, forKey: .force); try values.encode(azimuth, forKey: .azimuth)
+        try values.encode(altitude, forKey: .altitude); try values.encode(secondaryScale, forKey: .secondaryScale)
     }
 }
 

@@ -80,6 +80,49 @@ final class DocumentStoreTests: XCTestCase {
         XCTAssertEqual(final?.recoveredFromBackup, false)
     }
 
+    func testPrimaryReadFailureDoesNotRecoverFromBackupOrOverwriteIt() async throws {
+        let directory = try temporaryDirectory()
+        let document = NoteDocument.blank()
+        let backup = directory.appendingPathComponent("document.backup.json")
+        let primary = directory.appendingPathComponent("document.json")
+        let backupData = try DocumentCodec.encode(document)
+        try backupData.write(to: backup)
+        try backupData.write(to: primary)
+        let store = DocumentStore(directory: directory) { url in
+            if url.lastPathComponent == "document.json" {
+                throw CocoaError(.fileReadNoPermission)
+            }
+            return try Data(contentsOf: url)
+        }
+
+        do { _ = try await store.load(); XCTFail("An I/O error must not be mistaken for corrupt JSON") }
+        catch { XCTAssertFalse(error is DocumentError) }
+        do { try await store.save(.blank()); XCTFail("An unreadable primary must not be replaced") }
+        catch { XCTAssertFalse(error is DocumentError) }
+        XCTAssertEqual(try Data(contentsOf: backup), backupData)
+        XCTAssertEqual(try Data(contentsOf: primary), backupData)
+    }
+
+    func testNonFilePrimaryDoesNotRecoverFromBackupOrOverwriteIt() async throws {
+        let directory = try temporaryDirectory()
+        let document = NoteDocument.blank()
+        let backup = directory.appendingPathComponent("document.backup.json")
+        let primary = directory.appendingPathComponent("document.json")
+        let backupData = try DocumentCodec.encode(document)
+        try backupData.write(to: backup)
+        try FileManager.default.createDirectory(at: primary, withIntermediateDirectories: false)
+        let store = DocumentStore(directory: directory)
+
+        do { _ = try await store.load(); XCTFail("A directory cannot stand in for a readable document") }
+        catch { XCTAssertTrue(error is POSIXError) }
+        do { try await store.save(.blank()); XCTFail("A directory primary must not be replaced") }
+        catch { XCTAssertTrue(error is POSIXError) }
+        XCTAssertEqual(try Data(contentsOf: backup), backupData)
+        var isDirectory: ObjCBool = false
+        XCTAssertTrue(FileManager.default.fileExists(atPath: primary.path, isDirectory: &isDirectory))
+        XCTAssertTrue(isDirectory.boolValue)
+    }
+
     func testCorruptDocumentWithoutBackupIsNeverOverwritten() async throws {
         let directory = try temporaryDirectory()
         let primary = directory.appendingPathComponent("document.json")

@@ -1,0 +1,207 @@
+import MiNoteCore
+import SwiftUI
+import UIKit
+
+struct NoteEditorView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var session: EditorSession
+    @StateObject private var canvasReference = CanvasReference()
+    @AppStorage("fingerDrawingEnabled") private var fingerDrawingEnabled =
+        ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil
+    @State private var brush: Brush = .pen
+    @State private var colorIndex = 1
+    @State private var width = 3.0
+
+    private let palette: [(name: String, color: Color, uiColor: UIColor)] = [
+        ("검정", .primary, UIColor.label),
+        ("파랑", Color(red: 0.20, green: 0.35, blue: 0.88), UIColor(red: 0.20, green: 0.35, blue: 0.88, alpha: 1)),
+        ("빨강", Color(red: 0.84, green: 0.20, blue: 0.24), UIColor(red: 0.84, green: 0.20, blue: 0.24, alpha: 1)),
+        ("초록", Color(red: 0.08, green: 0.48, blue: 0.35), UIColor(red: 0.08, green: 0.48, blue: 0.35, alpha: 1)),
+        ("주황", Color(red: 0.91, green: 0.43, blue: 0.10), UIColor(red: 0.91, green: 0.43, blue: 0.10, alpha: 1))
+    ]
+
+    init() {
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        _session = StateObject(wrappedValue: EditorSession(
+            store: DocumentStore(directory: documents.appendingPathComponent("MiNote", isDirectory: true))))
+    }
+
+    var body: some View {
+        Group {
+            if session.document == nil {
+                loadState
+            } else {
+                editor
+            }
+        }
+        .task { await session.loadIfNeeded() }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .inactive || phase == .background else { return }
+            let lease = BackgroundSaveLease()
+            Task {
+                await session.flush(canvasReference.canvas?.drawing)
+                lease.end()
+            }
+        }
+        .preferredColorScheme(.light)
+    }
+
+    private var loadState: some View {
+        VStack(spacing: 20) {
+            Image(systemName: session.loadError == nil ? "doc.text" : "exclamationmark.triangle.fill")
+                .font(.system(size: 36, weight: .light)).foregroundStyle(Color.accentColor)
+            if let error = session.loadError {
+                Text("노트를 열 수 없습니다").font(.title2.weight(.semibold))
+                Text(error).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Button("다시 시도") { Task { await session.retryLoad() } }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("retryLoad")
+            } else {
+                ProgressView("노트를 여는 중")
+            }
+        }
+        .padding(40).frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(uiColor: .systemGroupedBackground))
+    }
+
+    private var editor: some View {
+        VStack(spacing: 0) {
+            header
+            if let notice = session.recoveryNotice {
+                Label(notice, systemImage: "arrow.uturn.backward.circle.fill")
+                    .font(.footnote).frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24).padding(.vertical, 10)
+                    .background(Color.orange.opacity(0.12)).foregroundStyle(.orange)
+            }
+            if case .failed = session.saveState {
+                HStack(spacing: 12) {
+                    Label(session.saveStatusLabel, systemImage: "exclamationmark.circle.fill").lineLimit(2)
+                    Spacer(minLength: 0)
+                    Button("재시도") { session.retrySave() }.buttonStyle(.bordered)
+                        .accessibilityIdentifier("retrySave")
+                }
+                .font(.footnote).padding(.horizontal, 20).padding(.vertical, 8)
+                .background(Color.red.opacity(0.10)).foregroundStyle(Color.red)
+            }
+            NoteCanvas(session: session, reference: canvasReference, tool: brush,
+                       color: palette[colorIndex].uiColor, width: width,
+                       fingerDrawingEnabled: fingerDrawingEnabled)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(uiColor: .systemGroupedBackground))
+            toolbar
+        }
+        .background(Color(uiColor: .systemGroupedBackground))
+    }
+
+    private var header: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("MiNote").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(Color(red: 0.14, green: 0.18, blue: 0.25))
+                Text(session.document?.title ?? "나의 첫 노트").font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Label(session.saveStatusLabel, systemImage: saveSymbol)
+                .font(.caption.weight(.medium)).foregroundStyle(saveTint)
+                .lineLimit(1).accessibilityIdentifier("saveStatus")
+            Rectangle().fill(Color.primary.opacity(0.1)).frame(width: 1, height: 30)
+            Button { canvasReference.undo() } label: { Image(systemName: "arrow.uturn.backward") }
+                .accessibilityLabel("실행 취소").accessibilityIdentifier("undo")
+                .disabled(!canvasReference.canUndo)
+            Button { canvasReference.redo() } label: { Image(systemName: "arrow.uturn.forward") }
+                .accessibilityLabel("다시 실행").accessibilityIdentifier("redo")
+                .disabled(!canvasReference.canRedo)
+            Text("획 \(session.strokeCount)")
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .padding(.horizontal, 11).padding(.vertical, 8)
+                .background(.white, in: Capsule()).foregroundStyle(.secondary)
+                .accessibilityIdentifier("strokeCount")
+        }
+        .buttonStyle(.plain).padding(.horizontal, 26).padding(.vertical, 14)
+        .background(.white.opacity(0.96))
+    }
+
+    private var toolbar: some View {
+        HStack(spacing: 18) {
+            HStack(spacing: 4) {
+                toolButton(.pen, symbol: "pencil.tip.crop.circle", title: "펜")
+                toolButton(.marker, symbol: "highlighter", title: "형광펜")
+                toolButton(.eraser, symbol: "eraser", title: "획 지우개")
+            }
+            Rectangle().fill(Color.primary.opacity(0.1)).frame(width: 1, height: 34)
+            HStack(spacing: 10) {
+                ForEach(palette.indices, id: \.self) { index in
+                    Button { colorIndex = index; brush = brush == .eraser ? .pen : brush } label: {
+                        Circle().fill(palette[index].color).frame(width: 22, height: 22)
+                            .overlay(Circle().stroke(.white, lineWidth: 2).padding(2))
+                            .padding(3)
+                            .overlay(Circle().stroke(colorIndex == index ? Color(red: 0.20, green: 0.37, blue: 0.82) : .clear, lineWidth: 2))
+                    }
+                    .buttonStyle(.plain).accessibilityLabel("색상 \(palette[index].name)")
+                }
+            }
+            Rectangle().fill(Color.primary.opacity(0.1)).frame(width: 1, height: 34)
+            HStack(spacing: 9) {
+                Image(systemName: "circle.fill").font(.system(size: 5 + width)).foregroundStyle(palette[colorIndex].color)
+                    .frame(width: 22, height: 24)
+                Slider(value: $width, in: 1...10, step: 0.5).frame(width: 112)
+                    .tint(Color(red: 0.20, green: 0.37, blue: 0.82))
+                    .accessibilityLabel("획 굵기")
+                Text("\(width, specifier: "%.1f")").font(.caption2.monospacedDigit()).frame(width: 26, alignment: .trailing)
+            }
+            Rectangle().fill(Color.primary.opacity(0.1)).frame(width: 1, height: 34)
+            Toggle(isOn: $fingerDrawingEnabled) {
+                Label("손가락", systemImage: "hand.draw")
+                    .font(.caption.weight(.medium))
+            }
+            .toggleStyle(.switch).fixedSize().accessibilityIdentifier("fingerDrawing")
+        }
+        .padding(.horizontal, 22).padding(.vertical, 13)
+        .background(.white.opacity(0.97), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.black.opacity(0.055), lineWidth: 1))
+        .shadow(color: .black.opacity(0.06), radius: 12, y: 3)
+        .padding(.horizontal, 24).padding(.top, 10).padding(.bottom, 14)
+    }
+
+    private func toolButton(_ value: Brush, symbol: String, title: String) -> some View {
+        Button { brush = value } label: {
+            Label(title, systemImage: symbol)
+                .font(.caption.weight(.medium)).labelStyle(.titleAndIcon)
+                .padding(.horizontal, 13).padding(.vertical, 10)
+                .foregroundStyle(brush == value ? Color.white : Color.primary.opacity(0.75))
+                .background(brush == value ? Color(red: 0.17, green: 0.23, blue: 0.37) : .clear,
+                            in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+        }
+        .buttonStyle(.plain).accessibilityIdentifier("tool-\(value.rawValue)")
+    }
+
+    private var saveSymbol: String {
+        switch session.saveState {
+        case .saving: "arrow.triangle.2.circlepath"
+        case .saved: "checkmark.circle.fill"
+        case .failed: "exclamationmark.circle.fill"
+        }
+    }
+
+    private var saveTint: Color {
+        switch session.saveState {
+        case .saving: .secondary
+        case .saved: Color(red: 0.12, green: 0.50, blue: 0.34)
+        case .failed: .red
+        }
+    }
+}
+
+@MainActor
+private final class BackgroundSaveLease {
+    private var identifier = UIBackgroundTaskIdentifier.invalid
+    init() {
+        identifier = UIApplication.shared.beginBackgroundTask(withName: "MiNoteDocumentSave") { [weak self] in
+            Task { @MainActor [weak self] in self?.end() }
+        }
+    }
+    func end() {
+        guard identifier != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(identifier)
+        identifier = .invalid
+    }
+}

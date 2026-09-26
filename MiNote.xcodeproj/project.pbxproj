@@ -1,0 +1,393 @@
+// !$*UTF8*$!
+{
+	"archiveVersion" = 1;
+	"classes" = {
+	};
+	"objectVersion" = 77;
+	"objects" = {
+		"582681C2EAE02B3F3D399C0C" = {
+			"isa" = "XCLocalSwiftPackageReference";
+			"relativePath" = "Packages/MiNoteCore";
+		};
+		"64AF70EFF33A99A0A5963023" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"path" = "MiNote";
+			"sourceTree" = "<group>";
+		};
+		"3E60E3DBF8E34819B09AA234" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.application";
+			"includeInIndex" = 0;
+			"path" = "MiNote.app";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"C0EDCA13F286891A5B80F379" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "582681C2EAE02B3F3D399C0C";
+			"productName" = "MiNoteCore";
+		};
+		"B0026BAA28927BA4EB7EC0B3" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "C0EDCA13F286891A5B80F379";
+		};
+		"4BB3F2DBA81B888F082001A8" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = ();
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"F09345589A0C43F407AB54BE" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = ("B0026BAA28927BA4EB7EC0B3");
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"9D834BBC166D9FE1B2859E9D" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = ();
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"4F006EA7A629E259DAAFC1A4" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.minote.foundation";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"INFOPLIST_FILE" = "Config/Info.plist";
+				"SWIFT_VERSION" = "6.0";
+				"TARGETED_DEVICE_FAMILY" = "2";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "18.0";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"SWIFT_EMIT_LOC_STRINGS" = "YES";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "MiNote";
+				"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_UIApplicationSupportsMultipleScenes" = "NO";
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad" = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				"MARKETING_VERSION" = "0.1.0";
+				"CURRENT_PROJECT_VERSION" = "1";
+			};
+		};
+		"5B19F67D8D84AB4D4EB80B51" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.minote.foundation";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"INFOPLIST_FILE" = "Config/Info.plist";
+				"SWIFT_VERSION" = "6.0";
+				"TARGETED_DEVICE_FAMILY" = "2";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "18.0";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"SWIFT_EMIT_LOC_STRINGS" = "YES";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "MiNote";
+				"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_UIApplicationSupportsMultipleScenes" = "NO";
+				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad" = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				"MARKETING_VERSION" = "0.1.0";
+				"CURRENT_PROJECT_VERSION" = "1";
+			};
+		};
+		"E46FA0153E6F4CDEE170A69B" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = ("4F006EA7A629E259DAAFC1A4", "5B19F67D8D84AB4D4EB80B51");
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"D4B5FE42F48371CADAAF5F6C" = {
+			"isa" = "PBXNativeTarget";
+			"buildConfigurationList" = "E46FA0153E6F4CDEE170A69B";
+			"buildPhases" = ("4BB3F2DBA81B888F082001A8", "F09345589A0C43F407AB54BE", "9D834BBC166D9FE1B2859E9D");
+			"buildRules" = ();
+			"dependencies" = ();
+			"fileSystemSynchronizedGroups" = ("64AF70EFF33A99A0A5963023");
+			"name" = "MiNote";
+			"packageProductDependencies" = ("C0EDCA13F286891A5B80F379");
+			"productName" = "MiNote";
+			"productReference" = "3E60E3DBF8E34819B09AA234";
+			"productType" = "com.apple.product-type.application";
+		};
+		"7B76480643FFF14070BAC9ED" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"path" = "MiNoteTests";
+			"sourceTree" = "<group>";
+		};
+		"41F6899A00EAE039AC69E1E6" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.cfbundle";
+			"includeInIndex" = 0;
+			"path" = "MiNoteTests.xctest";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"CF881C36ACBD36CAEB5AD34E" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "582681C2EAE02B3F3D399C0C";
+			"productName" = "MiNoteCore";
+		};
+		"A7F77A96B38B915CB8F2CF43" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "CF881C36ACBD36CAEB5AD34E";
+		};
+		"9169D9D7137FD6C6D90C71B0" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = ();
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"3883685F88432CBE997FF13C" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = ("A7F77A96B38B915CB8F2CF43");
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"49A945181137754158380F48" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = ();
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"9A69FD620151AACF785C41B9" = {
+			"isa" = "PBXContainerItemProxy";
+			"containerPortal" = "98F54143AB4E86B28C3AFEE0";
+			"proxyType" = 1;
+			"remoteGlobalIDString" = "D4B5FE42F48371CADAAF5F6C";
+			"remoteInfo" = "MiNote";
+		};
+		"CF2AD90DA59D1FD52920BDCB" = {
+			"isa" = "PBXTargetDependency";
+			"target" = "D4B5FE42F48371CADAAF5F6C";
+			"targetProxy" = "9A69FD620151AACF785C41B9";
+		};
+		"7D0B00A9DFBBFF01ABE9A33B" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.minote.foundation.MiNoteTests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"SWIFT_VERSION" = "6.0";
+				"TARGETED_DEVICE_FAMILY" = "2";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "18.0";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"SWIFT_EMIT_LOC_STRINGS" = "YES";
+				"TEST_HOST" = "$(BUILT_PRODUCTS_DIR)/MiNote.app/MiNote";
+				"BUNDLE_LOADER" = "$(TEST_HOST)";
+			};
+		};
+		"3880B097893C5CF06EF52B4E" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.minote.foundation.MiNoteTests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"SWIFT_VERSION" = "6.0";
+				"TARGETED_DEVICE_FAMILY" = "2";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "18.0";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"SWIFT_EMIT_LOC_STRINGS" = "YES";
+				"TEST_HOST" = "$(BUILT_PRODUCTS_DIR)/MiNote.app/MiNote";
+				"BUNDLE_LOADER" = "$(TEST_HOST)";
+			};
+		};
+		"13281E2735F0CB346DFB4F7D" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = ("7D0B00A9DFBBFF01ABE9A33B", "3880B097893C5CF06EF52B4E");
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"F9270B1EF9D51BFC11DABE6B" = {
+			"isa" = "PBXNativeTarget";
+			"buildConfigurationList" = "13281E2735F0CB346DFB4F7D";
+			"buildPhases" = ("9169D9D7137FD6C6D90C71B0", "3883685F88432CBE997FF13C", "49A945181137754158380F48");
+			"buildRules" = ();
+			"dependencies" = ("CF2AD90DA59D1FD52920BDCB");
+			"fileSystemSynchronizedGroups" = ("7B76480643FFF14070BAC9ED");
+			"name" = "MiNoteTests";
+			"packageProductDependencies" = ("CF881C36ACBD36CAEB5AD34E");
+			"productName" = "MiNoteTests";
+			"productReference" = "41F6899A00EAE039AC69E1E6";
+			"productType" = "com.apple.product-type.bundle.unit-test";
+		};
+		"42477464F062D5D6CF3AA9B8" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"path" = "MiNoteUITests";
+			"sourceTree" = "<group>";
+		};
+		"0EAE0104345709D50F64C21C" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.cfbundle";
+			"includeInIndex" = 0;
+			"path" = "MiNoteUITests.xctest";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"006F12271652CBD261222C35" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = ();
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"00077A95D2CFAA47FD03FE62" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = ();
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"25C8EDF7E2360AE9CE71F916" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = ();
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"EAB1F7F153428C329105BC9A" = {
+			"isa" = "PBXContainerItemProxy";
+			"containerPortal" = "98F54143AB4E86B28C3AFEE0";
+			"proxyType" = 1;
+			"remoteGlobalIDString" = "D4B5FE42F48371CADAAF5F6C";
+			"remoteInfo" = "MiNote";
+		};
+		"FFC29E842E33A7F786ED4C3C" = {
+			"isa" = "PBXTargetDependency";
+			"target" = "D4B5FE42F48371CADAAF5F6C";
+			"targetProxy" = "EAB1F7F153428C329105BC9A";
+		};
+		"D572E87F87C4F563BDFE74ED" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.minote.foundation.MiNoteUITests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"SWIFT_VERSION" = "6.0";
+				"TARGETED_DEVICE_FAMILY" = "2";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "18.0";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"SWIFT_EMIT_LOC_STRINGS" = "YES";
+				"TEST_TARGET_NAME" = "MiNote";
+			};
+		};
+		"D02ED37AD178B2C3639E55D1" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.minote.foundation.MiNoteUITests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"SWIFT_VERSION" = "6.0";
+				"TARGETED_DEVICE_FAMILY" = "2";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "18.0";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"SWIFT_EMIT_LOC_STRINGS" = "YES";
+				"TEST_TARGET_NAME" = "MiNote";
+			};
+		};
+		"292A546FA62CBAE1C98E1B78" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = ("D572E87F87C4F563BDFE74ED", "D02ED37AD178B2C3639E55D1");
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"513588CF9F9E5219FC56B240" = {
+			"isa" = "PBXNativeTarget";
+			"buildConfigurationList" = "292A546FA62CBAE1C98E1B78";
+			"buildPhases" = ("006F12271652CBD261222C35", "00077A95D2CFAA47FD03FE62", "25C8EDF7E2360AE9CE71F916");
+			"buildRules" = ();
+			"dependencies" = ("FFC29E842E33A7F786ED4C3C");
+			"fileSystemSynchronizedGroups" = ("42477464F062D5D6CF3AA9B8");
+			"name" = "MiNoteUITests";
+			"packageProductDependencies" = ();
+			"productName" = "MiNoteUITests";
+			"productReference" = "0EAE0104345709D50F64C21C";
+			"productType" = "com.apple.product-type.bundle.ui-testing";
+		};
+		"FBDC4F23F93125BBEEAE800C" = {
+			"isa" = "PBXGroup";
+			"children" = ("3E60E3DBF8E34819B09AA234", "41F6899A00EAE039AC69E1E6", "0EAE0104345709D50F64C21C");
+			"name" = "Products";
+			"sourceTree" = "<group>";
+		};
+		"B28B7AF69320201D1CF206EB" = {
+			"isa" = "PBXGroup";
+			"children" = ("64AF70EFF33A99A0A5963023", "7B76480643FFF14070BAC9ED", "42477464F062D5D6CF3AA9B8", "FBDC4F23F93125BBEEAE800C");
+			"sourceTree" = "<group>";
+		};
+		"89E1FD6268CC0F221A2BE178" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"SDKROOT" = "iphoneos";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"SWIFT_VERSION" = "6.0";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "18.0";
+				"SWIFT_STRICT_CONCURRENCY" = "complete";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"GCC_C_LANGUAGE_STANDARD" = "gnu17";
+				"CLANG_ENABLE_OBJC_ARC" = "YES";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+				"ENABLE_TESTABILITY" = "YES";
+				"ONLY_ACTIVE_ARCH" = "YES";
+				"GCC_PREPROCESSOR_DEFINITIONS" = ("DEBUG=1", "$(inherited)");
+			};
+		};
+		"E6DE6C99132752C914FEF632" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"SDKROOT" = "iphoneos";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"SWIFT_VERSION" = "6.0";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "18.0";
+				"SWIFT_STRICT_CONCURRENCY" = "complete";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"GCC_C_LANGUAGE_STANDARD" = "gnu17";
+				"CLANG_ENABLE_OBJC_ARC" = "YES";
+				"SWIFT_COMPILATION_MODE" = "wholemodule";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+			};
+		};
+		"862894B703A6DEDF96A9DD6C" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = ("89E1FD6268CC0F221A2BE178", "E6DE6C99132752C914FEF632");
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"98F54143AB4E86B28C3AFEE0" = {
+			"isa" = "PBXProject";
+			"attributes" = {
+				"BuildIndependentTargetsInParallel" = "YES";
+				"LastUpgradeCheck" = "2700";
+				"TargetAttributes" = {
+					"F9270B1EF9D51BFC11DABE6B" = {
+						"TestTargetID" = "D4B5FE42F48371CADAAF5F6C";
+					};
+					"513588CF9F9E5219FC56B240" = {
+						"TestTargetID" = "D4B5FE42F48371CADAAF5F6C";
+					};
+				};
+			};
+			"buildConfigurationList" = "862894B703A6DEDF96A9DD6C";
+			"compatibilityVersion" = "Xcode 16.0";
+			"developmentRegion" = "ko";
+			"knownRegions" = ("ko", "en", "Base");
+			"mainGroup" = "B28B7AF69320201D1CF206EB";
+			"packageReferences" = ("582681C2EAE02B3F3D399C0C");
+			"preferredProjectObjectVersion" = 77;
+			"productRefGroup" = "FBDC4F23F93125BBEEAE800C";
+			"projectDirPath" = "";
+			"projectRoot" = "";
+			"targets" = ("D4B5FE42F48371CADAAF5F6C", "F9270B1EF9D51BFC11DABE6B", "513588CF9F9E5219FC56B240");
+		};
+	};
+	"rootObject" = "98F54143AB4E86B28C3AFEE0";
+}

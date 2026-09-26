@@ -16,6 +16,21 @@ final class DocumentCodecTests: XCTestCase {
         XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("PKDrawing"))
     }
 
+    func testSchemaV1WithoutSecondaryScaleUsesTheOriginalDefault() throws {
+        let encoded = try DocumentCodec.encode(NoteDocument(title: "legacy", pages: [NotePage(strokes: [fixtureStroke()])]))
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        var pages = try XCTUnwrap(json["pages"] as? [[String: Any]])
+        var strokes = try XCTUnwrap(pages[0]["strokes"] as? [[String: Any]])
+        var points = try XCTUnwrap(strokes[0]["points"] as? [[String: Any]])
+        points[0].removeValue(forKey: "secondaryScale")
+        strokes[0]["points"] = points
+        pages[0]["strokes"] = strokes
+        json["pages"] = pages
+        let legacyData = try JSONSerialization.data(withJSONObject: json)
+        let decoded = try DocumentCodec.decode(legacyData)
+        XCTAssertEqual(decoded.pages[0].strokes[0].points[0].secondaryScale, 1)
+    }
+
     func testFutureSchemaIsDistinguishedFromCorruption() throws {
         let data = Data(#"{"schemaVersion":99}"#.utf8)
         XCTAssertThrowsError(try DocumentCodec.decode(data)) { error in

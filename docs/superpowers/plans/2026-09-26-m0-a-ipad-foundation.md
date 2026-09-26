@@ -20,6 +20,8 @@
 3. PencilKit 변환에서 획 ID·제어점·색상·변환·randomSeed를 보존하는가.
 4. 저장 중 추가 편집·재시도·백그라운드 전환이 마지막 필기를 잃지 않는가.
 5. 확대·회전·undo/redo가 저장 상태와 일치하는가.
+6. 파일 읽기 오류가 JSON 손상처럼 취급되어 백업으로 조용히 되돌아가지 않는가.
+7. 같은 노트가 두 편집 창에서 동시에 열려 최신 획이 덮어쓰이지 않는가.
 
 ## Task 1: 공통 문서·코덱
 - Produces: NoteDocument / NotePage / InkStroke / InkPoint / InkColor / InkTransform, DocumentCodec.encode/decode.
@@ -32,23 +34,27 @@
 - Produces: InkAdapter.decode(strokes:) -> PKDrawing, encode(drawing:preserving:) -> [InkStroke].
 - [x] 제어점·색상·변환·ID 보존, 미지원 도구·mask 거부의 XCTest RED.
 - [x] 앱·로컬 패키지 참조·테스트 타깃·MiNote 공유 스킴 구성.
-- [ ] SwiftUI 툴바 + PKCanvasView, 도구·undo/redo·줌 구현.
-- [ ] 테스트 GREEN, 진행 기록·커밋.
+- [x] SwiftUI 툴바 + PKCanvasView, 도구·undo/redo·줌 구현.
+- [x] iPadOS18.6/26.4 테스트 GREEN. 구현/최종 기록 커밋 대기.
 
 ## Task 3: 저장소와 편집 세션
 - Consumes: NoteDocument, DocumentCodec, InkAdapter.
 - Produces: DocumentStore.load() -> LoadedDocument?, save(document:) throws -> Void; EditorSession의 문서/저장 상태.
 - [x] 재열기·직전 백업·손상 복구·쓰기 실패·오래된 리비전·미래 스키마 보존 테스트 RED.
 - [x] actor 직렬 저장, 원자적 파일 교체, 백업 복구 상태, 버전 오류 보호 구현.
-- [ ] EditorSession의 재시도·리비전·저장중 추가 편집 테스트 RED → 구현.
-- [ ] 저장소와 화면 연결. 초기 불러오기 실패 시 편집 차단·재시도, 쓰기 실패 시 메모리 필기 유지.
-- [ ] 전체 swift test / 앱 XCTest GREEN, 진행 기록·커밋.
+- [x] EditorSession의 재시도·리비전·저장 중 추가 편집 테스트 RED → 구현.
+- [x] 저장소와 화면 연결. 초기 불러오기 실패 시 편집 차단·재시도, 쓰기 실패 시 메모리 필기 유지.
+- [x] swift test / 앱 XCTest GREEN (18.6·26.4). 커밋 대기.
 
 ## Task 4: 통합 검증 및 인계
-- [ ] UI 시험: 시뮬레이터 터치 필기·도구·undo/redo·앱 재실행 복원.
-- [ ] iPad Pro 11 M4 / iPadOS18.6와 iPad Pro 11 M5 / iPadOS26.4에서 MiNote 스킴 빌드·테스트.
-- [ ] 별도 에이전트 리뷰 1회, 중요 이슈 회귀 테스트 후 수정.
-- [ ] README·PROGRESS·Notion 갱신 및 커밋. 다음 단계 M0-B 기록.
+- [x] UI 시험: 시뮬레이터 터치 필기·undo/redo·앱 재실행 복원.
+- [x] iPad Pro 11 M4 / iPadOS18.6와 iPad Pro 11 M5 / iPadOS26.4에서 MiNote 스킴 빌드·테스트.
+- [x] 별도 에이전트 리뷰 1회와 중요 이슈 수정.
+- [x] 회귀 테스트: 파일 읽기 오류 때 백업 복구·원본 교체가 발생하지 않음.
+- [x] 회귀 테스트: 문서 경로가 디렉터리일 때 백업 복구·경로 교체가 발생하지 않음.
+- [x] 같은 문서의 교차 창 덮어쓰기를 피하도록 다중 장면 비활성화, 빌드 산출 Info.plist 값 확인.
+- [x] README·PROGRESS 갱신. 최종 커밋·Notion 갱신 중.
+- [x] M0-A 결과에 근거한 다음 단계 M0-B 계획 작성.
 
 ## 실행 명령
 - Core: swift test --package-path Packages/MiNoteCore

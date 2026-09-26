@@ -9,25 +9,38 @@ public struct LoadedDocument: Sendable {
 /// comparison and replacement, so concurrent save requests cannot interleave writes.
 public actor DocumentStore {
     private let directory: URL
+    private let dataReader: @Sendable (URL) throws -> Data
     private var primaryURL: URL { directory.appendingPathComponent("document.json") }
     private var backupURL: URL { directory.appendingPathComponent("document.backup.json") }
 
-    public init(directory: URL) { self.directory = directory }
+    public init(directory: URL) {
+        self.directory = directory
+        self.dataReader = { try Data(contentsOf: $0) }
+    }
+
+    init(directory: URL, dataReader: @escaping @Sendable (URL) throws -> Data) {
+        self.directory = directory
+        self.dataReader = dataReader
+    }
 
     public func load() throws -> LoadedDocument? {
-        if FileManager.default.fileExists(atPath: primaryURL.path) {
-            do {
-                return LoadedDocument(document: try read(primaryURL), recoveredFromBackup: false)
-            } catch DocumentError.unsupportedSchema(let version) {
-                // Never downgrade a document written by a newer application.
-                throw DocumentError.unsupportedSchema(version)
-            } catch {
-                guard FileManager.default.fileExists(atPath: backupURL.path) else { throw error }
-                return LoadedDocument(document: try read(backupURL), recoveredFromBackup: true)
+        do {
+            if let primary = try readIfPresent(primaryURL) {
+                return LoadedDocument(document: primary, recoveredFromBackup: false)
             }
+        } catch let error as DocumentError {
+            switch error {
+            case .corruptDocument, .invalidDocument:
+                break
+            case .unsupportedSchema, .staleRevision, .documentConflict:
+                throw error
+            }
+            guard let backup = try readIfPresent(backupURL) else { throw error }
+            return LoadedDocument(document: backup, recoveredFromBackup: true)
         }
-        if FileManager.default.fileExists(atPath: backupURL.path) {
-            return LoadedDocument(document: try read(backupURL), recoveredFromBackup: true)
+
+        if let backup = try readIfPresent(backupURL) {
+            return LoadedDocument(document: backup, recoveredFromBackup: true)
         }
         return nil
     }
@@ -53,7 +66,17 @@ public actor DocumentStore {
         try data.write(to: primaryURL, options: .atomic)
     }
 
-    private func read(_ url: URL) throws -> NoteDocument {
-        try DocumentCodec.decode(Data(contentsOf: url))
+    private func readIfPresent(_ url: URL) throws -> NoteDocument? {
+        let attributes: [FileAttributeKey: Any]
+        do {
+            attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+            return nil
+        }
+        guard let fileType = attributes[.type] as? FileAttributeType, fileType == .typeRegular else {
+            let code: POSIXErrorCode = (attributes[.type] as? FileAttributeType) == .typeDirectory ? .EISDIR : .EINVAL
+            throw POSIXError(code)
+        }
+        return try DocumentCodec.decode(dataReader(url))
     }
 }

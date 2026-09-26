@@ -65,9 +65,9 @@ public enum DocumentCodec {
             var previousTime = 0.0
             for point in stroke.points {
                 let values = [point.x, point.y, point.timeOffset, point.width, point.height,
-                              point.opacity, point.force, point.azimuth, point.altitude]
+                              point.opacity, point.force, point.azimuth, point.altitude, point.secondaryScale]
                 guard values.allSatisfy(\.isFinite), point.timeOffset >= previousTime,
-                      point.width >= 0, point.height >= 0, point.force >= 0,
+                      point.width >= 0, point.height >= 0, point.force >= 0, point.secondaryScale >= 0,
                       (0...1).contains(point.opacity) else {
                     throw DocumentError.invalidDocument("획 좌표 또는 속성")
                 }
