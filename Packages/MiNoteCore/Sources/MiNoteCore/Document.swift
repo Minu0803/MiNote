@@ -7,9 +7,10 @@ public struct NoteDocument: Codable, Equatable, Sendable {
     public var title: String
     public var pages: [NotePage]
     public var pdfAsset: PDFAsset?
+    public var lastOpenedPageID: UUID?
 
-    public init(id: UUID = UUID(), revision: Int64 = 0, title: String, pages: [NotePage], pdfAsset: PDFAsset? = nil) {
-        self.id = id; self.revision = revision; self.title = title; self.pages = pages; self.pdfAsset = pdfAsset
+    public init(id: UUID = UUID(), revision: Int64 = 0, title: String, pages: [NotePage], pdfAsset: PDFAsset? = nil, lastOpenedPageID: UUID? = nil) {
+        self.id = id; self.revision = revision; self.title = title; self.pages = pages; self.pdfAsset = pdfAsset; self.lastOpenedPageID = lastOpenedPageID
     }
 
     public static func blank() -> Self {

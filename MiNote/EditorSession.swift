@@ -1,6 +1,7 @@
 import Combine
 import MiNoteCore
 import PencilKit
+import PDFKit
 
 @MainActor
 final class EditorSession: ObservableObject {
@@ -12,9 +13,22 @@ final class EditorSession: ObservableObject {
     @Published private(set) var loadError: String?
     @Published private(set) var recoveryNotice: String?
 
+    @Published private(set) var currentPageIndex = 0
+    @Published private(set) var pdfDocument: PDFDocument?
+    @Published private(set) var isProcessing = false
+    @Published var operationError: String?
+    private var hasUnserializedDrawing = false
+    private let importer = PDFImporter()
+
+    var currentPage: NotePage? { document?.pages[currentPageIndex] }
+    var currentPDFPage: PDFPage? {
+        guard let index = currentPage?.pdfSource?.index else { return nil }
+        return pdfDocument?.page(at: index)
+    }
+
     private let store: DocumentStore
     private let saveDelay: Duration
-    private var history: [InkStroke] = []
+    private var histories: [UUID: [InkStroke]] = [:]
     private var pendingSave: Task<Void, Never>?
     private var loading = false
     private var savedRevision: Int64?
@@ -40,10 +54,16 @@ final class EditorSession: ObservableObject {
         do {
             let result = try await store.load()
             let loaded = result?.document ?? .blank()
-            let restored = try InkAdapter.decode(loaded.pages[0].strokes)
+            let selected = loaded.pages.firstIndex(where: { $0.id == loaded.lastOpenedPageID }) ?? 0
+            let restored = try InkAdapter.decode(loaded.pages[selected].strokes)
+            if let asset = loaded.pdfAsset {
+                let url = try await store.assetURL(for: asset)
+                pdfDocument = try PDFValidation.open(url: url, for: loaded)
+            }
+            currentPageIndex = selected
             document = loaded
             drawing = restored
-            history = loaded.pages[0].strokes
+            histories = Dictionary(uniqueKeysWithValues: loaded.pages.map { ($0.id, $0.strokes) })
             savedRevision = result?.recoveredFromBackup == true ? nil : result.map { $0.document.revision }
             if result?.recoveredFromBackup == true {
                 recoveryNotice = "복구본에서 노트를 복원했습니다. 원본 오류를 확인한 뒤 복구본을 보존합니다."
@@ -54,6 +74,8 @@ final class EditorSession: ObservableObject {
                 await persist(loaded)
             } else {
                 saveState = .saved
+                // Also persist a v1→v2 migration without changing document identity.
+                await persist(loaded)
             }
         } catch {
             loadError = error.localizedDescription
@@ -69,31 +91,89 @@ final class EditorSession: ObservableObject {
 
     /// Called for PencilKit changes and for explicit save/flush events.
     func receiveDrawing(_ updatedDrawing: PKDrawing) {
+        guard !isProcessing else { return }
         drawing = updatedDrawing
         guard var current = document else { return }
         do {
+            let pageID = current.pages[currentPageIndex].id
+            var history = histories[pageID] ?? []
             let strokes = try InkAdapter.encode(updatedDrawing, preserving: history)
-            let prior = current.pages[0].strokes
+            let prior = current.pages[currentPageIndex].strokes
+            hasUnserializedDrawing = false
             guard strokes != prior else {
                 if savedRevision == current.revision { saveState = .saved }
                 else { saveState = .saving; scheduleSave() }
                 return
             }
-            current.pages[0].strokes = strokes
+            current.pages[currentPageIndex].strokes = strokes
             guard current.revision < Int64.max else { throw DocumentError.invalidDocument("리비전 한도") }
             current.revision += 1
             document = current
             for stroke in strokes where !history.contains(where: { $0.id == stroke.id }) {
                 history.append(stroke)
             }
+            histories[pageID] = history
             saveState = .saving
             scheduleSave()
         } catch {
+            hasUnserializedDrawing = true
             // Keep both the visible PencilKit drawing and the last saved portable document.
             saveState = .failed(error.localizedDescription)
             pendingSave?.cancel()
             pendingSave = nil
         }
+    }
+
+    func selectPage(_ index: Int) {
+        guard !isProcessing, !hasUnserializedDrawing, var current = document,
+              current.pages.indices.contains(index), index != currentPageIndex else { return }
+        do {
+            let restored = try InkAdapter.decode(current.pages[index].strokes)
+            guard current.revision < Int64.max else { throw DocumentError.invalidDocument("리비전 한도") }
+            current.lastOpenedPageID = current.pages[index].id
+            current.revision += 1
+            currentPageIndex = index
+            drawing = restored
+            document = current
+            saveState = .saving
+            scheduleSave()
+        } catch { operationError = error.localizedDescription }
+    }
+
+    func importPDF(from url: URL) async {
+        guard !isProcessing, let current = document else { return }
+        guard current.pdfAsset == nil else {
+            operationError = "현재 노트에는 PDF가 연결되어 있습니다. 여러 노트 관리는 다음 단계에서 추가됩니다."
+            return
+        }
+        operationError = nil
+        await flush()
+        guard saveState == .saved, let base = document else {
+            operationError = "현재 필기를 먼저 저장해 주세요. 저장을 재시도한 뒤 PDF를 가져올 수 있습니다."
+            return
+        }
+        isProcessing = true
+        defer { isProcessing = false }
+        do {
+            let prepared = try await importer.prepare(url: url)
+            let imported = try await store.attachPDF(data: prepared.data, asset: prepared.asset,
+                pages: prepared.pages, expectedRevision: base.revision)
+            let assetURL = try await store.assetURL(for: prepared.asset)
+            let pdf = try PDFValidation.open(url: assetURL, for: imported)
+            document = imported
+            pdfDocument = pdf
+            histories = Dictionary(uniqueKeysWithValues: imported.pages.map { ($0.id, $0.strokes) })
+            savedRevision = imported.revision
+            currentPageIndex = base.pages.count
+            drawing = PKDrawing()
+            saveState = .saved
+            // Store the selected page in the same revision stream.
+            var selected = imported
+            selected.lastOpenedPageID = selected.pages[currentPageIndex].id
+            selected.revision += 1
+            document = selected
+            await persist(selected)
+        } catch { operationError = error.localizedDescription }
     }
 
     func retrySave() {

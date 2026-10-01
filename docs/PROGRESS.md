@@ -69,3 +69,10 @@
 - 자산 없음·크기 불일치는 백업의 빈 노트로 자동 복구하지 않고 오류로 차단한다. 가져오기 실패 때 기존 JSON을 유지하며 중단 후 orphan 자산은 안전하게 남는다(정리는 M1).
 - 검증: `swift test --package-path Packages/MiNoteCore` 24 테스트/0 실패, `/private/tmp/minote-m0b-core-green.log`. 마이그레이션/다중 페이지 실제 RED는 `minote-m0b-core-red2.log`, PDF 자산 API 누락 RED는 `minote-m0b-assets-red2.log`. 중간 구문 오류는 수정 후 전체 통과했다.
 - 다음: 앱에서 security-scoped 파일 조정·PDF 검증·페이지 세션 연결을 구현한다. 잠금/잘림/미지원 크기 및 세션 실패 보존을 테스트한다. PDF 파일 앱 흐름은 아직 미구현이다.
+
+### M0-B 2B/3A: 가져오기·페이지 세션
+- `PDFImporter` actor는 security scope를 복사 완료까지 유지하고 NSFileCoordinator로 원본을 읽는다. 암호 잠금, PDF header/EOF 없음, 빈 PDF, 미지원 페이지를 거부한다. PDFKit 객체는 actor 안에 두고 portable metadata/bytes만 넘긴다.
+- `EditorSession`은 여러 페이지의 drawing, 페이지마다 독립 획 ID 이력, 마지막 페이지 ID, 기존 문서 보존 가져오기 오류를 처리한다. 동일 획을 다른 페이지에 그릴 때 global history가 ID를 재사용한 실제 RED를 확인했고 페이지별 이력으로 수정했다.
+- 검증: iPadOS 18.6 `xcodebuild ... -only-testing:MiNoteTests ... test` 앱 단위 16 테스트/0 실패 (`/private/tmp/minote-m0b-import-green3.log`). 잠금/잘림, 원본 bytes/geometry, 실패 후 현재 필기, 페이지 왕복·재실행, 동일 모양 획의 독립 ID를 검증했다.
+- 제한은 임시 보수값 100MB/500페이지/한 변 2,000pt다. 단계 5에서 여러 페이지의 화면 뷰/bitmap 메모리 상한을 측정하고 근거를 남긴다. 실제 대형 PDF·실기기 성능은 아직 미검증이다.
+- 다음 즉시 작업: `PDFCanvasTests` RED 확인 → PDF 배경 렌더러, 가변 페이지 크기 zoom host, 페이지 이동과 파일 가져오기 UI. 현재 canvas 테스트는 이 작업의 미커밋 변경이다.

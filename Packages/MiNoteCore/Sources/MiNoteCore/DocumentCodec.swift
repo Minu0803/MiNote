@@ -51,6 +51,9 @@ public enum DocumentCodec {
         guard document.revision >= 0, !document.pages.isEmpty else {
             throw DocumentError.invalidDocument("페이지와 0 이상의 리비전이 필요합니다.")
         }
+        if let selected = document.lastOpenedPageID, !document.pages.contains(where: { $0.id == selected }) {
+            throw DocumentError.invalidDocument("마지막 페이지 ID")
+        }
         if let asset = document.pdfAsset {
             guard asset.pageCount > 0, asset.byteCount > 0, !asset.originalFilename.isEmpty,
                   asset.importedAt.isFinite else { throw DocumentError.invalidDocument("PDF 자산") }
