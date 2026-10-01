@@ -6,6 +6,7 @@ public enum DocumentError: Error, Equatable, LocalizedError, Sendable {
     case corruptDocument
     case staleRevision
     case documentConflict
+    case missingAsset
 
     public var errorDescription: String? {
         switch self {
@@ -13,6 +14,7 @@ public enum DocumentError: Error, Equatable, LocalizedError, Sendable {
         case .invalidDocument(let reason): "문서에 지원하지 않거나 잘못된 정보가 있습니다: \(reason)"
         case .corruptDocument: "문서와 복구본을 읽을 수 없습니다. 원본 파일은 보존됩니다."
         case .staleRevision: "더 최신 내용이 이미 저장되어 있습니다."
+        case .missingAsset: "PDF 원본 자산이 없거나 손상되었습니다. 기록은 보존됩니다."
         case .documentConflict: "다른 문서 또는 같은 버전의 다른 내용이 저장되어 있습니다."
         }
     }
@@ -32,47 +34,75 @@ public enum DocumentCodec {
         guard let header = try? decoder.decode(Header.self, from: data) else {
             throw DocumentError.corruptDocument
         }
-        guard header.schemaVersion == 1 else { throw DocumentError.unsupportedSchema(header.schemaVersion) }
-        guard let document = try? decoder.decode(NoteDocument.self, from: data) else {
+        guard (1...2).contains(header.schemaVersion) else { throw DocumentError.unsupportedSchema(header.schemaVersion) }
+        guard var document = try? decoder.decode(NoteDocument.self, from: data) else {
             throw DocumentError.corruptDocument
+        }
+        if header.schemaVersion == 1 {
+            guard document.pages.count == 1, document.pdfAsset == nil, document.pages[0].pdfSource == nil else { throw DocumentError.invalidDocument("v1 페이지 수") }
+            document.schemaVersion = 2
         }
         try validate(document)
         return document
     }
 
     public static func validate(_ document: NoteDocument) throws {
-        guard document.schemaVersion == 1 else { throw DocumentError.unsupportedSchema(document.schemaVersion) }
-        guard document.revision >= 0, document.pages.count == 1 else {
-            throw DocumentError.invalidDocument("M0-A는 한 페이지와 0 이상의 리비전을 지원합니다.")
+        guard document.schemaVersion == 2 else { throw DocumentError.unsupportedSchema(document.schemaVersion) }
+        guard document.revision >= 0, !document.pages.isEmpty else {
+            throw DocumentError.invalidDocument("페이지와 0 이상의 리비전이 필요합니다.")
         }
-        let page = document.pages[0]
-        guard page.width.isFinite, page.height.isFinite, page.width > 0, page.height > 0 else {
-            throw DocumentError.invalidDocument("페이지 크기")
+        if let asset = document.pdfAsset {
+            guard asset.pageCount > 0, asset.byteCount > 0, !asset.originalFilename.isEmpty,
+                  asset.importedAt.isFinite else { throw DocumentError.invalidDocument("PDF 자산") }
         }
+        var pdfIndices = Set<Int>()
+        var pageIDs = Set<UUID>()
         var ids = Set<UUID>()
-        for stroke in page.strokes {
-            guard ids.insert(stroke.id).inserted, !stroke.points.isEmpty, stroke.creationTime.isFinite else {
-                throw DocumentError.invalidDocument("획 ID 또는 제어점")
+        for page in document.pages {
+            guard pageIDs.insert(page.id).inserted else { throw DocumentError.invalidDocument("페이지 ID") }
+            guard page.width.isFinite, page.height.isFinite, page.width > 0, page.height > 0 else {
+                throw DocumentError.invalidDocument("페이지 크기")
             }
-            let color = stroke.color
-            guard [color.red, color.green, color.blue, color.alpha].allSatisfy({ $0.isFinite && (0...1).contains($0) }) else {
-                throw DocumentError.invalidDocument("획 색상")
-            }
-            let t = stroke.transform
-            guard [t.a, t.b, t.c, t.d, t.tx, t.ty].allSatisfy(\.isFinite), abs(t.a * t.d - t.b * t.c) > 1e-12 else {
-                throw DocumentError.invalidDocument("획 변환")
-            }
-            var previousTime = 0.0
-            for point in stroke.points {
-                let values = [point.x, point.y, point.timeOffset, point.width, point.height,
-                              point.opacity, point.force, point.azimuth, point.altitude, point.secondaryScale]
-                guard values.allSatisfy(\.isFinite), point.timeOffset >= previousTime,
-                      point.width >= 0, point.height >= 0, point.force >= 0, point.secondaryScale >= 0,
-                      (0...1).contains(point.opacity) else {
-                    throw DocumentError.invalidDocument("획 좌표 또는 속성")
+            if let source = page.pdfSource {
+                guard let asset = document.pdfAsset, source.index >= 0, source.index < asset.pageCount,
+                      pdfIndices.insert(source.index).inserted, source.mediaBox.isValid, source.cropBox.isValid,
+                      [0, 90, 180, 270].contains(source.rotation) else {
+                    throw DocumentError.invalidDocument("PDF 페이지 매핑")
                 }
-                previousTime = point.timeOffset
+                let rotated = source.rotation == 90 || source.rotation == 270
+                let width = rotated ? source.cropBox.height : source.cropBox.width
+                let height = rotated ? source.cropBox.width : source.cropBox.height
+                guard abs(page.width - width) < 0.001, abs(page.height - height) < 0.001 else {
+                    throw DocumentError.invalidDocument("PDF 페이지 크기")
+                }
             }
+            for stroke in page.strokes {
+                guard ids.insert(stroke.id).inserted, !stroke.points.isEmpty, stroke.creationTime.isFinite else {
+                    throw DocumentError.invalidDocument("획 ID 또는 제어점")
+                }
+                let color = stroke.color
+                guard [color.red, color.green, color.blue, color.alpha].allSatisfy({ $0.isFinite && (0...1).contains($0) }) else {
+                    throw DocumentError.invalidDocument("획 색상")
+                }
+                let t = stroke.transform
+                guard [t.a, t.b, t.c, t.d, t.tx, t.ty].allSatisfy(\.isFinite), abs(t.a * t.d - t.b * t.c) > 1e-12 else {
+                    throw DocumentError.invalidDocument("획 변환")
+                }
+                var previousTime = 0.0
+                for point in stroke.points {
+                    let values = [point.x, point.y, point.timeOffset, point.width, point.height,
+                                  point.opacity, point.force, point.azimuth, point.altitude, point.secondaryScale]
+                    guard values.allSatisfy(\.isFinite), point.timeOffset >= previousTime,
+                          point.width >= 0, point.height >= 0, point.force >= 0, point.secondaryScale >= 0,
+                          (0...1).contains(point.opacity) else {
+                        throw DocumentError.invalidDocument("획 좌표 또는 속성")
+                    }
+                    previousTime = point.timeOffset
+                }
+            }
+        }
+        guard pdfIndices.count == (document.pdfAsset?.pageCount ?? 0) else {
+            throw DocumentError.invalidDocument("PDF 페이지 누락")
         }
     }
 }

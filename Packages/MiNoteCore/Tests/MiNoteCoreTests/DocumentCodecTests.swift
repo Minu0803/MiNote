@@ -12,7 +12,7 @@ final class DocumentCodecTests: XCTestCase {
         let decoded = try DocumentCodec.decode(data)
         XCTAssertEqual(decoded, document)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        XCTAssertEqual(object["schemaVersion"] as? Int, 1)
+        XCTAssertEqual(object["schemaVersion"] as? Int, 2)
         XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("PKDrawing"))
     }
 
@@ -26,9 +26,31 @@ final class DocumentCodecTests: XCTestCase {
         strokes[0]["points"] = points
         pages[0]["strokes"] = strokes
         json["pages"] = pages
+        json["schemaVersion"] = 1
         let legacyData = try JSONSerialization.data(withJSONObject: json)
         let decoded = try DocumentCodec.decode(legacyData)
         XCTAssertEqual(decoded.pages[0].strokes[0].points[0].secondaryScale, 1)
+    }
+
+    func testLegacyDocumentMigratesWithoutLosingInkOrIDs() throws {
+        var original = NoteDocument.blank()
+        original.revision = 27
+        original.pages[0].strokes = [fixtureStroke()]
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: DocumentCodec.encode(original)) as? [String: Any])
+        json["schemaVersion"] = 1
+        let migrated = try DocumentCodec.decode(JSONSerialization.data(withJSONObject: json))
+        XCTAssertEqual(migrated.schemaVersion, 2)
+        XCTAssertEqual(migrated.id, original.id)
+        XCTAssertEqual(migrated.revision, 27)
+        XCTAssertEqual(migrated.pages, original.pages)
+    }
+
+    func testMultiplePageRoundTripAndDuplicatePageRejection() throws {
+        var document = NoteDocument.blank()
+        document.pages.append(NotePage(width: 300, height: 450, strokes: [fixtureStroke()]))
+        XCTAssertEqual(try DocumentCodec.decode(DocumentCodec.encode(document)), document)
+        document.pages.append(document.pages[0])
+        XCTAssertThrowsError(try DocumentCodec.encode(document))
     }
 
     func testFutureSchemaIsDistinguishedFromCorruption() throws {

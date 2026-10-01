@@ -62,3 +62,10 @@
 - 통과: `xcodebuild ... -only-testing:MiNoteTests/PDFGeometryTests ... test`, iPadOS 18.6, 1 테스트/0 실패, `/private/tmp/minote-m0b-geometry-green2.log`.
 - 결정: PDFKit overlay API(iOS 16+)는 조사했다. M0-B는 기존 `PageZoomHost`에서 PDF 배경+한 개 PencilKit 캔버스와 명시적 페이지 이동을 사용한다. 회전된 crop box 크기를 문서 크기로 쓰므로 PDFView의 overlay 재생성·gesture 경쟁을 피하면서 화면상의 같은 좌표를 유지한다. 페이지 수와 무관하게 화면 캔버스는 하나다. 실제 입력/zoom/화면 회전 검증은 단계 3/5에서 수행한다.
 - 다음: schema v2 migration/여러 페이지 테스트의 실제 실패를 확인했다 (`/private/tmp/minote-m0b-core-red2.log`). Foundation 모델을 확장한다. 아직 미커밋인 core 테스트는 이 다음 작업에 해당한다.
+
+### M0-B 2A: Foundation 문서·자산 저장 완료
+- schema v2는 여러 페이지, `PDFAsset` UUID/상대 경로/파일명/페이지 수/바이트 수/가져온 시점, 페이지별 media/crop/rotation/index를 보존한다. v1 A4는 ID·리비전·획을 유지해 v2로 읽고, 저장 시 원본 v1 바이트를 backup으로 먼저 보존한다.
+- `DocumentStore.attachPDF`는 기대 리비전을 검사하고 PDF 자산을 먼저 원자 저장한 후 JSON을 갱신한다. 기존 A4 페이지는 남고 PDF 페이지를 추가한다. 현재 노트에 한 PDF만 연결하며 후속 가져오기로 원본·필기를 교체하지 않는다. 여러 PDF/노트 선택은 M1 범위다.
+- 자산 없음·크기 불일치는 백업의 빈 노트로 자동 복구하지 않고 오류로 차단한다. 가져오기 실패 때 기존 JSON을 유지하며 중단 후 orphan 자산은 안전하게 남는다(정리는 M1).
+- 검증: `swift test --package-path Packages/MiNoteCore` 24 테스트/0 실패, `/private/tmp/minote-m0b-core-green.log`. 마이그레이션/다중 페이지 실제 RED는 `minote-m0b-core-red2.log`, PDF 자산 API 누락 RED는 `minote-m0b-assets-red2.log`. 중간 구문 오류는 수정 후 전체 통과했다.
+- 다음: 앱에서 security-scoped 파일 조정·PDF 검증·페이지 세션 연결을 구현한다. 잠금/잘림/미지원 크기 및 세션 실패 보존을 테스트한다. PDF 파일 앱 흐름은 아직 미구현이다.

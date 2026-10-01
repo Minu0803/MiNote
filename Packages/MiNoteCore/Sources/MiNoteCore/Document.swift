@@ -1,14 +1,15 @@
 import Foundation
 
 public struct NoteDocument: Codable, Equatable, Sendable {
-    public var schemaVersion: Int = 1
+    public var schemaVersion: Int = 2
     public var id: UUID
     public var revision: Int64
     public var title: String
     public var pages: [NotePage]
+    public var pdfAsset: PDFAsset?
 
-    public init(id: UUID = UUID(), revision: Int64 = 0, title: String, pages: [NotePage]) {
-        self.id = id; self.revision = revision; self.title = title; self.pages = pages
+    public init(id: UUID = UUID(), revision: Int64 = 0, title: String, pages: [NotePage], pdfAsset: PDFAsset? = nil) {
+        self.id = id; self.revision = revision; self.title = title; self.pages = pages; self.pdfAsset = pdfAsset
     }
 
     public static func blank() -> Self {
@@ -21,10 +22,11 @@ public struct NotePage: Codable, Equatable, Sendable {
     public var width: Double
     public var height: Double
     public var strokes: [InkStroke]
+    public var pdfSource: PDFPageSource?
 
     public init(id: UUID = UUID(), width: Double = 595.2756, height: Double = 841.8898,
-                strokes: [InkStroke] = []) {
-        self.id = id; self.width = width; self.height = height; self.strokes = strokes
+                strokes: [InkStroke] = [], pdfSource: PDFPageSource? = nil) {
+        self.id = id; self.width = width; self.height = height; self.strokes = strokes; self.pdfSource = pdfSource
     }
 }
 
