@@ -69,6 +69,39 @@ import XCTest
         XCTAssertEqual(reopened.document?.pages[1].strokes.first?.id, firstID)
     }
 
+    func testConcurrentImportRequestsKeepOneSuccessfulAttachment() async throws {
+        let url = try directory()
+        let session = EditorSession(store: DocumentStore(directory: url))
+        await session.loadIfNeeded()
+        let source = url.appendingPathComponent("source.pdf")
+        try PDFFixture.data().write(to: source)
+        async let first: Void = session.importPDF(from: source)
+        async let second: Void = session.importPDF(from: source)
+        _ = await (first, second)
+        XCTAssertEqual(session.document?.pages.count, 5)
+        XCTAssertNil(session.operationError)
+    }
+
+    func testExportUsesCurrentInkWithoutChangingOriginal() async throws {
+        let url = try directory()
+        let session = EditorSession(store: DocumentStore(directory: url))
+        await session.loadIfNeeded()
+        let source = url.appendingPathComponent("source.pdf")
+        let bytes = try PDFFixture.data()
+        try bytes.write(to: source)
+        await session.importPDF(from: source)
+        session.receiveDrawing(try InkAdapter.decode([testInk()]))
+        let exported = await session.exportPDF()
+        XCTAssertNotNil(exported)
+        let pdf = try XCTUnwrap(exported.flatMap { PDFDocument(url: $0) })
+        XCTAssertEqual(pdf.pageCount, 5)
+        XCTAssertEqual(session.strokeCount, 1)
+        XCTAssertEqual(session.saveState, .saved)
+        XCTAssertFalse(session.isProcessing)
+        XCTAssertEqual(try Data(contentsOf: source), bytes)
+        if let exported { try? FileManager.default.removeItem(at: exported.deletingLastPathComponent()) }
+    }
+
     func testFailedImportLeavesExistingInkEditable() async throws {
         let url = try directory()
         let session = EditorSession(store: DocumentStore(directory: url))

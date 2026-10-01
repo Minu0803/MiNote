@@ -9,6 +9,7 @@ struct NoteEditorView: View {
     @StateObject private var canvasReference = CanvasReference()
     @AppStorage("fingerDrawingEnabled") private var fingerDrawingEnabled =
         ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil
+    @State private var exportedFile: ExportedPDF?
     @State private var showsPDFImporter = false
     @State private var brush: Brush = .pen
     @State private var colorIndex = 1
@@ -42,6 +43,19 @@ struct NoteEditorView: View {
             case .success(let url): Task { await session.importPDF(from: url) }
             case .failure(let error): session.operationError = error.localizedDescription
             }
+        }
+        .sheet(item: $exportedFile) { file in
+            VStack(spacing: 16) {
+                Text("필기를 포함한 PDF").font(.headline)
+                Text("필기는 이미지로 고정되고 PDF 양식·주석은 수정할 수 없게 됩니다. 일부 링크는 유지되지 않을 수 있습니다.")
+                    .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                PDFPreview(url: file.url)
+                HStack {
+                    Button("닫기") { exportedFile = nil }.buttonStyle(.bordered)
+                    ShareLink(item: file.url) { Label("공유·파일에 저장", systemImage: "square.and.arrow.up") }
+                        .buttonStyle(.borderedProminent).accessibilityIdentifier("sharePDF")
+                }
+            }.padding(24)
         }
         .alert("문서 작업을 완료하지 못했습니다", isPresented: Binding(
             get: { session.operationError != nil }, set: { if !$0 { session.operationError = nil } })) {
@@ -126,6 +140,11 @@ struct NoteEditorView: View {
             Button { showsPDFImporter = true } label: { Label("PDF 가져오기", systemImage: "doc.badge.plus") }
                 .accessibilityIdentifier("importPDF")
                 .disabled(session.document?.pdfAsset != nil || session.isProcessing)
+            Button {
+                Task { if let url = await session.exportPDF() { exportedFile = ExportedPDF(url: url) } }
+            } label: { Image(systemName: "square.and.arrow.up") }
+            .accessibilityLabel("PDF 내보내기").accessibilityIdentifier("exportPDF")
+            .disabled(session.document?.pdfAsset == nil || session.isProcessing)
         }
         .font(.callout).padding(.horizontal, 26).padding(.vertical, 10).background(.white)
     }

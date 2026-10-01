@@ -76,6 +76,7 @@ public actor DocumentStore {
         var updated = prior.document
         updated.pdfAsset = asset
         updated.pages += pages
+        updated.lastOpenedPageID = pages.first?.id
         updated.revision += 1
         try DocumentCodec.validate(updated)
         let assets = directory.appendingPathComponent("assets", isDirectory: true)

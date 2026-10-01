@@ -89,3 +89,12 @@
 - `xcodebuild ... -only-testing:MiNoteTests ... test` 20 앱 단위 테스트/0 실패 (`/private/tmp/minote-m0b-export-green2.log`). 공유 UI는 아직 연결 전이다.
 - 내보내기는 PDFKit writer를 사용하고 원본 파일을 건드리지 않는다. 텍스트/벡터 원본 위에 최대 216dpi, max 4096px의 PencilKit 필기 이미지를 고정 합성한다. vector ink는 후속 엔진 검증에서 검토한다.
 - 다음: picker 고정 루트 컨테이너 수정의 UI 테스트 결과 확인. 공유 시트 연결·백그라운드 출력·메모리 검증·전체 리뷰/최종 검증으로 이어간다.
+- Picker 원인 확인: 실제 화면에는 파일 선택기가 표시되고 검색은 버튼 뒤에 숨겨져 있었다. 화면/런타임/뒤늦은 AX 트리로 확인했다 (`minote-picker-wait-screen.png`, `minote-m0b-picker-wait.log`). 테스트는 존재하지 않는 검색창을 기다리고 있었다. 시스템 파일 선택기에서 나의 iPad → MiNote → fixture를 선택하는 경로로 변경했다. 다음 실행은 테스트 runner bootstrap crash로 UI 자체가 시작되지 않았으므로 아직 통과 아님 (`minote-m0b-picker-browse.log`).
+
+### M0-B 3/4 기능 연결 완료, 단계 5 검증 중
+- iPadOS 18.6 전체 앱 검증: **단위 23/0, UI 2/0** (`/private/tmp/minote-m0b18-full.log`, `/private/tmp/minote-m0b18-full.xcresult`). PDF 입력 undo/redo, 확대, 화면 회전, 페이지 이동·relaunch, QuickLook PDF 미리보기와 실제 공유 시트의 파일 저장 항목까지 확인했다.
+- 500페이지 sequential render의 simulator phys_footprint는 85,150,432 → 93,424,400 bytes, 증가 8,273,968 bytes (약 7.9MiB). 한 페이지 뷰/캔버스를 재사용하므로 500개의 bitmap을 보관하지 않는다. fixture는 텍스트·벡터 소형 페이지이며 이미지가 많은 실제 100MB PDF의 성능을 입증하는 수치는 아니다. 한 변 2,000pt/100MB/500페이지 보수 상한을 유지하고 실기기/다양한 큰 자료는 M3 검증에 남긴다.
+- PDF 출력은 별도 작업에서 수행한다. UI 없는 InkAdapter 변환은 MainActor 제한을 제거했고 background export도 pixel/geometry 테스트를 통과했다. 공유 전 최신 revision을 저장하며 출력 중 편집을 잠근다.
+- 중복 import의 실제 RED에서 늦은 요청이 stale revision 오류로 끝났다. 작업 잠금을 첫 await 전에 획득하고 문서/asset/마지막 페이지 선택을 한 트랜잭션으로 완료하도록 수정했다. commit 후 자산 reopen 실패는 오래된 메모리 문서 편집을 차단하고 authoritative load를 재시도한다.
+- 아직 남음: iPadOS 26.4 전체 검증, 최신 core 전체 테스트, 한 차례 별도 코드 리뷰, Notion 결과 반영 및 최종 기록. UI 재실행 테스트는 기존 fixture 노트가 있으면 재가져오기를 건너뛰며, 첫 실제 Files import 통과 근거는 `minote-m0b-flow-green.log`에 있다.
+- 최신 core 전체 검증: `swift test --package-path Packages/MiNoteCore`, 24 테스트/0 실패 (`/private/tmp/minote-m0b-core-final.log`). 26.4 전체 테스트는 현재 실행 중이다. 18.6 UI/출력 기능과 core 변경을 커밋한 후 별도 리뷰를 진행한다.

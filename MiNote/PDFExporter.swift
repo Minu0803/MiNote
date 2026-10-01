@@ -3,7 +3,7 @@ import PDFKit
 import PencilKit
 import UIKit
 
-@MainActor enum PDFExporter {
+enum PDFExporter {
     /// Original PDF remains untouched. The returned PDF is a share/export copy.
     static func export(_ document: NoteDocument, sourceURL: URL, destination: URL) throws {
         guard sourceURL.standardizedFileURL.resolvingSymlinksInPath() != destination.standardizedFileURL.resolvingSymlinksInPath() else {

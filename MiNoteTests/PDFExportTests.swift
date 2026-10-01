@@ -16,7 +16,10 @@ import XCTest
         var document = NoteDocument(title: "export", pages: prepared.pages, pdfAsset: prepared.asset)
         for index in document.pages.indices { document.pages[index].strokes = [testInk()] }
         let destination = directory.appendingPathComponent("annotated.pdf")
-        try PDFExporter.export(document, sourceURL: source, destination: destination)
+        let snapshot = document
+        try await Task.detached {
+            try PDFExporter.export(snapshot, sourceURL: source, destination: destination)
+        }.value
         XCTAssertEqual(try Data(contentsOf: source), bytes)
         let original = try XCTUnwrap(PDFDocument(data: bytes))
         let exported = try XCTUnwrap(PDFDocument(url: destination))

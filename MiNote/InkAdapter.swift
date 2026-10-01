@@ -17,7 +17,6 @@ enum InkAdapterError: Error, LocalizedError {
     }
 }
 
-@MainActor
 enum InkAdapter {
     private static let contentID = UUID(uuid: (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
 

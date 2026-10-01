@@ -1,4 +1,5 @@
 import PDFKit
+import Darwin
 import UIKit
 import XCTest
 @testable import MiNote
@@ -21,6 +22,30 @@ import XCTest
             XCTAssertGreaterThan(red[0], 200, "Red corner rotation \(index * 90)")
             XCTAssertLessThan(red[1], 30)
         }
+    }
+
+    func testSequentialRenderingOf500PagesKeepsMemoryBounded() throws {
+        let pdf = try XCTUnwrap(PDFDocument(data: PDFFixture.data(rotations: Array(repeating: 0, count: 500))))
+        let host = PageZoomHost(frame: CGRect(x: 0, y: 0, width: 600, height: 800))
+        let before = residentBytes()
+        for index in 0..<500 {
+            try autoreleasepool {
+                let page = try XCTUnwrap(pdf.page(at: index))
+                host.configurePage(size: CGSize(width: 300, height: 450), pdfPage: page)
+                host.layoutIfNeeded()
+                let format = UIGraphicsImageRendererFormat(); format.scale = 1
+                _ = UIGraphicsImageRenderer(size: host.bounds.size, format: format).image { output in
+                    host.layer.render(in: output.cgContext)
+                }
+            }
+        }
+        let after = residentBytes()
+        XCTAssertGreaterThan(before, 0, "Memory measurement must be available")
+        XCTAssertGreaterThan(after, 0, "Memory measurement must be available")
+        let delta = after > before ? after - before : 0
+        print("PDF-MEMORY-500-PAGES bytes before=\(before) after=\(after) delta=\(delta)")
+        XCTAssertLessThan(delta, 256 * 1024 * 1024, "Sequential pages must not retain 500 page bitmaps")
+        XCTAssertEqual(host.canvas.bounds.size, CGSize(width: 300, height: 450))
     }
 
     func testZoomAndViewportResizeKeepDocumentBounds() throws {
@@ -59,4 +84,14 @@ func pixel(_ image: UIImage, at point: CGPoint) -> [UInt8] {
     }
     let index = (Int(point.y) * cgImage.width + Int(point.x)) * 4
     return Array(bytes[index..<index + 4])
+}
+
+private func residentBytes() -> UInt64 {
+    var info = task_vm_info_data_t()
+    var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+    let capacity = Int(count)
+    let result = withUnsafeMutablePointer(to: &info) { pointer in
+        pointer.withMemoryRebound(to: integer_t.self, capacity: capacity) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count) }
+    }
+    return result == KERN_SUCCESS ? info.phys_footprint : 0
 }

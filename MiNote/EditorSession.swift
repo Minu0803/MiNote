@@ -146,18 +146,20 @@ final class EditorSession: ObservableObject {
             operationError = "현재 노트에는 PDF가 연결되어 있습니다. 여러 노트 관리는 다음 단계에서 추가됩니다."
             return
         }
+        isProcessing = true
+        defer { isProcessing = false }
         operationError = nil
         await flush()
         guard saveState == .saved, let base = document else {
             operationError = "현재 필기를 먼저 저장해 주세요. 저장을 재시도한 뒤 PDF를 가져올 수 있습니다."
             return
         }
-        isProcessing = true
-        defer { isProcessing = false }
+        var committed = false
         do {
             let prepared = try await importer.prepare(url: url)
             let imported = try await store.attachPDF(data: prepared.data, asset: prepared.asset,
                 pages: prepared.pages, expectedRevision: base.revision)
+            committed = true
             let assetURL = try await store.assetURL(for: prepared.asset)
             let pdf = try PDFValidation.open(url: assetURL, for: imported)
             document = imported
@@ -167,13 +169,42 @@ final class EditorSession: ObservableObject {
             currentPageIndex = base.pages.count
             drawing = PKDrawing()
             saveState = .saved
-            // Store the selected page in the same revision stream.
-            var selected = imported
-            selected.lastOpenedPageID = selected.pages[currentPageIndex].id
-            selected.revision += 1
-            document = selected
-            await persist(selected)
-        } catch { operationError = error.localizedDescription }
+        } catch {
+            if committed {
+                // A disk transaction succeeded but its assets could not be reopened.
+                // Block edits against a stale in-memory document; retry authoritative load.
+                document = nil
+                pdfDocument = nil
+                loadError = error.localizedDescription
+                saveState = .failed(error.localizedDescription)
+            }
+            operationError = error.localizedDescription
+        }
+    }
+
+    func exportPDF() async -> URL? {
+        guard !isProcessing, document?.pdfAsset != nil else { return nil }
+        isProcessing = true
+        defer { isProcessing = false }
+        operationError = nil
+        await flush()
+        guard saveState == .saved, let snapshot = document, let asset = snapshot.pdfAsset else {
+            operationError = "최신 필기를 먼저 저장해 주세요. 저장을 재시도한 뒤 내보낼 수 있습니다."
+            return nil
+        }
+        do {
+            let source = try await store.assetURL(for: asset)
+            let folder = FileManager.default.temporaryDirectory.appendingPathComponent("MiNote-Exports").appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let destination = folder.appendingPathComponent("MiNote.pdf")
+            try await Task.detached(priority: .userInitiated) {
+                try PDFExporter.export(snapshot, sourceURL: source, destination: destination)
+            }.value
+            return destination
+        } catch {
+            operationError = error.localizedDescription
+            return nil
+        }
     }
 
     func retrySave() {
