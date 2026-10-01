@@ -76,3 +76,16 @@
 - 검증: iPadOS 18.6 `xcodebuild ... -only-testing:MiNoteTests ... test` 앱 단위 16 테스트/0 실패 (`/private/tmp/minote-m0b-import-green3.log`). 잠금/잘림, 원본 bytes/geometry, 실패 후 현재 필기, 페이지 왕복·재실행, 동일 모양 획의 독립 ID를 검증했다.
 - 제한은 임시 보수값 100MB/500페이지/한 변 2,000pt다. 단계 5에서 여러 페이지의 화면 뷰/bitmap 메모리 상한을 측정하고 근거를 남긴다. 실제 대형 PDF·실기기 성능은 아직 미검증이다.
 - 다음 즉시 작업: `PDFCanvasTests` RED 확인 → PDF 배경 렌더러, 가변 페이지 크기 zoom host, 페이지 이동과 파일 가져오기 UI. 현재 canvas 테스트는 이 작업의 미커밋 변경이다.
+
+### M0-B 3B/4 작업 중 체크포인트
+- PDF 배경은 PDFKit crop-box 렌더링과 top-left 변환을 사용한다. 4 회전의 red/green corner pixel이 기대 위치에 있으며 zoom 후 viewport 변경에도 canvas.bounds가 문서 크기를 유지한다. 앱 단위 18/0 (`minote-m0b-canvas-green.log`).
+- 파일 선택/페이지 이동 UI를 연결했다. UI 테스트에서 import 버튼은 존재하나 picker 검색창이 나타나지 않아 **아직 UI 검증 실패**다. `minote-m0b-ui-green2.log`, `minote-m0b-picker-diagnose.log`가 실제 실패 근거이며 후자에 접근성 트리가 있다. 원인 조사 후 재검증한다.
+- 단계 4 출력 테스트를 작성했다. 다음: export API 없는 RED를 확인하고 원본 geometry/텍스트/획 위치 검증을 통과시킨 뒤 picker UI 문제로 복귀한다.
+- 출력 spike 판단: PDFKit burnInAnnotations는 nonzero MediaBox 원점을 (0,0)으로 정규화한다. custom annotation은 원본 content의 원점 이동을 별도로 적용해야 한다 (`minote-m0b-export-diagnose.log`, 4 회전 blue bbox로 확인). 출력은 media 크기/rotation/crop의 media 대비 위치와 **보이는 페이지 좌표**를 보존하는 것으로 판단했다. raw box 원점까지 동일한 출력은 public PDFKit writer로 보장하지 않는다. PDF 원본과 편집 모델은 전혀 바꾸지 않는다.
+- 출력 판단: PencilKit 공개 API는 vector drawing export를 제공하지 않아 획만 최대 216dpi/한 변 4096px 이미지로 합성한다. 원본 PDF 텍스트/벡터 유지와 정확한 필기 모양을 우선한다. 확대 시 필기 해상도 및 원본 annotation/form의 고정화는 앱 안내·Notion·완료 보고에 남긴다.
+
+### M0-B 4A: PDF 합성 출력 기반 완료
+- 출력 writer의 원점 이동을 custom annotation에 적용하여 4 회전 모두 canonical (130,120) 획 pixel이 유지된다. 원본 bytes, media 크기/crop 상대 위치/rotation, 검색 가능한 text, 출력 실패 시 원본·기존 대상 보존을 검증했다.
+- `xcodebuild ... -only-testing:MiNoteTests ... test` 20 앱 단위 테스트/0 실패 (`/private/tmp/minote-m0b-export-green2.log`). 공유 UI는 아직 연결 전이다.
+- 내보내기는 PDFKit writer를 사용하고 원본 파일을 건드리지 않는다. 텍스트/벡터 원본 위에 최대 216dpi, max 4096px의 PencilKit 필기 이미지를 고정 합성한다. vector ink는 후속 엔진 검증에서 검토한다.
+- 다음: picker 고정 루트 컨테이너 수정의 UI 테스트 결과 확인. 공유 시트 연결·백그라운드 출력·메모리 검증·전체 리뷰/최종 검증으로 이어간다.

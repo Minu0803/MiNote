@@ -1,6 +1,7 @@
 import Combine
 import MiNoteCore
 import PencilKit
+import PDFKit
 import SwiftUI
 import UIKit
 
@@ -23,10 +24,11 @@ final class CanvasReference: ObservableObject {
 final class PageZoomHost: UIView, UIScrollViewDelegate {
     private let scrollView = UIScrollView()
     private let page = UIView()
-    private let paper = UIView()
+    private let paper = PDFPaperView()
     let canvas = PKCanvasView()
-    private let pageSize = CGSize(width: 595.2756, height: 841.8898)
+    private var pageSize = CGSize(width: 595.2756, height: 841.8898)
     private var hasInitialZoom = false
+    private var priorFit: CGFloat = 0
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -64,23 +66,44 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    func configurePage(size: CGSize, pdfPage: PDFPage?) {
+        if pageSize != size || !hasInitialZoom {
+            scrollView.zoomScale = 1
+            pageSize = size
+            page.frame = CGRect(origin: .zero, size: size)
+            scrollView.contentSize = size
+            hasInitialZoom = false
+        }
+        if paper.pdfPage !== pdfPage { paper.pdfPage = pdfPage }
+        scrollView.accessibilityLabel = pdfPage == nil ? "흰색 필기 페이지" : "PDF 필기 페이지"
+        setNeedsLayout()
+    }
+
+    func setFingerDrawing(_ enabled: Bool) {
+        scrollView.panGestureRecognizer.minimumNumberOfTouches = enabled ? 2 : 1
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         scrollView.frame = bounds
         guard bounds.width > 0, bounds.height > 0 else { return }
-        page.frame = CGRect(origin: .zero, size: pageSize)
+        if !hasInitialZoom {
+            scrollView.zoomScale = 1
+            page.frame = CGRect(origin: .zero, size: pageSize)
+            scrollView.contentSize = pageSize
+        }
         paper.frame = page.bounds
         canvas.frame = page.bounds
-        scrollView.contentSize = pageSize
         let fit = max(0.1, min((bounds.width - 40) / pageSize.width, (bounds.height - 40) / pageSize.height))
         scrollView.minimumZoomScale = fit
         scrollView.maximumZoomScale = max(fit * 5, fit + 0.5)
-        if !hasInitialZoom {
+        if !hasInitialZoom || abs(scrollView.zoomScale - priorFit) < 0.001 {
             scrollView.zoomScale = fit
             hasInitialZoom = true
         } else if scrollView.zoomScale < fit {
             scrollView.zoomScale = fit
         }
+        priorFit = fit
         centerPage()
     }
 
@@ -88,8 +111,8 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
     func scrollViewDidZoom(_ scrollView: UIScrollView) { centerPage() }
 
     private func centerPage() {
-        let horizontal = max(0, (scrollView.bounds.width - scrollView.contentSize.width) * 0.5)
-        let vertical = max(0, (scrollView.bounds.height - scrollView.contentSize.height) * 0.5)
+        let horizontal = max(0, (scrollView.bounds.width - pageSize.width * scrollView.zoomScale) * 0.5)
+        let vertical = max(0, (scrollView.bounds.height - pageSize.height * scrollView.zoomScale) * 0.5)
         scrollView.contentInset = UIEdgeInsets(top: vertical, left: horizontal, bottom: vertical, right: horizontal)
     }
 }
@@ -108,7 +131,12 @@ struct NoteCanvas: UIViewRepresentable {
         let host = PageZoomHost()
         host.canvas.delegate = context.coordinator
         reference.canvas = host.canvas
+        if let page = session.currentPage {
+            host.configurePage(size: CGSize(width: page.width, height: page.height), pdfPage: session.currentPDFPage)
+        }
+        host.setFingerDrawing(fingerDrawingEnabled)
         configure(host.canvas)
+        Task { @MainActor in reference.refresh() }
         return host
     }
 
@@ -121,11 +149,17 @@ struct NoteCanvas: UIViewRepresentable {
             context.coordinator.isApplyingSessionDrawing = false
         }
         reference.canvas = host.canvas
+        if let page = session.currentPage {
+            host.configurePage(size: CGSize(width: page.width, height: page.height), pdfPage: session.currentPDFPage)
+        }
+        host.setFingerDrawing(fingerDrawingEnabled)
+        host.canvas.isUserInteractionEnabled = !session.isProcessing
         configure(host.canvas)
     }
 
     static func dismantleUIView(_ host: PageZoomHost, coordinator: Coordinator) {
-        coordinator.reference.canvas = nil
+        host.canvas.delegate = nil
+        if coordinator.reference.canvas === host.canvas { coordinator.reference.canvas = nil }
     }
 
     private func configure(_ canvas: PKCanvasView) {
@@ -141,11 +175,12 @@ struct NoteCanvas: UIViewRepresentable {
         var session: EditorSession
         var reference: CanvasReference
         var isApplyingSessionDrawing = false
+        let pageID: UUID?
         init(session: EditorSession, reference: CanvasReference) {
-            self.session = session; self.reference = reference
+            self.session = session; self.reference = reference; self.pageID = session.currentPage?.id
         }
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-            guard !isApplyingSessionDrawing else { return }
+            guard !isApplyingSessionDrawing, pageID == session.currentPage?.id else { return }
             session.receiveDrawing(canvasView.drawing)
             reference.refresh()
         }

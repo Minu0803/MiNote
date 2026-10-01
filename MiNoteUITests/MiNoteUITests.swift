@@ -26,6 +26,40 @@ import XCTest
         XCTAssertTrue(waitForLabel(app.staticTexts["strokeCount"], expected))
     }
 
+    func testPDFImportNavigationAndRelaunch() throws {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.buttons["importPDF"].waitForExistence(timeout: 10))
+        app.buttons["importPDF"].tap()
+        print("PICKER-HIERARCHY", app.debugDescription)
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        search.tap()
+        search.typeText("MiNote-Sample")
+        let sample = app.staticTexts["MiNote-Sample"].firstMatch
+        XCTAssertTrue(sample.waitForExistence(timeout: 15))
+        sample.tap()
+        XCTAssertTrue(waitForLabel(app.staticTexts["pageIndicator"], "2 / 5"))
+        let canvas = app.scrollViews["noteCanvas"]
+        let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.40, dy: 0.40))
+        let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.50))
+        start.press(forDuration: 0.1, thenDragTo: end)
+        XCTAssertTrue(waitForLabel(app.staticTexts["strokeCount"], "획 1"))
+        app.buttons["nextPage"].tap()
+        XCTAssertTrue(waitForLabel(app.staticTexts["pageIndicator"], "3 / 5"))
+        XCTAssertTrue(waitForLabel(app.staticTexts["strokeCount"], "획 0"))
+        app.buttons["previousPage"].tap()
+        XCTAssertTrue(waitForLabel(app.staticTexts["strokeCount"], "획 1"))
+        XCTAssertTrue(waitForLabel(app.staticTexts["saveStatus"], "저장 완료"))
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(waitForLabel(app.staticTexts["pageIndicator"], "2 / 5"))
+        XCTAssertTrue(waitForLabel(app.staticTexts["strokeCount"], "획 1"))
+    }
+
     private func waitForLabel(_ element: XCUIElement, _ label: String) -> Bool {
         let predicate = NSPredicate(format: "label == %@", label)
         return XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: 10) == .completed

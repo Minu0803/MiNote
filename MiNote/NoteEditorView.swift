@@ -1,6 +1,7 @@
 import MiNoteCore
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct NoteEditorView: View {
     @Environment(\.scenePhase) private var scenePhase
@@ -8,6 +9,7 @@ struct NoteEditorView: View {
     @StateObject private var canvasReference = CanvasReference()
     @AppStorage("fingerDrawingEnabled") private var fingerDrawingEnabled =
         ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil
+    @State private var showsPDFImporter = false
     @State private var brush: Brush = .pen
     @State private var colorIndex = 1
     @State private var width = 3.0
@@ -27,7 +29,7 @@ struct NoteEditorView: View {
     }
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
             if session.document == nil {
                 loadState
             } else {
@@ -35,6 +37,16 @@ struct NoteEditorView: View {
             }
         }
         .task { await session.loadIfNeeded() }
+        .fileImporter(isPresented: $showsPDFImporter, allowedContentTypes: [.pdf]) { result in
+            switch result {
+            case .success(let url): Task { await session.importPDF(from: url) }
+            case .failure(let error): session.operationError = error.localizedDescription
+            }
+        }
+        .alert("문서 작업을 완료하지 못했습니다", isPresented: Binding(
+            get: { session.operationError != nil }, set: { if !$0 { session.operationError = nil } })) {
+            Button("확인") { session.operationError = nil }
+        } message: { Text(session.operationError ?? "") }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .inactive || phase == .background else { return }
             let lease = BackgroundSaveLease()
@@ -67,6 +79,7 @@ struct NoteEditorView: View {
     private var editor: some View {
         VStack(spacing: 0) {
             header
+            documentBar
             if let notice = session.recoveryNotice {
                 Label(notice, systemImage: "arrow.uturn.backward.circle.fill")
                     .font(.footnote).frame(maxWidth: .infinity, alignment: .leading)
@@ -86,18 +99,42 @@ struct NoteEditorView: View {
             NoteCanvas(session: session, reference: canvasReference, tool: brush,
                        color: palette[colorIndex].uiColor, width: width,
                        fingerDrawingEnabled: fingerDrawingEnabled)
+                .id(session.currentPage?.id)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(uiColor: .systemGroupedBackground))
+                .overlay { if session.isProcessing { ProgressView("문서 처리 중").padding(24).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16)) } }
             toolbar
         }
         .background(Color(uiColor: .systemGroupedBackground))
     }
 
-    private var header: some View {
+    private var documentBar: some View {
         HStack(spacing: 16) {
+            Button { canvasReference.refresh(); session.selectPage(session.currentPageIndex - 1) } label: {
+                Image(systemName: "chevron.left")
+            }
+            .accessibilityLabel("이전 페이지").accessibilityIdentifier("previousPage")
+            .disabled(session.currentPageIndex == 0 || session.isProcessing)
+            Text("\(session.currentPageIndex + 1) / \(session.document?.pages.count ?? 1)")
+                .font(.caption.monospacedDigit()).accessibilityIdentifier("pageIndicator")
+            Button { canvasReference.refresh(); session.selectPage(session.currentPageIndex + 1) } label: {
+                Image(systemName: "chevron.right")
+            }
+            .accessibilityLabel("다음 페이지").accessibilityIdentifier("nextPage")
+            .disabled(session.currentPageIndex + 1 >= (session.document?.pages.count ?? 1) || session.isProcessing)
+            Spacer()
+            Button { showsPDFImporter = true } label: { Label("PDF 가져오기", systemImage: "doc.badge.plus") }
+                .accessibilityIdentifier("importPDF")
+                .disabled(session.document?.pdfAsset != nil || session.isProcessing)
+        }
+        .font(.callout).padding(.horizontal, 26).padding(.vertical, 10).background(.white)
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("MiNote").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(Color(red: 0.14, green: 0.18, blue: 0.25))
-                Text(session.document?.title ?? "나의 첫 노트").font(.caption).foregroundStyle(.secondary)
+                Text(session.document?.pdfAsset?.originalFilename ?? session.document?.title ?? "나의 첫 노트").lineLimit(1).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             Label(session.saveStatusLabel, systemImage: saveSymbol)
@@ -121,6 +158,7 @@ struct NoteEditorView: View {
     }
 
     private var toolbar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
         HStack(spacing: 18) {
             HStack(spacing: 4) {
                 toolButton(.pen, symbol: "pencil.tip.crop.circle", title: "펜")
@@ -160,6 +198,9 @@ struct NoteEditorView: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.black.opacity(0.055), lineWidth: 1))
         .shadow(color: .black.opacity(0.06), radius: 12, y: 3)
         .padding(.horizontal, 24).padding(.top, 10).padding(.bottom, 14)
+        }
+        .frame(height: 96)
+        .disabled(session.isProcessing)
     }
 
     private func toolButton(_ value: Brush, symbol: String, title: String) -> some View {

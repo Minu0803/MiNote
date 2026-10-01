@@ -13,7 +13,10 @@ import XCTest
 
     func testImportKeepsOriginalBytesAndAllPageGeometry() async throws {
         let bytes = try PDFFixture.data()
-        let prepared = try await PDFImporter().prepare(data: bytes, filename: "report.pdf")
+        // Shared with the system Files picker UI test, in the test app's Documents.
+        let sample = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("MiNote-Sample.pdf")
+        try bytes.write(to: sample, options: .atomic)
+        let prepared = try await PDFImporter().prepare(url: sample)
         XCTAssertEqual(prepared.data, bytes)
         XCTAssertEqual(prepared.asset.pageCount, 4)
         XCTAssertEqual(prepared.pages.map(\.width), [300, 450, 300, 450])
