@@ -6,8 +6,9 @@
 - 브랜치: `main`
 - 시작 기준 커밋: `9695ab6`; 사전 모델·저장소 체크포인트: `dfa943d`
 - M0-A 구현 커밋: `fedd789` (`feat(ipad): complete M0-A writing and local recovery`)
-- main 통합: `origin/codex/ipad-foundation`에서 `b07e9e2`까지 fast-forward 병합. 원격 `main` 동기화가 다음 작업이다.
-- 다음 단계: M0-B PDF 가져오기·필기·내보내기. 상세 계획은 `docs/superpowers/plans/2026-09-26-m0-b-pdf-annotation.md`에 작성했으며 구현은 시작하지 않았다.
+- main 통합: `origin/codex/ipad-foundation`에서 `b07e9e2`까지 fast-forward 병합. 이후 사용자가 GitHub Desktop에서 `a943a49`를 push했고 local/main, origin/main, 실제 원격 main 일치를 확인했다.
+- 진행 단계: **M0-B — PDF 가져오기·필기·내보내기**. 2026-10-01 사용자가 나머지 개발 재개를 요청했다. 한 번에 한 단계 원칙에 따라 이번 단위는 M0-B 전체다.
+- M0-B 기준 커밋: `a943a49`; 현재 단계 1 좌표·PDFKit 기술 검증을 시작한다. 아직 M0-B 완료 기능은 없다.
 
 ## M0-A 완료 결과
 - SwiftUI·UIKit·PencilKit 앱과 Foundation 전용 `MiNoteCore` Swift Package를 구성했다. 외부 라이브러리는 없다.
@@ -43,3 +44,21 @@
 ## Notion
 - 문서: [MiNote 제품 계획서](https://app.notion.com/p/3e76538f55f68051a2fad6f22562bd3d?pvs=204)
 - 마지막 반영: 2026-09-26 09:33:38 UTC (2026-09-26 18:33:38 KST). M0-A 결과와 M0-B 계획 요약을 새 섹션으로 추가하고 다시 읽어 내용·검증·커밋을 확인했다.
+
+## M0-B 실행 체크포인트 (2026-10-01)
+- [ ] 1: PDFKit·좌표·회전·crop 검증
+- [ ] 2: schema v2 마이그레이션과 안전한 PDF 자산 가져오기
+- [ ] 3: 페이지 이동·필기·자동 저장·복원
+- [ ] 4: 필기 포함 PDF 내보내기
+- [ ] 5: 양 시뮬레이터 전체 검증·별도 리뷰·Notion·기록
+- 결정: 사용자 승인된 제품 설계/기존 M0-B 계획을 실행한다. main 직접 작업 지시가 격리 브랜치 절차보다 우선한다.
+- 사전 검사: 1의 좌표가 2 페이지 크기/메타데이터, 3 화면, 4 출력에 공통으로 필요하다. 2 저장의 문서 리비전은 3 가져오기/페이지 편집에서도 같은 문서 ID로 이어간다. 4는 2 원본 자산을 읽되 수정하지 않는다.
+- 환경: sandbox 내 simctl은 서비스 접근 권한 때문에 실패했다. 승인된 시뮬레이터 검증용 권한으로 다시 조회하여 18.6/26.4 기기를 확인했다.
+- 다음 즉시 작업: 좌표 및 PDF fixture 테스트를 먼저 만들고 실패를 확인한다.
+
+### M0-B 1A: 좌표 기초 검증
+- `MiNote/PDFGeometry.swift`, `MiNoteTests/PDFFixture.swift`, `PDFGeometryTests.swift`: 비영점 media/crop 원점과 0/90/180/270도 회전 fixture의 변환·역변환을 검증했다.
+- 실패 근거: `/private/tmp/minote-m0b-geometry-red.log` (어댑터 없음). 첫 실행의 8 좌표 실패는 PDFKit이 fixture 재저장 시 원점을 정규화했기 때문이었다. `/private/tmp/minote-m0b-geometry-diagnose.log`에서 실제 bounds를 확인해 raw PDF fixture로 교체했다.
+- 통과: `xcodebuild ... -only-testing:MiNoteTests/PDFGeometryTests ... test`, iPadOS 18.6, 1 테스트/0 실패, `/private/tmp/minote-m0b-geometry-green2.log`.
+- 결정: PDFKit overlay API(iOS 16+)는 조사했다. M0-B는 기존 `PageZoomHost`에서 PDF 배경+한 개 PencilKit 캔버스와 명시적 페이지 이동을 사용한다. 회전된 crop box 크기를 문서 크기로 쓰므로 PDFView의 overlay 재생성·gesture 경쟁을 피하면서 화면상의 같은 좌표를 유지한다. 페이지 수와 무관하게 화면 캔버스는 하나다. 실제 입력/zoom/화면 회전 검증은 단계 3/5에서 수행한다.
+- 다음: schema v2 migration/여러 페이지 테스트의 실제 실패를 확인했다 (`/private/tmp/minote-m0b-core-red2.log`). Foundation 모델을 확장한다. 아직 미커밋인 core 테스트는 이 다음 작업에 해당한다.
