@@ -48,6 +48,24 @@ import XCTest
         XCTAssertEqual(host.canvas.bounds.size, CGSize(width: 300, height: 450))
     }
 
+    func testPDFZoomRaisesRenderingResolutionWithinMemoryBudget() throws {
+        let host = PageZoomHost(frame: CGRect(x: 0, y: 0, width: 800, height: 1000))
+        let document = try XCTUnwrap(PDFDocument(data: PDFFixture.data()))
+        host.configurePage(size: CGSize(width: 300, height: 450), pdfPage: document.page(at: 0))
+        host.layoutIfNeeded()
+        let scroll = try XCTUnwrap(host.subviews.first as? UIScrollView)
+        let page = try XCTUnwrap(scroll.subviews.first)
+        let paper = try XCTUnwrap(page.subviews.first as? PDFPaperView)
+        let initial = paper.contentScaleFactor
+        scroll.zoomScale *= 2
+        scroll.delegate?.scrollViewDidEndZooming?(scroll, with: page, atScale: scroll.zoomScale)
+        XCTAssertGreaterThan(paper.contentScaleFactor, initial, "Zoom must redraw PDF details, not stretch the original bitmap")
+        scroll.zoomScale = scroll.maximumZoomScale
+        scroll.delegate?.scrollViewDidEndZooming?(scroll, with: page, atScale: scroll.zoomScale)
+        XCTAssertLessThanOrEqual(max(paper.bounds.width, paper.bounds.height) * paper.contentScaleFactor, 4096.01)
+        XCTAssertEqual(host.canvas.bounds.size, CGSize(width: 300, height: 450))
+    }
+
     func testZoomAndViewportResizeKeepDocumentBounds() throws {
         let host = PageZoomHost(frame: CGRect(x: 0, y: 0, width: 800, height: 1000))
         let page = try XCTUnwrap(PDFDocument(data: PDFFixture.data()).flatMap { $0.page(at: 1) })

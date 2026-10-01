@@ -160,12 +160,12 @@ struct NoteEditorView: View {
                 .font(.caption.weight(.medium)).foregroundStyle(saveTint)
                 .lineLimit(1).accessibilityIdentifier("saveStatus")
             Rectangle().fill(Color.primary.opacity(0.1)).frame(width: 1, height: 30)
-            Button { canvasReference.undo() } label: { Image(systemName: "arrow.uturn.backward") }
+            Button { canvasReference.undo(in: session) } label: { Image(systemName: "arrow.uturn.backward") }
                 .accessibilityLabel("실행 취소").accessibilityIdentifier("undo")
-                .disabled(!canvasReference.canUndo)
-            Button { canvasReference.redo() } label: { Image(systemName: "arrow.uturn.forward") }
+                .disabled(!canvasReference.canUndo || session.isProcessing)
+            Button { canvasReference.redo(in: session) } label: { Image(systemName: "arrow.uturn.forward") }
                 .accessibilityLabel("다시 실행").accessibilityIdentifier("redo")
-                .disabled(!canvasReference.canRedo)
+                .disabled(!canvasReference.canRedo || session.isProcessing)
             Text("획 \(session.strokeCount)")
                 .font(.caption.monospacedDigit().weight(.semibold))
                 .padding(.horizontal, 11).padding(.vertical, 8)

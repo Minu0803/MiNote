@@ -11,8 +11,16 @@ final class CanvasReference: ObservableObject {
     @Published private(set) var canRedo = false
     weak var canvas: PKCanvasView?
 
-    func undo() { canvas?.undoManager?.undo(); refresh() }
-    func redo() { canvas?.undoManager?.redo(); refresh() }
+    func undo(in session: EditorSession) {
+        guard !session.isProcessing else { return }
+        canvas?.undoManager?.undo()
+        refresh()
+    }
+    func redo(in session: EditorSession) {
+        guard !session.isProcessing else { return }
+        canvas?.undoManager?.redo()
+        refresh()
+    }
     func refresh() {
         let nextUndo = canvas?.undoManager?.canUndo ?? false
         let nextRedo = canvas?.undoManager?.canRedo ?? false
@@ -105,10 +113,26 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
         }
         priorFit = fit
         centerPage()
+        if !scrollView.isZooming { updatePaperResolution() }
     }
 
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { page }
     func scrollViewDidZoom(_ scrollView: UIScrollView) { centerPage() }
+    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+        updatePaperResolution()
+    }
+
+    private func updatePaperResolution() {
+        guard paper.pdfPage != nil else { return }
+        let displayScale = max(1, traitCollection.displayScale)
+        // A single PDF backing image stays within 4096² pixels (64 MiB RGBA).
+        let limit = 4096 / max(pageSize.width, pageSize.height)
+        let resolution = min(displayScale * scrollView.zoomScale, limit)
+        if abs(paper.contentScaleFactor - resolution) > 0.01 {
+            paper.contentScaleFactor = resolution
+            paper.setNeedsDisplay()
+        }
+    }
 
     private func centerPage() {
         let horizontal = max(0, (scrollView.bounds.width - pageSize.width * scrollView.zoomScale) * 0.5)

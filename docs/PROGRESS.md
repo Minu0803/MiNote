@@ -8,7 +8,7 @@
 - M0-A 구현 커밋: `fedd789` (`feat(ipad): complete M0-A writing and local recovery`)
 - main 통합: `origin/codex/ipad-foundation`에서 `b07e9e2`까지 fast-forward 병합. 이후 사용자가 GitHub Desktop에서 `a943a49`를 push했고 local/main, origin/main, 실제 원격 main 일치를 확인했다.
 - 진행 단계: **M0-B — PDF 가져오기·필기·내보내기**. 2026-10-01 사용자가 나머지 개발 재개를 요청했다. 한 번에 한 단계 원칙에 따라 이번 단위는 M0-B 전체다.
-- M0-B 기준 커밋: `a943a49`; 현재 단계 1 좌표·PDFKit 기술 검증을 시작한다. 아직 M0-B 완료 기능은 없다.
+- M0-B 기준 커밋: `a943a49`; 현재 기능·최종 자동 검증·별도 리뷰 수정을 완료했다. 단계 종료 문서·Notion 반영과 최종 커밋을 마무리 중이다.
 
 ## M0-A 완료 결과
 - SwiftUI·UIKit·PencilKit 앱과 Foundation 전용 `MiNoteCore` Swift Package를 구성했다. 외부 라이브러리는 없다.
@@ -19,7 +19,7 @@
 - 코드 리뷰 후 JSON 손상·문서 무결성 오류일 때만 백업 복구를 허용했다. 실제 파일 읽기·접근 오류는 그대로 전파하고 원본과 백업을 보존한다.
 - PencilKit의 기본 획에서 실제로 쓰이는 `secondaryScale`을 공통 모델에 추가했다. 기존 schema v1 문서에 값이 없으면 기본값 1로 읽는다.
 
-## 검증 근거
+## M0-A 검증 근거 (이전 기록)
 - `swift test --package-path Packages/MiNoteCore`: 16개 테스트, 0 실패. main 체크아웃 로그: `/private/tmp/minote-main-core.log`.
 - iPad Pro 11 M4 / iPadOS 18.6, main 체크아웃 `xcodebuild ... test`: 앱 단위 테스트 11개와 UI 테스트 1개 통과. 로그: `/private/tmp/minote-main18.log`; 결과: `/private/tmp/minote-main18.xcresult`.
 - iPad Pro 11 M5 / iPadOS 26.4, main 체크아웃 전체 테스트: 앱 단위 테스트 11개와 UI 테스트 1개 통과. 로그: `/private/tmp/minote-main26.log`; 결과: `/private/tmp/minote-main26.xcresult`.
@@ -29,7 +29,7 @@
 - 별도 리뷰의 데이터 손실 우려 2건을 각각 회귀 테스트·실제 빌드 설정 검증으로 수정했다. 저장소는 파일 없음만 따로 판별하며, 손상 JSON만 백업 복구하고 접근 오류·디렉터리 경로는 그대로 보존한다.
 - 미실행 검증: 실기기 Apple Pencil 지연, 손바닥 입력 거부, 발열. 물리 iPad에서 확인해야 한다.
 
-## 다음 재개 지점
+## M0-A 종료 시 다음 재개 지점 (이전 기록)
 - M0-A 코드와 검증 근거는 `fedd789`에 있다. 최종 테스트 로그는 위 검증 항목을 따른다.
 - M0-B 실행 계획이 저장소와 Notion에 있다. 다음 작업에서는 PDFKit overlay API를 iOS 18에서 확인하고, 회전·crop box를 포함한 좌표 fixture를 만드는 기술 검증부터 시작한다.
 - M0-B 구현은 별도 단계로 유지한다. PDF 페이지 매핑 검증 전에 문서 모델이나 캔버스 구조를 확정하지 않는다.
@@ -46,10 +46,10 @@
 - 마지막 반영: 2026-09-26 09:33:38 UTC (2026-09-26 18:33:38 KST). M0-A 결과와 M0-B 계획 요약을 새 섹션으로 추가하고 다시 읽어 내용·검증·커밋을 확인했다.
 
 ## M0-B 실행 체크포인트 (2026-10-01)
-- [ ] 1: PDFKit·좌표·회전·crop 검증
-- [ ] 2: schema v2 마이그레이션과 안전한 PDF 자산 가져오기
-- [ ] 3: 페이지 이동·필기·자동 저장·복원
-- [ ] 4: 필기 포함 PDF 내보내기
+- [x] 1: PDFKit·좌표·회전·crop 검증
+- [x] 2: schema v2 마이그레이션과 안전한 PDF 자산 가져오기
+- [x] 3: 페이지 이동·필기·자동 저장·복원
+- [x] 4: 필기 포함 PDF 내보내기
 - [ ] 5: 양 시뮬레이터 전체 검증·별도 리뷰·Notion·기록
 - 결정: 사용자 승인된 제품 설계/기존 M0-B 계획을 실행한다. main 직접 작업 지시가 격리 브랜치 절차보다 우선한다.
 - 사전 검사: 1의 좌표가 2 페이지 크기/메타데이터, 3 화면, 4 출력에 공통으로 필요하다. 2 저장의 문서 리비전은 3 가져오기/페이지 편집에서도 같은 문서 ID로 이어간다. 4는 2 원본 자산을 읽되 수정하지 않는다.
@@ -98,3 +98,26 @@
 - 중복 import의 실제 RED에서 늦은 요청이 stale revision 오류로 끝났다. 작업 잠금을 첫 await 전에 획득하고 문서/asset/마지막 페이지 선택을 한 트랜잭션으로 완료하도록 수정했다. commit 후 자산 reopen 실패는 오래된 메모리 문서 편집을 차단하고 authoritative load를 재시도한다.
 - 아직 남음: iPadOS 26.4 전체 검증, 최신 core 전체 테스트, 한 차례 별도 코드 리뷰, Notion 결과 반영 및 최종 기록. UI 재실행 테스트는 기존 fixture 노트가 있으면 재가져오기를 건너뛰며, 첫 실제 Files import 통과 근거는 `minote-m0b-flow-green.log`에 있다.
 - 최신 core 전체 검증: `swift test --package-path Packages/MiNoteCore`, 24 테스트/0 실패 (`/private/tmp/minote-m0b-core-final.log`). 26.4 전체 테스트는 현재 실행 중이다. 18.6 UI/출력 기능과 core 변경을 커밋한 후 별도 리뷰를 진행한다.
+- iPadOS 26.4 전체 검증도 완료: 단위 **23/0**, UI **2/0** (`/private/tmp/minote-m0b26-full.log`, `/private/tmp/minote-m0b26-full.xcresult`). 첫 Files import와 공유 항목을 포함했다. 500페이지 소형 vector fixture footprint는 67,619,144 → 79,104,376 bytes, 증가 11,485,232 bytes (약 11.0MiB). 실기기·실제 이미지 PDF 성능과 구분한다.
+- 코드 리뷰: 별도 `/root/m0b_code_review`가 `a943a49..26faf40` 범위를 읽기 전용으로 검토 중이다. 구현상 변경은 리뷰 결과를 받은 후 필요한 회귀 테스트와 함께 수행한다.
+
+### M0-B 리뷰 결과와 수정 시작점
+- 별도 리뷰에서 Critical은 없었다. Important/P2 2건: (1) import/export 중 header Undo/Redo가 잠기지 않아 세션과 실제 캔버스 이력이 엇갈림, (2) PDF 배경이 zoom 종료 후 낮은 bitmap 배율 그대로여서 확대 가독성 저하. 둘 다 실제 사용자 동작 문제로 받아들이고 회귀 RED→GREEN으로 수정한다.
+- Minor/P3: UUID별 내보내기 임시 파일 정리 수명주기 없음. 단계 5의 이번 중요한 수정 범위와 분리해 M1 파일/복구 관리 작업으로 이월한다. 공유가 끝나기 전 파일을 삭제하지 않도록 소비자 수명주기를 설계해야 한다.
+- 리뷰가 제외한 판단: 실기기 Pencil·발열 및 이미지가 많은 실제 큰 PDF는 M3에서 검증한다. ink 이미지 출력/원점 정규화/양식·링크 영향은 이미 기록·UI 안내한 의도적 범위다. 페이지 전환 때 canvas의 Undo 이력은 새로 시작하며 현재 페이지의 undo/redo만 보장한다. Background drawing은 작업별 객체를 소유하고 현재 검증을 통과했다.
+- 다음: 작업 잠금의 명령 경계 방어와 zoom 후 4096px 안에서의 PDF 재렌더링 테스트를 만들고 실패를 확인한다. 수정 후 두 시뮬레이터 앱 전체 검증을 다시 수행한다.
+- 회귀 RED 확인: 새 명령 인터페이스가 없어 최초 빌드 실패(`minote-m0b-review-red.log`), 인터페이스만 연결한 실제 동작 테스트에서 busy undo/redo와 zoom 해상도 모두 실패했다(`minote-m0b-review-behavior-red.log`, 2 테스트/4 assertions 실패).
+- P2 명령 수정: 헤더 버튼과 `CanvasReference.undo(in:)`/`redo(in:)` 양쪽에서 `session.isProcessing`을 검사한다. 실제 500페이지 import/export 작업 중 호출하는 회귀 테스트 **1/0** (`minote-m0b-command-green.log`).
+- P2 확대 수정 진행: pinch 중에는 기존 backing을 쓰고 zoom 종료/viewport layout에서 PDF 해상도를 갱신한다. 가장 긴 변을 4096px로 제한하며 문서 좌표와 canvas.bounds는 바꾸지 않는다. PDFCanvasTests를 실행 중이며 아직 최종 통과 기록 전이다.
+- P2 확대 회귀 및 배경·zoom·500페이지 테스트 **4/0** (`minote-m0b-zoom-green.log`). 배경 해상도를 늘린 후 이 소형 fixture의 footprint 증가 16,957,464 bytes. 현재 18.6/26.4 앱 전체를 재검증 중이다 (`minote-m0b18-review-final.log`, `minote-m0b26-review-final.log`). 다음은 실제 전체 결과 확인 → 단계 문서/Notion → 최종 커밋이다.
+
+### M0-B 리뷰 수정 후 최종 검증 완료
+- 18.6 전체 **앱 단위 25/0, UI 2/0**, xcodebuild exit 0 / TEST SUCCEEDED. 로그 `/private/tmp/minote-m0b18-review-final.log`, result `/private/tmp/minote-m0b18-review-final.xcresult`.
+- 26.4 전체 **앱 단위 25/0, UI 2/0**, xcodebuild exit 0 / TEST SUCCEEDED. 로그 `/private/tmp/minote-m0b26-review-final.log`, result `/private/tmp/minote-m0b26-review-final.xcresult`.
+- 공통 패키지는 마지막 core 변경 이후 **24/0** (`minote-m0b-core-final.log`). 리뷰 수정은 앱/테스트에만 있었으므로 core는 반복 실행하지 않았다.
+- 최종 500페이지 fixture footprint: 18.6은 95,095,544 → 113,560,312 bytes (증가 18,464,768; 약 17.6MiB), 26.4는 64,948,576 → 87,067,000 bytes (증가 22,118,424; 약 21.1MiB). zoom 해상도 수정 후의 현재 측정이며 앞선 수치보다 우선한다. 소형 벡터 PDF 한 종류이고 GPU/실기기/큰 이미지 PDF의 상한을 보장하지 않는다.
+- 최종 UI 결과에서 내보내기 QuickLook 화면을 추출해 실제 획·5페이지 표시·안내 문구·공유 버튼을 시각 확인했다. 화면 파일은 `docs/assets/m0b-export-preview.png`로 보존한다. 실제 시스템 Files 가져오기는 앞선 fresh 실행 로그에 있으며 최종 UI 재실행은 기존 노트에 필기를 추가해 복원을 확인했다.
+- 마지막 실행 명령:
+  `xcodebuild -project MiNote.xcodeproj -scheme MiNote -destination 'platform=iOS Simulator,id=7964CDF4-782A-44C2-BC51-1176AF6C67AB' -derivedDataPath /private/tmp/minote-m0b18 -resultBundlePath /private/tmp/minote-m0b18-review-final.xcresult -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test`
+  26.4는 device `423D4FF6-C678-45F9-9D3E-CB886EE82462`, derivedData `/private/tmp/minote-m0b26`, result `/private/tmp/minote-m0b26-review-final.xcresult`로 실행했다.
+- 현재 미커밋 변경: P2 캔버스 명령/zoom 수정, 회귀 테스트, README/단계 계획/다음 M0-C 계획, 이 기록. 다음 즉시 작업: P2 수정 커밋 → Notion에 검증된 M0-B 결과 추가 → 최신 동기화 시점과 최종 SHA를 기록·커밋한다.
