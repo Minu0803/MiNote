@@ -1,14 +1,24 @@
 # MiNote 개발 진행 기록
 
 ## 현재 상태
-- 완료 단계: **M0-A — iPad 빈 페이지 필기·로컬 저장·복원**
+- 완료 단계: **M0-A — iPad 빈 페이지 필기·로컬 저장·복원**, **M0-B — PDF 가져오기·페이지별 필기·내보내기**
 - 작업 공간: `/Users/minwookim/Documents/GitHub/MiNote`
 - 브랜치: `main`
 - 시작 기준 커밋: `9695ab6`; 사전 모델·저장소 체크포인트: `dfa943d`
 - M0-A 구현 커밋: `fedd789` (`feat(ipad): complete M0-A writing and local recovery`)
 - main 통합: `origin/codex/ipad-foundation`에서 `b07e9e2`까지 fast-forward 병합. 이후 사용자가 GitHub Desktop에서 `a943a49`를 push했고 local/main, origin/main, 실제 원격 main 일치를 확인했다.
-- 진행 단계: **M0-B — PDF 가져오기·필기·내보내기**. 2026-10-01 사용자가 나머지 개발 재개를 요청했다. 한 번에 한 단계 원칙에 따라 이번 단위는 M0-B 전체다.
-- M0-B 기준 커밋: `a943a49`; 현재 기능·최종 자동 검증·별도 리뷰 수정을 완료했다. 단계 종료 문서·Notion 반영과 최종 커밋을 마무리 중이다.
+- 이번 실행: 2026-10-01 재개 요청에 따라 M0-B 전체를 구현·검증·별도 리뷰·Notion 기록까지 완료했다. 한 번에 한 개발 단위 원칙을 유지한다.
+- M0-B 기준 커밋: `a943a49`; 구현/검증 커밋: `27f634c`, `4babcf6`, `991b481`, `0cd0139`, `26faf40`, `31a766c`.
+- 마지막 코드 커밋: `31a766cbcfa570cf089eebe0ee52b2218dff3bf3`. 최종 인계 문서는 이 기록을 포함하는 마지막 `docs` 커밋에 있다(`git log -1 --oneline`으로 확인). 이번 6개 코드 커밋과 문서 커밋은 **로컬 main에만 있으며 push하지 않았다**.
+- 진행 중 코드/알려진 테스트 실패: 없음. 다음 개발 단위 **M0-C — 공통 필기 왕복 검증**은 계획만 작성했고 구현하지 않았다. iPad 전체 개발은 아직 M1/M2/M3 등이 남아 있다.
+
+## M0-B 완료 결과와 현재 재개 지점
+- Files에서 PDF를 가져와 페이지별로 필기·확대·현재 페이지 undo/redo하고, 마지막 페이지와 획을 저장·재실행 후 복원한다. 기존 A4를 유지하며 한 PDF만 연결한다.
+- 원본 PDF 자산을 수정하지 않고 필기 포함 새 PDF를 생성해 QuickLook/공유 시트로 전달한다. 필기는 최대 216dpi/4096px 이미지로 고정하고 양식/원본 주석/일부 링크의 영향을 안내한다.
+- schema v2 migration과 raw v1 백업, asset-first 저장, revision 검사, asset 누락 오류 차단을 구현했다. 리뷰의 busy undo/redo와 zoom 해상도 문제를 회귀 테스트로 수정했다.
+- 최신 검증: core **24/0**; iPadOS 18.6과 26.4 각각 앱 단위 **25/0**, UI **2/0**. 정확한 명령/로그/result는 이 문서 마지막의 ‘리뷰 수정 후 최종 검증’ 절을 따른다.
+- 다음 작업자가 바로 할 첫 작업: Git 상태 대조 → `docs/superpowers/plans/2026-10-01-m0-c-portable-ink.md`, `MiNote/InkAdapter.swift`, `MiNoteCore` 모델/codec 읽기 → M0-C 작업 1의 실제 PencilKit→JSON fixture와 계약 테스트 작성. M0-B를 다시 구현하지 않는다.
+- 이월 문제: 한 노트/한 PDF, 페이지 전환 시 undo reset, 보수 import 상한(100MB/500페이지/2000pt), 임시 export/orphan 자산 정리(M1), 객체 편집·검색(M2), 실기기/외부 뷰어/분할 화면/실제 큰 이미지 PDF(M3). 물리 Apple Pencil 지연·손바닥·발열은 **실기기 확인 대기**다.
 
 ## M0-A 완료 결과
 - SwiftUI·UIKit·PencilKit 앱과 Foundation 전용 `MiNoteCore` Swift Package를 구성했다. 외부 라이브러리는 없다.
@@ -43,14 +53,15 @@
 
 ## Notion
 - 문서: [MiNote 제품 계획서](https://app.notion.com/p/3e76538f55f68051a2fad6f22562bd3d?pvs=204)
-- 마지막 반영: 2026-09-26 09:33:38 UTC (2026-09-26 18:33:38 KST). M0-A 결과와 M0-B 계획 요약을 새 섹션으로 추가하고 다시 읽어 내용·검증·커밋을 확인했다.
+- 마지막 반영: **2026-10-01 12:58:05 UTC (21:58:05 KST)**. Notion async update 성공 후 재조회했다(`page_last_edited_at = 2026-10-01T12:58:05.280Z`). M0-B 결과/코드 커밋/양 OS 25+2 tests/core 24 tests/메모리 수치/제한/M0-C 계획 경로를 확인했다. 파일명은 inline code로 기록해 잘못된 외부 자동 링크도 제거했다.
+- 이전 반영: 2026-09-26 09:33:38 UTC (18:33:38 KST), M0-A 결과와 M0-B 계획 요약.
 
 ## M0-B 실행 체크포인트 (2026-10-01)
 - [x] 1: PDFKit·좌표·회전·crop 검증
 - [x] 2: schema v2 마이그레이션과 안전한 PDF 자산 가져오기
 - [x] 3: 페이지 이동·필기·자동 저장·복원
 - [x] 4: 필기 포함 PDF 내보내기
-- [ ] 5: 양 시뮬레이터 전체 검증·별도 리뷰·Notion·기록
+- [x] 5: 양 시뮬레이터 전체 검증·별도 리뷰·Notion·기록
 - 결정: 사용자 승인된 제품 설계/기존 M0-B 계획을 실행한다. main 직접 작업 지시가 격리 브랜치 절차보다 우선한다.
 - 사전 검사: 1의 좌표가 2 페이지 크기/메타데이터, 3 화면, 4 출력에 공통으로 필요하다. 2 저장의 문서 리비전은 3 가져오기/페이지 편집에서도 같은 문서 ID로 이어간다. 4는 2 원본 자산을 읽되 수정하지 않는다.
 - 환경: sandbox 내 simctl은 서비스 접근 권한 때문에 실패했다. 승인된 시뮬레이터 검증용 권한으로 다시 조회하여 18.6/26.4 기기를 확인했다.
@@ -120,4 +131,5 @@
 - 마지막 실행 명령:
   `xcodebuild -project MiNote.xcodeproj -scheme MiNote -destination 'platform=iOS Simulator,id=7964CDF4-782A-44C2-BC51-1176AF6C67AB' -derivedDataPath /private/tmp/minote-m0b18 -resultBundlePath /private/tmp/minote-m0b18-review-final.xcresult -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test`
   26.4는 device `423D4FF6-C678-45F9-9D3E-CB886EE82462`, derivedData `/private/tmp/minote-m0b26`, result `/private/tmp/minote-m0b26-review-final.xcresult`로 실행했다.
-- 현재 미커밋 변경: P2 캔버스 명령/zoom 수정, 회귀 테스트, README/단계 계획/다음 M0-C 계획, 이 기록. 다음 즉시 작업: P2 수정 커밋 → Notion에 검증된 M0-B 결과 추가 → 최신 동기화 시점과 최종 SHA를 기록·커밋한다.
+- 검증 완료 시점의 미커밋 변경은 P2 캔버스 명령/zoom 수정과 회귀 테스트/이 기록이었다. 이를 `31a766c`로 커밋했다. 이후 README/AGENTS/단계 계획/다음 M0-C 계획과 최종 화면을 정리했고 Notion 결과·동기화 시점을 위에 반영했다. 마지막 코드 변경 이후 테스트 대상 코드는 바꾸지 않았다.
+- 완료 인계: 현재 코드 작업은 없고, 최종 기록/계획/스크린샷을 문서 커밋으로 보존한다. 재개 시 `git status --short --branch`로 미커밋 변경을 먼저 대조한다. `git diff --check`는 최종 문서에도 적용한다. M0-C 구현은 이번 실행에 포함하지 않았다.

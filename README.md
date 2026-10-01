@@ -2,11 +2,17 @@
 
 iPad-first handwriting notes, built to keep its document format portable across platforms.
 
-## M0-A: blank-page writing and local recovery
+## Implemented: writing, PDF annotation and local recovery
 
-The first milestone opens one A4 page where you can write with Pencil or, by choice, a finger. It includes pen and highlighter tools, stroke erasing, color and width controls, undo and redo, zoom, autosave, save retry and restoration after relaunch.
+The app opens an A4 page where you can write with Pencil or, by choice, a finger. It includes pen and highlighter tools, stroke erasing, color and width controls, undo and redo, zoom, autosave, save retry and restoration after relaunch.
 
-The app keeps the pen input layer in PencilKit while the document itself uses versioned JSON. A completed edit is stored under the app's `Documents/MiNote` directory; the last known good document is retained for recovery. The `MiNoteCore` package contains the platform-independent note, page and stroke models, validation, JSON codec and serialized local store.
+Use **PDF 가져오기** to select a PDF from Files. MiNote preserves the original A4 page and appends the PDF pages. Each page keeps its own editable ink, and reopening the app restores the last selected page. PDF crop boxes and 0/90/180/270-degree rotation use the same document coordinates for display and export.
+
+Use **PDF 내보내기** to save the latest ink, generate a separate PDF, inspect it in QuickLook and open the system share sheet. Export keeps source text and vector page content while flattening handwriting as an image, up to 216 dpi and 4,096 pixels per side. Forms and source annotations are flattened; some links may not survive. The original PDF asset is never replaced. The exported PDF is for distribution; editable strokes remain in MiNote's JSON document.
+
+The app keeps the pen input layer in PencilKit while the document uses schema-v2 JSON. A completed edit is stored under `Documents/MiNote`; the last known good document is retained for recovery. PDF assets use immutable UUID-based paths. Schema-v1 notes migrate without losing IDs or ink, and their original bytes are retained in the backup. The Foundation-only `MiNoteCore` package contains note, page, stroke and asset models, validation, the JSON codec and serialized local store.
+
+Import and export lock editing, including undo and redo. One visible PDF page and canvas are reused; zoom completion rerenders the background within a 4,096-pixel limit. Missing PDF assets, invalid documents and unsupported versions show an error instead of replacing a note with an empty document.
 
 ## Open the iPad app
 
@@ -26,15 +32,26 @@ xcodebuild -project MiNote.xcodeproj -scheme MiNote \
   test CODE_SIGNING_ALLOWED=NO
 ```
 
-The Xcode test scheme covers PencilKit conversion, local edit sessions and UI writing, undo/redo and app relaunch. Testing on iOS 18.6 and 26.4 is part of M0-A.
+The Xcode scheme covers PencilKit conversion, PDF coordinates and raster placement, import/export failures, edit sessions, zoom rendering and a 500-page fixture. UI tests exercise writing, undo/redo, Files import, page navigation, rotation, relaunch, export preview and the share sheet. Run on both iPadOS 18.6 and 26.4. Actual results and logs are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
+
+The final M0-B run passed 24 core tests and, on each OS, 25 app unit tests and 2 UI tests. [Simulator export preview](docs/assets/m0b-export-preview.png).
+
+## Current limits
+
+- One local note and one attached PDF; imports append to the initial A4 page. A second PDF cannot replace an existing attachment.
+- Imports are limited to 100 MB, 500 pages and 2,000 points per page edge. Password-protected, truncated and unsupported files are rejected. These are conservative limits, not a real-device performance guarantee.
+- Undo history starts again when switching pages. Partial erasing, selection, text and images are future work.
+- Export may normalize the raw PDF MediaBox origin. Visible crop geometry, rotation and ink placement are preserved; the source asset and its stored metadata stay unchanged.
+- Export temporary folders and interrupted-import orphan assets currently remain for later cleanup. Their lifetime management belongs to M1.
+- Pencil latency, palm rejection, thermal behavior and large image-heavy PDFs need physical-device testing. The synthetic memory test does not establish those results.
 
 ## Roadmap
 
-- **M0-B:** Import PDF, write over it and export a flattened or editable PDF.
+- **M0-A / M0-B implemented:** Blank-page ink, safe local recovery, PDF import, page-specific editable ink and flattened PDF export.
 - **M0-C:** Validate portable ink from another renderer.
 - **M1:** Multiple notes, folders, pages and local recovery management.
 - **M2:** Lasso, text, images and search.
 - **M3:** Performance and real-device Pencil, palm and thermal checks.
 - **Later:** Advanced editing, sync, collaboration and other platforms.
 
-The current milestone does not import PDFs or sync data. Real Pencil latency, palm rejection and thermal behavior still need a physical iPad.
+This is a local technical foundation, not the completed iPad product. Sync and other platform apps are not implemented. See [the M0-C plan](docs/superpowers/plans/2026-10-01-m0-c-portable-ink.md) and [the product roadmap](docs/superpowers/specs/2026-09-26-minote-product-design.md).
