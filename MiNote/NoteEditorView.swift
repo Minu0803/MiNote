@@ -10,6 +10,7 @@ struct NoteEditorView: View {
     @AppStorage("fingerDrawingEnabled") private var fingerDrawingEnabled =
         ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil
     @State private var exportedFile: ExportedPDF?
+    @State private var showsPageManager = false
     @State private var showsPDFImporter = false
     @State private var brush: Brush = .pen
     @State private var colorIndex = 1
@@ -44,6 +45,9 @@ struct NoteEditorView: View {
             case .failure(let error): session.operationError = error.localizedDescription
             }
         }
+        .sheet(isPresented: $showsPageManager) {
+            PageManagerView(session: session) { showsPageManager = false }
+        }
         .sheet(item: $exportedFile) { file in
             VStack(spacing: 16) {
                 Text("필기를 포함한 PDF").font(.headline)
@@ -58,7 +62,7 @@ struct NoteEditorView: View {
             }.padding(24)
         }
         .alert("문서 작업을 완료하지 못했습니다", isPresented: Binding(
-            get: { session.operationError != nil }, set: { if !$0 { session.operationError = nil } })) {
+            get: { session.operationError != nil && !showsPageManager }, set: { if !$0 { session.operationError = nil } })) {
             Button("확인") { session.operationError = nil }
         } message: { Text(session.operationError ?? "") }
         .onChange(of: scenePhase) { _, phase in
@@ -136,7 +140,11 @@ struct NoteEditorView: View {
             }
             .accessibilityLabel("다음 페이지").accessibilityIdentifier("nextPage")
             .disabled(session.currentPageIndex + 1 >= (session.document?.pages.count ?? 1) || session.isProcessing)
+            Text(session.currentPage?.pdfSource == nil ? (session.currentPage?.paper.title ?? "") : "PDF")
+                .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("paperStyle")
             Spacer()
+            Button { captureDrawing(); showsPageManager = true } label: { Image(systemName: "square.grid.2x2") }
+                .accessibilityLabel("페이지 관리").accessibilityIdentifier("pageManager").disabled(session.isProcessing)
             Button { captureDrawing(); showsPDFImporter = true } label: { Label("PDF 가져오기", systemImage: "doc.badge.plus") }
                 .accessibilityIdentifier("importPDF")
                 .disabled(session.isProcessing)

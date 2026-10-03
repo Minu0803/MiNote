@@ -303,3 +303,9 @@
 - RED: 세션 API/cache 미구현, minote-m1b-session-red.log exit65. GREEN: 18.6 앱 전체 **48/0**, minote-m1b-session-green.log exit0 TEST SUCCEEDED. PageEditorTests는 실제 actor reader 안에서 MainActor native callback을 전달해 flush 중/commit 중의 지원/미지원 획 경합을 재현했다.
 - 결정: actor commit 대기 중 늦은 callback을 버리지 않는다. commit 완료 후 경합이 감지되면 기존 페이지 구조+최신 필기를 더 높은 revision으로 보상 저장해 작업을 취소하고 화면을 유지한다. 지원하지 않는 drawing은 실패 상태/메모리에 보존한다. 세션 구조 작업은 보상 revision 하나를 위해 Int64.max-1 이상에서 차단한다(현실적인 문서에 영향 없음, 잘못 판단하면 한 번 이른 revision 한도).
 - 다음: 페이지 manager 실제 UI RED → 화면·용지 배경·삭제 복원/책갈피·썸네일 연결 → 앱/UI GREEN. Task 4 전체는 아직 완료 아님. JS/26.4/리뷰/Notion은 미완료.
+
+### M1-B Task 4B 화면 검증 완료
+- 페이지 manager: 활성/책갈피/삭제 목록, 보이는 thumbnail, A4 blank/ruled/grid 추가·용지 변경, 복제·메뉴/drag 재정렬, 삭제 확인·복원. 현재 page+구조 변화의 Canvas generation을 바꿔 Undo와 오래된 delegate를 분리한다. 화면/thumbnail/출력은 같은 24pt/0.5pt 용지를 사용한다.
+- RED: 실제 UI의 pageManager 버튼 미존재 assertion1(minote-m1b-page-ui-red.log, exit65), 화면 paperStyle API 부재(minote-m1b-paper-screen-red.log, exit65). GREEN: 18.6 앱 전체 **51/0** + 새 PageManager UI **1/0**, minote-m1b-pages-ui-green.log exit0 TEST SUCCEEDED. result: /private/tmp/minote-m1b-dd18/Logs/Test/Test-MiNote-2026.10.03_19-12-15-+0900.xcresult.
+- UI는 실제 손가락 gesture로 blank/ruled/PDF에 필기하고 페이지 추가/복제/이동/책갈피 필터/삭제/복원/실제 Files A·B 선택/재실행/원래 PDF ink/출력 미리보기를 확인했다. 스토어 직접 호출 시험과 구분한다. 라이브러리 다른 노트 전환 후 다중 PDF/복원 ink는 단위 시험으로도 확인했다.
+- 다음: Task 5 JS v2/v3 계약과 iPad 역방향 fixture → 모든 양 OS/별도 migration → fresh 리뷰 한 번 → Notion/정리. 현재 Task 4 완료 근거이며 M1-B 전체 완료는 아님.

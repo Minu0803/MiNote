@@ -23,3 +23,7 @@ enum PaperRenderer {
         context.strokePath(); context.restoreGState()
     }
 }
+
+extension PaperStyle {
+    var title: String { switch self { case .blank: "흰색 용지"; case .ruled: "줄 용지"; case .grid: "격자 용지" } }
+}

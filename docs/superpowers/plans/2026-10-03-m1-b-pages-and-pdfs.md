@@ -88,12 +88,12 @@
 
 **Interfaces:** consumes PageCommand and multi-PDF boundaries; produces EditorSession.applyPageCommand(_:) async and visible page manager.
 
-- [ ] `testPageCommandFlushesLatestInkAndKeepsSessionOnFailure`: 현재 canvas ink 저장 후 command 적용, 필기 저장 실패/미지원 ink/늦은 callback 때 command를 막고 같은 page/drawing 유지.
-- [ ] `testPDFAssetSwitchAndRestoredPageRemainEditable`: PDF A/B 페이지 전환, 복제 페이지 독립 ink, 삭제/복원 후 원래 ID와 geometry, 노트 닫기/다른 노트/재열기 유지.
-- [ ] RED → await 전 잠금·최종 최신 상태 확인·필기 flush·actor 명령/commit·histories/선택/PDF cache 교체. canvas delegate의 page owner 보호 유지.
-- [ ] 페이지 manager UI RED → 추가/용지/복제/재정렬/책갈피/삭제 확인/복원·접근성 IDs 구현. 썸네일은 활성/보관 원본을 수정하지 않고 생성한다. snapshot이 늦게 돌아오면 현재 pageID/revision과 다를 때 게시하지 않는다.
-- [ ] UI `testPagesAndTwoPDFsSurviveRelaunchAndExport`: blank/ruled/grid, 실제 손가락 ink, A/B PDF, 복제/이동/삭제/복원/책갈피 필터/재실행/미리보기. storage API만 호출한 시험과 구분한다.
-- [ ] 앱 전체 단위·관련 UI GREEN → PROGRESS → 커밋.
+- [x] `testPageCommandFlushesLatestInkAndKeepsSessionOnFailure`: 현재 canvas ink 저장 후 command 적용, 필기 저장 실패/미지원 ink/늦은 callback 때 command를 막고 같은 page/drawing 유지.
+- [x] `testPDFAssetSwitchAndRestoredPageRemainEditable`: PDF A/B 페이지 전환, 복제 페이지 독립 ink, 삭제/복원 후 원래 ID와 geometry, 노트 닫기/다른 노트/재열기 유지.
+- [x] RED → await 전 잠금·최종 최신 상태 확인·필기 flush·actor 명령/commit·histories/선택/PDF cache 교체. canvas delegate의 page owner 보호 유지.
+- [x] 페이지 manager UI RED → 추가/용지/복제/재정렬/책갈피/삭제 확인/복원·접근성 IDs 구현. 썸네일은 활성/보관 원본을 수정하지 않고 생성한다. snapshot이 늦게 돌아오면 현재 pageID/revision과 다를 때 게시하지 않는다.
+- [x] UI `testPagesAndTwoPDFsSurviveRelaunchAndExport`: blank/ruled/grid, 실제 손가락 ink, A/B PDF, 복제/이동/삭제/복원/책갈피 필터/재실행/미리보기. storage API만 호출한 시험과 구분한다.
+- [x] 앱 전체 단위·관련 UI GREEN → PROGRESS → 커밋.
 
 ### Task 5: 독립 문서 호환성·전체 검증·인계
 

@@ -1,3 +1,4 @@
+import MiNoteCore
 import PDFKit
 import UIKit
 
@@ -15,9 +16,11 @@ enum PDFPageRenderer {
 }
 
 final class PDFPaperView: UIView {
+    var paperStyle = PaperStyle.blank { didSet { if oldValue != paperStyle { setNeedsDisplay() } } }
     var pdfPage: PDFPage? { didSet { setNeedsDisplay() } }
     override func draw(_ rect: CGRect) {
-        guard let pdfPage, let context = UIGraphicsGetCurrentContext() else { return }
-        PDFPageRenderer.draw(pdfPage, in: context)
+        guard let context = UIGraphicsGetCurrentContext() else { return }
+        PaperRenderer.draw(paperStyle, in: context, bounds: bounds)
+        if let pdfPage { PDFPageRenderer.draw(pdfPage, in: context) }
     }
 }

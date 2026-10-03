@@ -1,5 +1,6 @@
 import PencilKit
 import PDFKit
+import UIKit
 import XCTest
 @testable import MiNoteCore
 @testable import MiNote
@@ -109,6 +110,44 @@ import XCTest
         XCTAssertLessThanOrEqual(session.cachedPDFCount, 2); XCTAssertLessThanOrEqual(session.cachedThumbnailCount, 24)
         let stale = await session.thumbnail(pageID: doc.pages[0].id, expectedRevision: doc.revision - 1)
         XCTAssertNil(stale)
+    }
+
+    func testScreenPaperLinesUseDocumentCoordinates() throws {
+        for style in [PaperStyle.blank, .ruled, .grid] {
+            let view = PDFPaperView(frame: CGRect(x: 0, y: 0, width: 300, height: 450))
+            view.paperStyle = style
+            view.backgroundColor = .white; view.layer.displayIfNeeded()
+            let format = UIGraphicsImageRendererFormat(); format.scale = 1
+            let image = UIGraphicsImageRenderer(size: view.bounds.size, format: format).image { view.layer.render(in: $0.cgContext) }
+            if style == .blank { XCTAssertEqual(pixel(image, at: CGPoint(x: 60, y: 24))[0], 255) }
+            else { XCTAssertLessThan(pixel(image, at: CGPoint(x: 60, y: 24))[0], 252) }
+            if style == .grid { XCTAssertLessThan(pixel(image, at: CGPoint(x: 24, y: 60))[0], 252) }
+        }
+    }
+
+    func testGenerateSecondPDFForSystemPicker() throws {
+        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("MiNote-Second.pdf")
+        try PDFFixture.data(rotations: [90]).write(to: url, options: .atomic)
+        XCTAssertEqual(PDFDocument(url: url)?.pageCount, 1)
+    }
+
+    func testLibrarySwitchRetainsMultiplePDFsAndRestoredInk() async throws {
+        let root = try directory(), store = LibraryStore(directory: root)
+        _ = try await store.load()
+        let a = try await store.createNote(title: "A"), b = try await store.createNote(title: "B")
+        let library = LibrarySession(store: store); await library.load(); await library.openNote(a)
+        let editor = try XCTUnwrap(library.selectedEditor)
+        for i in 0..<2 {
+            let url = root.appendingPathComponent("p\(i).pdf"); try PDFFixture.data(rotations: [i * 90]).write(to: url)
+            await editor.importPDF(from: url)
+        }
+        let id = try XCTUnwrap(editor.currentPage?.id)
+        editor.receiveDrawing(PKDrawing(strokes: [sampleStroke()]))
+        await editor.applyPageCommand(.delete(id)); await editor.applyPageCommand(.restore(id))
+        let expected = editor.document
+        await library.openNote(b); XCTAssertEqual(library.selectedEditor?.document?.id, b)
+        await library.openNote(a); XCTAssertEqual(library.selectedEditor?.document, expected)
+        XCTAssertEqual(library.selectedEditor?.strokeCount, 1)
     }
 
     private func directory() throws -> URL {

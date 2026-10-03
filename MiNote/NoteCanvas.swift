@@ -74,7 +74,7 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func configurePage(size: CGSize, pdfPage: PDFPage?) {
+    func configurePage(size: CGSize, pdfPage: PDFPage?, paperStyle: PaperStyle = .blank) {
         if pageSize != size || !hasInitialZoom {
             scrollView.zoomScale = 1
             pageSize = size
@@ -82,8 +82,9 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
             scrollView.contentSize = size
             hasInitialZoom = false
         }
+        paper.paperStyle = paperStyle
         if paper.pdfPage !== pdfPage { paper.pdfPage = pdfPage }
-        scrollView.accessibilityLabel = pdfPage == nil ? "흰색 필기 페이지" : "PDF 필기 페이지"
+        scrollView.accessibilityLabel = pdfPage == nil ? paperStyle.title : "PDF 필기 페이지"
         setNeedsLayout()
     }
 
@@ -157,7 +158,7 @@ struct NoteCanvas: UIViewRepresentable {
         host.canvas.delegate = context.coordinator
         reference.canvas = host.canvas
         if let page = session.currentPage {
-            host.configurePage(size: CGSize(width: page.width, height: page.height), pdfPage: session.currentPDFPage)
+            host.configurePage(size: CGSize(width: page.width, height: page.height), pdfPage: session.currentPDFPage, paperStyle: page.paper)
         }
         host.setFingerDrawing(fingerDrawingEnabled)
         host.canvas.isUserInteractionEnabled = isEnabled && !session.isProcessing
@@ -176,7 +177,7 @@ struct NoteCanvas: UIViewRepresentable {
         }
         reference.canvas = host.canvas
         if let page = session.currentPage {
-            host.configurePage(size: CGSize(width: page.width, height: page.height), pdfPage: session.currentPDFPage)
+            host.configurePage(size: CGSize(width: page.width, height: page.height), pdfPage: session.currentPDFPage, paperStyle: page.paper)
         }
         host.setFingerDrawing(fingerDrawingEnabled)
         host.canvas.isUserInteractionEnabled = isEnabled && !session.isProcessing
