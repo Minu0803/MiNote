@@ -1,0 +1,73 @@
+import XCTest
+
+@MainActor final class LibraryUITests: XCTestCase {
+    func testCreateOrganizeTrashRestoreAndRelaunch() {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["newNote"].waitForExistence(timeout: 15))
+        let suffix = UUID().uuidString.prefix(6)
+        let a = "A-\(suffix)", b = "B-\(suffix)", folder = "Work-\(suffix)", renamed = "Notes-\(suffix)"
+        create(app, button: "newNote", name: a)
+        create(app, button: "newNote", name: b)
+        create(app, button: "newFolder", name: folder)
+        app.buttons["노트 관리 \(a)"].tap(); app.buttons["moveNote"].tap()
+        app.buttons["대상 폴더 \(folder)"].tap()
+        app.buttons[folder].tap()
+        XCTAssertTrue(app.buttons[a].waitForExistence(timeout: 10)); XCTAssertFalse(app.buttons[b].exists)
+        app.buttons["폴더 관리 \(folder)"].tap(); app.buttons["renameFolder"].tap(); name(app, renamed)
+        app.buttons[a].tap()
+        XCTAssertTrue(app.staticTexts["strokeCount"].waitForExistence(timeout: 10))
+        let canvas = app.scrollViews["noteCanvas"]
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.3)).press(forDuration: 0.1,
+            thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
+        XCTAssertTrue(wait(app.staticTexts["strokeCount"], "획 1"))
+        // Close immediately after ink: the library must await the outgoing save.
+        app.buttons["closeNote"].tap()
+        XCTAssertTrue(app.buttons["filter-all"].waitForExistence(timeout: 10)); app.buttons["filter-all"].tap()
+        app.buttons[b].tap(); XCTAssertTrue(wait(app.staticTexts["strokeCount"], "획 0"))
+        app.buttons["closeNote"].tap(); XCTAssertTrue(app.buttons[a].waitForExistence(timeout: 10))
+        app.buttons[a].tap(); XCTAssertTrue(wait(app.staticTexts["strokeCount"], "획 1"))
+        app.buttons["closeNote"].tap(); XCTAssertTrue(app.buttons["노트 관리 \(a)"].waitForExistence(timeout: 10))
+        app.buttons["노트 관리 \(a)"].tap(); app.buttons["trashNote"].tap()
+        XCTAssertTrue(app.buttons["filter-trash"].waitForExistence(timeout: 5)); app.buttons["filter-trash"].tap()
+        XCTAssertTrue(app.buttons["복원 \(a)"].waitForExistence(timeout: 10)); app.buttons["복원 \(a)"].tap()
+        app.buttons[renamed].tap(); XCTAssertTrue(app.buttons[a].waitForExistence(timeout: 10))
+        app.terminate(); app.launch()
+        XCTAssertTrue(app.buttons[renamed].waitForExistence(timeout: 15)); app.buttons[renamed].tap()
+        XCTAssertTrue(app.buttons[a].waitForExistence(timeout: 10)); XCTAssertFalse(app.buttons[b].exists)
+        app.buttons[a].tap(); XCTAssertTrue(wait(app.staticTexts["strokeCount"], "획 1"))
+        let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.lifetime = .keepAlways; add(screenshot)
+    }
+    func testLegacyMigrationInSeededSimulator() throws {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["newNote"].waitForExistence(timeout: 15))
+        let legacy = app.buttons["MiNote portable ink fixture"]
+        try XCTSkipUnless(legacy.exists, "Run with a seeded isolated simulator; fixture setup is documented in PROGRESS.")
+        XCTAssertTrue(app.otherElements["libraryRecovery"].exists || app.staticTexts["libraryRecovery"].exists)
+        legacy.tap()
+        XCTAssertTrue(wait(app.staticTexts["pageIndicator"], "1 / 5"))
+        XCTAssertTrue(wait(app.staticTexts["strokeCount"], "획 4"))
+        app.buttons["nextPage"].tap()
+        XCTAssertTrue(wait(app.staticTexts["pageIndicator"], "2 / 5"))
+        XCTAssertTrue(app.buttons["exportPDF"].isEnabled)
+        app.buttons["closeNote"].tap()
+        app.terminate(); app.launch()
+        XCTAssertTrue(legacy.waitForExistence(timeout: 15)); legacy.tap()
+        XCTAssertTrue(wait(app.staticTexts["pageIndicator"], "2 / 5"))
+    }
+
+    private func create(_ app: XCUIApplication, button: String, name value: String) {
+        app.buttons[button].tap(); name(app, value)
+    }
+    private func name(_ app: XCUIApplication, _ value: String) {
+        let field = app.textFields["nameField"]; XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        if let current = field.value as? String, !current.isEmpty, current != "이름" {
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+        }
+        field.typeText(value); app.buttons["confirmName"].tap()
+        XCTAssertTrue(app.buttons["newNote"].waitForExistence(timeout: 10))
+    }
+    private func wait(_ element: XCUIElement, _ label: String) -> Bool {
+        XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: element)], timeout: 10) == .completed
+    }
+}

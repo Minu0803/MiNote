@@ -229,3 +229,19 @@
 - RED: LibrarySession 타입 없음 (`/private/tmp/minote-m1a-session-red.log`, exit 65). 18.6 전체 GREEN: 앱 단위 **38/0**, 기존 UI **2/0**, exit 0 / TEST SUCCEEDED (`/private/tmp/minote-m1a-task3-green.log`). outgoing 저장/두 노트 격리/중복 열기/실패·미지원 차단/rename 전 close/catalog 실패 뒤 유지 테스트 6개 포함.
 - 중간 구성 판단: 주입된 NoteEditorView 검증을 위해 앱 root는 이 커밋에서 기존 디렉터리를 사용한다. Task 4에서 LibraryView로 교체하며 최종 설치는 빈 목록·명시적 사용자 생성이다. 새로운 UI 테스트는 아직 미실행/미커밋이다.
 - 다음 첫 작업: Task 4 UI RED → 실제 라이브러리 화면 → 양 OS 전체 검증 → fresh 리뷰/수정 → Notion/다음 계획. 길게 실행하기 전 checkpoint로 본 기록을 남긴다.
+
+### M1-A Task 4 실행 중 체크포인트
+- Task 3 커밋 1621e11. LibraryView/최종 앱 root/기존 UI 진입 경로를 구현했다. UI RED는 newNote 버튼 없음으로 실제 실패 (`minote-m1a-ui-red.log`, exit 65).
+- 첫 UI GREEN 시도는 세로 화면 NavigationSplitView가 sidebar를 접어 newFolder가 없어서 실패 (`minote-m1a-ui-green1.log`, exit 65). iPad 화면에 폴더 목록을 유지하는 HStack/NavigationStack 구성과 상단 생성 버튼으로 수정했다. 재검증 중 `minote-m1a-ui-green2.log`; 결과 확인 전 성공으로 표시하지 않는다.
+- 아직 전체 양 OS/별도 migration UI/리뷰/Notion 미완료. 노트/폴더 메뉴와 sheet 접근성 ID는 UI 테스트에 사용한다. 미커밋 UI 변경은 사용자 변경이 아니라 이번 Task 4다.
+
+- Task 4 추가: 전용 빈 migration simulator 18.6 F4041A43-D58A-495E-AF08-EFE5AD816D95 / 26.4 E8702560-F54F-425A-913C-0F5E008B4FD2를 생성했다. 일반 시뮬레이터 데이터를 seed하지 않는다. Tools/LibraryTests/legacy_fixture.py는 기존 폴더/일반 기기를 거부한다. fixture-only UI check는 일반 suite에서 fixture가 없으면 skip하고 두 전용 기기에서 별도 실행한다.
+- seed 첫 실행에서 serialized asset에 computed relativePath가 없다는 KeyError가 발생했다. 공통 PDFAsset의 UUID 기반 경로 규칙을 확인해 수정했으며, 이번 script가 만든 JSON과 backup을 대조하고 누락 PDF만 채웠다. 사용자 문서는 바꾸지 않았다. 이 준비 실패는 migration 기능 테스트 성공이 아니다.
+- 전체 실행 중: Node 25/0, core 44/0 exit 0 확인; 양 Xcode 전체/minote-m1a<18|26>-final.log는 진행 중이며 결과를 확정하지 않았다.
+
+### M1-A Task 4 리뷰 전 GREEN
+- Node **25/0**, fixture check exit 0, core **44/0**. 양 iPadOS 18.6/26.4 전체 앱 단위 **38/0**, 일반 UI **3 passed / 1 fixture-only skipped / 0 failures**, 양 xcodebuild exit 0 / TEST SUCCEEDED. 로그 `/private/tmp/minote-m1a-node-final.log`, `minote-m1a-core-final.log`, `minote-m1a18-final.log`, `minote-m1a26-final.log`; 양 final xcresult 보존.
+- 일반 suite의 skip은 이주 입력 fixture가 없는 환경이다. 별도 빈 기기 18.6/26.4 각각 migration UI **1/0, skip 0**, 양 exit 0 / TEST SUCCEEDED (`minote-m1a18-migration.log`, `minote-m1a26-migration.log` 및 xcresult). legacy 5페이지/4획·복구 안내·PDF 페이지·닫기·재실행을 확인했다. seed helper --verify 양 exit 0: 원본 JSON/backup/PDF bytes 불변, migrated ID·획·PDF 일치 및 revision 증가 확인.
+- 18.6 verify 전 boot는 이미 Booted 상태라 exit 149였고 실제 --verify는 exit 0이었다. 이를 기능 검증 실패와 구분한다. 생성한 전용 시험 기기는 재현 가능하도록 보존한다.
+- 테스트 기기 기본 UUID는 기존 기록과 같다. 주입된 편집기 외 화면 변경은 이번 UI commit이다. 아직 별도 리뷰/최종 Notion/인계는 미완료다.
+- 다음 즉시 작업: 단계 전체 fd4def6..현재 UI commit을 fresh reviewer 한 번에게 읽기 전용 리뷰 → 중요한 결함 RED/수정/GREEN → 최종 기록/Notion/M1-B 계획. 실제 Pencil/손바닥/발열은 대기.

@@ -4,6 +4,7 @@ import XCTest
     func testInkUndoRedoAndRelaunch() throws {
         let app = XCUIApplication()
         app.launch()
+        let title = createNote(app, prefix: "Ink")
         let count = app.staticTexts["strokeCount"]
         XCTAssertTrue(count.waitForExistence(timeout: 15))
         let initialCount = Int(count.label.split(separator: " ").last ?? "") ?? 0
@@ -23,12 +24,14 @@ import XCTest
         XCTAssertTrue(didSave, "저장 상태: \(saveStatus.label)")
         app.terminate()
         app.launch()
+        openNote(app, title: title)
         XCTAssertTrue(waitForLabel(app.staticTexts["strokeCount"], expected))
     }
 
     func testPDFImportNavigationAndRelaunch() throws {
         let app = XCUIApplication()
         app.launch()
+        let title = createNote(app, prefix: "PDF")
         XCTAssertTrue(app.buttons["importPDF"].waitForExistence(timeout: 10))
         if app.buttons["importPDF"].isEnabled {
             app.buttons["importPDF"].tap()
@@ -73,6 +76,7 @@ import XCTest
         XCTAssertTrue(waitForLabel(app.staticTexts["saveStatus"], "저장 완료"))
         app.terminate()
         app.launch()
+        openNote(app, title: title)
         XCTAssertTrue(waitForLabel(app.staticTexts["pageIndicator"], "2 / 5"))
         XCTAssertTrue(waitForLabel(app.staticTexts["strokeCount"], expectedCount))
         app.buttons["exportPDF"].tap()
@@ -81,6 +85,20 @@ import XCTest
         app.buttons["sharePDF"].tap()
         let saveFile = app.buttons.matching(NSPredicate(format: "label CONTAINS '파일에 저장' OR label CONTAINS 'Save to Files'")).firstMatch
         XCTAssertTrue(saveFile.waitForExistence(timeout: 15))
+    }
+
+    private func createNote(_ app: XCUIApplication, prefix: String) -> String {
+        let title = "\(prefix)-\(UUID().uuidString.prefix(6))"
+        XCTAssertTrue(app.buttons["newNote"].waitForExistence(timeout: 15))
+        app.buttons["newNote"].tap()
+        let field = app.textFields["nameField"]; XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap(); field.typeText(title); app.buttons["confirmName"].tap()
+        openNote(app, title: title)
+        return title
+    }
+    private func openNote(_ app: XCUIApplication, title: String) {
+        XCTAssertTrue(app.buttons[title].waitForExistence(timeout: 15)); app.buttons[title].tap()
+        XCTAssertTrue(app.buttons["closeNote"].waitForExistence(timeout: 15))
     }
 
     private func waitForLabel(_ element: XCUIElement, _ label: String) -> Bool {
