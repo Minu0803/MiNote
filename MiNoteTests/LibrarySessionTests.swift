@@ -79,6 +79,32 @@ import PencilKit
         XCTAssertNil(session.selectedEditor); XCTAssertNotNil(session.operationError)
         XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
     }
+    func testDrawingDeliveredDuringCatalogCommitBlocksClose() async throws {
+        for unsupported in [false, true] {
+            let (root, _, _, a, _) = try await setupLibrary()
+            let delivery = LateLibraryDrawing(); delivery.unsupported = unsupported
+            let store = LibraryStore(directory: root, catalogWriter: { data, url in
+                try data.write(to: url, options: .atomic)
+                Task { @MainActor in delivery.deliverOnce() }
+            })
+            let session = LibrarySession(store: store); await session.load(); await session.openNote(a)
+            let editor = try XCTUnwrap(session.selectedEditor); delivery.editor = editor
+            editor.receiveDrawing(PKDrawing(strokes: [sampleStroke()]))
+            let closed = await session.closeNote()
+            XCTAssertFalse(closed, "A late native callback must not lose its editor")
+            XCTAssertTrue(session.selectedEditor === editor)
+            if unsupported {
+                guard case .failed = editor.saveState else { return XCTFail("Unsupported late drawing must block closing") }
+            } else {
+                XCTAssertEqual(editor.strokeCount, 2)
+                let retried = await session.closeNote(); XCTAssertTrue(retried)
+                let documentStore = try await store.documentStore(for: a), loaded = try await documentStore.load()
+                XCTAssertEqual(loaded?.document.pages[0].strokes.count, 2)
+                XCTAssertEqual(loaded?.document.revision, editor.document?.revision)
+            }
+        }
+    }
+
     func testCatalogFailureAfterFlushKeepsEditorAndCanRetry() async throws {
         let (root, _, _, a, _) = try await setupLibrary()
         let store = LibraryStore(directory: root, catalogWriter: { _, _ in throw CocoaError(.fileWriteOutOfSpace) })
@@ -89,5 +115,17 @@ import PencilKit
         XCTAssertFalse(closed); XCTAssertTrue(session.selectedEditor === editor); XCTAssertEqual(editor.saveState, .saved)
         let reopened = LibrarySession(store: LibraryStore(directory: root)); await reopened.load(); await reopened.openNote(a)
         XCTAssertEqual(reopened.selectedEditor?.strokeCount, 1)
+    }
+}
+
+@MainActor private final class LateLibraryDrawing {
+    var editor: EditorSession?
+    var unsupported = false
+    private var delivered = false
+    func deliverOnce() {
+        guard !delivered, let editor else { return }
+        delivered = true
+        let strokes = unsupported ? [sampleStroke(ink: .pencil)] : [sampleStroke(), sampleStroke(offset: 80)]
+        editor.receiveDrawing(PKDrawing(strokes: strokes))
     }
 }

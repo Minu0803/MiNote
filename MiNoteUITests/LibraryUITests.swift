@@ -37,6 +37,24 @@ import XCTest
         app.buttons[a].tap(); XCTAssertTrue(wait(app.staticTexts["strokeCount"], "획 1"))
         let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.lifetime = .keepAlways; add(screenshot)
     }
+    func testDuplicateFolderDestinationsAreDistinguishable() {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["newNote"].waitForExistence(timeout: 15))
+        let suffix = UUID().uuidString.prefix(6), twin = "Twin-\(suffix)", note = "Move-\(suffix)"
+        create(app, button: "newFolder", name: twin)
+        create(app, button: "newFolder", name: twin)
+        let folders = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'folder-' AND label BEGINSWITH %@", twin))
+        XCTAssertEqual(folders.count, 2)
+        let first = folders.element(boundBy: 0).label, second = folders.element(boundBy: 1).label
+        XCTAssertNotEqual(first, second, "Same-name folders need stable visible and accessible distinctions")
+        create(app, button: "newNote", name: note)
+        app.buttons["노트 관리 \(note)"].tap(); app.buttons["moveNote"].tap()
+        app.buttons["대상 폴더 \(second)"].tap()
+        app.buttons[second].tap(); XCTAssertTrue(app.buttons[note].waitForExistence(timeout: 10))
+        app.buttons[first].tap(); XCTAssertFalse(app.buttons[note].exists)
+    }
+
     func testLegacyMigrationInSeededSimulator() throws {
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.buttons["newNote"].waitForExistence(timeout: 15))

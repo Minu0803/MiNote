@@ -245,3 +245,20 @@
 - 18.6 verify 전 boot는 이미 Booted 상태라 exit 149였고 실제 --verify는 exit 0이었다. 이를 기능 검증 실패와 구분한다. 생성한 전용 시험 기기는 재현 가능하도록 보존한다.
 - 테스트 기기 기본 UUID는 기존 기록과 같다. 주입된 편집기 외 화면 변경은 이번 UI commit이다. 아직 별도 리뷰/최종 Notion/인계는 미완료다.
 - 다음 즉시 작업: 단계 전체 fd4def6..현재 UI commit을 fresh reviewer 한 번에게 읽기 전용 리뷰 → 중요한 결함 RED/수정/GREEN → 최종 기록/Notion/M1-B 계획. 실제 Pencil/손바닥/발열은 대기.
+
+### M1-A 별도 리뷰 / 수정 진행
+- fresh m1a_code_review 한 번, 범위 fd4def6..d44aad5. Critical 없음, Important 1(최종 await 후 editor 상태 미확인), Minor 1(같은 이름의 폴더 구별 불가). 리뷰는 읽기 전용이며 추가 reviewer를 만들지 않았다.
+- Important 실제 RED: catalogWriter가 실제 metadata commit 중 MainActor에 늦은 PKDrawing을 전달했다. 닫기는 true인데 메모리 2획/리비전2와 디스크 1획/리비전1이 달랐고 미지원 늦은 필기도 화면이 닫혔다 (`/private/tmp/minote-m1a-review-race-red.log`, exit65, assertion6실패). 최종 refresh 후 저장 상태와 문서 snapshot이 동일한지 다시 검사하고 await 없이 선택을 제거하게 수정했다. 늦은 변경이 있으면 editor 유지 후 다음 close에서 최신 저장한다. native canvas도 SwiftUI isEnabled를 반영하며 queued callback은 계속 받아 검사한다.
+- 집중 GREEN LibrarySessionTests **7/0**, exit0 / TEST SUCCEEDED (`minote-m1a-review-race-green.log`). 실제 Pencil 입력은 programmatic 늦은 callback 재현과 별개다.
+- Minor 실제 UI RED를 실행 중 (`minote-m1a-review-folder-red.log`). 이후 UUID로 일관된 표시를 만들어 sibling collision과 VoiceOver ancestor 경로를 수정한다. 최종 양 OS 전체는 수정 후 다시 실행한다.
+- M1-B 다음 계획 `docs/superpowers/plans/2026-10-03-m1-b-pages-and-pdfs.md`를 작성했다. 아직 실행하지 않는다. schema3/페이지별 asset ID·삭제 페이지 보관·여러 PDF·용지·책갈피·독립 v2/v3 호환 계획이다.
+
+- Minor RED: 실제 UI의 두 Twin 폴더 label이 동일했다 (`minote-m1a-review-folder-red.log`, exit65). LibraryFolderLabels가 동일 parent/name의 segment에 UUID의 최소 유일 suffix를 표시하고 모든 ancestor를 포함한다. sidebar/이동/VoiceOver/노트 위치 표시가 같은 경로를 사용한다. suffix 충돌은 길이를 늘려 해결한다.
+- 집중 GREEN: 폴더 label 단위 **3/0**, 실제 duplicate-folder 이동 UI **1/0**, exit0 (`minote-m1a-review-folder-green.log`). 다른 부모와 부모 자체의 중복, 정렬 후 label 안정성, short-ID 충돌을 확인했다.
+- 리뷰 판단: 다중 PDF/페이지/용지는 M1-B; backup/export-orphan cleanup/영구 삭제는 M1-C; folder deletion은 복원 위치 유지 때문에 제외; search/favorites/configurable order/접근 최근은 M2 이후이며 현재 modifiedAt 정렬; 다중 창/프로세스 경합/외부 rename/sync/타 플랫폼은 단일세션 계약 밖; 많은 노트의 색인/metadata-only load는 측정 후 M3; descendant 선택 차단 UI는 core가 오류 안내하므로 후속; semantically invalid catalog는 원본 보존/JSON 손상만 fallback; 실기기/VoiceOver 전체인증/다양한layout은 별도 대기; fixture-only skip은 두 전용 실행으로 실제검증; JSON/main/기록 보존은 사용자 승인된 판단이다. 이 중 검증 없이 완료로 주장한 항목은 없다.
+- 최종 양 OS 전체를 `/private/tmp/minote-m1a<18|26>-review-final.log`/xcresult로 실행한다. core/Node는 리뷰 수정에서 변경되지 않았으므로 직전 전체 GREEN 근거를 유지한다. 이주 저장 로직도 변경되지 않아 별도 seeded migration/원본 bytes 검증을 재사용한다. 변경된 close/labels/native input은 새 전체 앱/UI가 확인한다.
+
+### M1-A 리뷰 수정 후 최종 GREEN
+- 변경된 앱 전체: 18.6/26.4 각각 앱 단위 **42/0**, 일반 UI **4 passed / 1 fixture-only skipped / 0 failures**. 양 xcodebuild exit0 / TEST SUCCEEDED, `/private/tmp/minote-m1a18-review-final.log`, `minote-m1a26-review-final.log` 및 review-final xcresult. 중요한 race와 중복 폴더 실제 UI 수정이 포함된다.
+- 변경되지 않은 core **44/0**, Node **25/0**, fixture check exit0 근거는 직전 전체 logs를 따른다. 별도 seeded migration UI는 양 **1/0, skip0** 및 helper --verify exit0이며 이주 저장 코드에는 리뷰 변경이 없다. 시뮬레이터 결과가 실제 Pencil 지연·손바닥·발열을 보증하지 않는다.
+- 남은 종료 작업: 리뷰 수정 코드 commit → Notion 결과 추가/재조회 → README/AGENTS/다음 계획과 최종 인계 commit. push는 하지 않는다.

@@ -142,6 +142,7 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
 }
 
 struct NoteCanvas: UIViewRepresentable {
+    @Environment(\.isEnabled) private var isEnabled
     @ObservedObject var session: EditorSession
     @ObservedObject var reference: CanvasReference
     let tool: Brush
@@ -159,6 +160,7 @@ struct NoteCanvas: UIViewRepresentable {
             host.configurePage(size: CGSize(width: page.width, height: page.height), pdfPage: session.currentPDFPage)
         }
         host.setFingerDrawing(fingerDrawingEnabled)
+        host.canvas.isUserInteractionEnabled = isEnabled && !session.isProcessing
         configure(host.canvas)
         Task { @MainActor in reference.refresh() }
         return host
@@ -177,7 +179,7 @@ struct NoteCanvas: UIViewRepresentable {
             host.configurePage(size: CGSize(width: page.width, height: page.height), pdfPage: session.currentPDFPage)
         }
         host.setFingerDrawing(fingerDrawingEnabled)
-        host.canvas.isUserInteractionEnabled = !session.isProcessing
+        host.canvas.isUserInteractionEnabled = isEnabled && !session.isProcessing
         configure(host.canvas)
     }
 

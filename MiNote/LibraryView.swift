@@ -47,13 +47,13 @@ struct LibraryView: View {
                             Button { filter = .folder(folder.id) } label: {
                                 Label(folderPath(folder.id), systemImage: "folder")
                                     .foregroundStyle(filter == .folder(folder.id) ? Color.accentColor : .primary)
-                            }.accessibilityLabel(folder.name).accessibilityIdentifier("folder-\(folder.id)")
+                            }.accessibilityLabel(folderPath(folder.id)).accessibilityIdentifier("folder-\(folder.id)")
                             Spacer()
                             Menu {
                                 Button("이름 변경") { requestName(.renameFolder(folder.id), initial: folder.name) }.accessibilityIdentifier("renameFolder")
                                 Button("폴더 이동") { moveRequest = MoveRequest(kind: .folder, target: folder.id) }.accessibilityIdentifier("moveFolder")
                             } label: { Image(systemName: "ellipsis.circle") }
-                            .accessibilityLabel("폴더 관리 \(folder.name)")
+                            .accessibilityLabel("폴더 관리 \(folderPath(folder.id))")
                         }
                     }
                 }
@@ -140,14 +140,9 @@ struct LibraryView: View {
         switch filter { case .all: "모든 노트"; case .recent: "최근 노트"; case .trash: "휴지통"; case .folder(let id): folderPath(id) }
     }
     private func folderPath(_ id: UUID?) -> String {
-        guard var next = id else { return "폴더 없음" }
-        var names: [String] = [], visited = Set<UUID>()
-        while visited.insert(next).inserted, let folder = session.folders.first(where: { $0.id == next }) {
-            names.insert(folder.name, at: 0)
-            guard let parent = folder.parentID else { break }; next = parent
-        }
-        return names.joined(separator: " / ")
+        LibraryFolderLabels(folders: session.folders).label(for: id)
     }
+
     private func requestName(_ kind: NameRequest.Kind, initial: String = "") {
         name = initial; nameRequest = NameRequest(kind: kind)
     }
@@ -191,7 +186,7 @@ struct LibraryView: View {
                 else { await session.moveFolder(request.target, parentID: id) }
             }
         } label: { Label(folderPath(id), systemImage: "folder") }
-        .accessibilityLabel("대상 폴더 \(session.folders.first(where: { $0.id == id })?.name ?? "폴더 없음")")
+        .accessibilityLabel("대상 폴더 \(folderPath(id))")
         .disabled(request.kind == .folder && request.target == id)
     }
 }

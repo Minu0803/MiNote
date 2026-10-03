@@ -67,6 +67,12 @@ struct LibraryNoteRow: Identifiable {
             }
             // Publish removal only after both document and metadata are durable.
             try await refresh()
+            // A native callback may arrive during either awaited operation.
+            // Keep the editor if its latest drawing was not included in this save.
+            guard editor.saveState == .saved, editor.document == document else {
+                operationError = "닫는 동안 필기가 변경되었습니다. 저장이 완료된 뒤 다시 닫아 주세요."
+                return false
+            }
             selectedEditor = nil; openedRevision = nil
             return true
         } catch { operationError = error.localizedDescription; return false }
