@@ -141,3 +141,90 @@ public actor LibraryStore {
         return LibraryNote(id: document.id, modifiedAt: date?.timeIntervalSince1970 ?? Date().timeIntervalSince1970)
     }
 }
+
+extension LibraryStore {
+    public func createNote(title: String, folderID: UUID? = nil) async throws -> UUID {
+        var value = try readyCatalog()
+        let title = try nonempty(title)
+        try checkFolder(folderID, in: value)
+        busy = true; defer { busy = false }
+        let document = NoteDocument(title: title, pages: [NotePage()])
+        try await store(for: document.id).save(document)
+        value.notes.append(LibraryNote(id: document.id, folderID: folderID, modifiedAt: Date().timeIntervalSince1970))
+        try commit(value)
+        return document.id
+    }
+
+    public func renameNote(id: UUID, title: String) async throws {
+        var value = try readyCatalog()
+        let index = try noteIndex(id, in: value), title = try nonempty(title)
+        guard value.notes[index].trashedAt == nil else { throw LibraryError.noteTrashed }
+        let store = try documentStore(for: id)
+        busy = true; defer { busy = false }
+        guard var document = try await store.load()?.document else { throw LibraryError.documentMissing(id) }
+        guard document.id == id else { throw LibraryError.conflict }
+        guard document.revision < Int64.max else { throw LibraryError.invalidCatalog("리비전 한도") }
+        document.title = title; document.revision += 1
+        try await store.save(document)
+        value.notes[index].modifiedAt = Date().timeIntervalSince1970
+        try commit(value)
+    }
+
+    public func createFolder(name: String, parentID: UUID? = nil) throws -> UUID {
+        var value = try readyCatalog()
+        try checkFolder(parentID, in: value)
+        let folder = LibraryFolder(name: try nonempty(name), parentID: parentID)
+        value.folders.append(folder); try commit(value)
+        return folder.id
+    }
+    public func renameFolder(id: UUID, name: String) throws {
+        var value = try readyCatalog()
+        guard let index = value.folders.firstIndex(where: { $0.id == id }) else { throw LibraryError.folderMissing }
+        value.folders[index].name = try nonempty(name); try commit(value)
+    }
+    public func moveFolder(id: UUID, parentID: UUID?) throws {
+        var value = try readyCatalog()
+        try checkFolder(parentID, in: value)
+        guard let index = value.folders.firstIndex(where: { $0.id == id }) else { throw LibraryError.folderMissing }
+        value.folders[index].parentID = parentID; try commit(value)
+    }
+    public func moveNote(id: UUID, folderID: UUID?) throws {
+        var value = try readyCatalog()
+        try checkFolder(folderID, in: value)
+        let index = try noteIndex(id, in: value)
+        guard value.notes[index].trashedAt == nil else { throw LibraryError.noteTrashed }
+        value.notes[index].folderID = folderID; try commit(value)
+    }
+    public func trashNote(id: UUID) throws {
+        var value = try readyCatalog(), index: Int
+        index = try noteIndex(id, in: value)
+        value.notes[index].trashedAt = Date().timeIntervalSince1970; try commit(value)
+    }
+    public func restoreNote(id: UUID) throws {
+        var value = try readyCatalog(), index: Int
+        index = try noteIndex(id, in: value)
+        value.notes[index].trashedAt = nil; try commit(value)
+    }
+    public func markModified(id: UUID, at: Double) throws {
+        var value = try readyCatalog()
+        let index = try noteIndex(id, in: value)
+        value.notes[index].modifiedAt = at; try commit(value)
+    }
+    private func readyCatalog() throws -> LibraryCatalog {
+        guard !busy else { throw LibraryError.busy }
+        guard let catalog else { throw LibraryError.notLoaded }
+        return catalog
+    }
+    private func nonempty(_ text: String) throws -> String {
+        let result = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !result.isEmpty else { throw LibraryError.invalidCatalog("이름을 입력해 주세요") }
+        return result
+    }
+    private func noteIndex(_ id: UUID, in value: LibraryCatalog) throws -> Int {
+        guard let index = value.notes.firstIndex(where: { $0.id == id }) else { throw LibraryError.noteMissing(id) }
+        return index
+    }
+    private func checkFolder(_ id: UUID?, in value: LibraryCatalog) throws {
+        if let id, !value.folders.contains(where: { $0.id == id }) { throw LibraryError.folderMissing }
+    }
+}

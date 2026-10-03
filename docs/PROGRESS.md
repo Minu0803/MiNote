@@ -205,7 +205,7 @@
 
 ## M1-A 실행 체크포인트 (2026-10-03)
 - [x] Task 1: 기존 노트 보존 이주·catalog 읽기/저장
-- [ ] Task 2: 독립 노트·폴더·휴지통 변경
+- [x] Task 2: 독립 노트·폴더·휴지통 변경
 - [ ] Task 3: 저장 완료를 보장하는 세션 전환
 - [ ] Task 4: 라이브러리 UI·전체 검증·fresh 리뷰·Notion·인계
 - 시작 기준 `fd4def65ac952a0d5efc1a9ea07d02f2d6630689`. main에서 직접 구현하고 별도 브랜치/worktree/PR/push는 하지 않는다. 기존 M0 결과를 반복하지 않는다.
@@ -218,3 +218,8 @@
 - RED: 타입/API 부재 (`/private/tmp/minote-m1a-library-red.log`, exit 1). GREEN 시도 1/2는 테스트 assertion RHS의 try 누락으로 컴파일 실패였으며 실제 기능 통과로 기록하지 않는다. RHS 수정 후 core 전체 **36/0**, exit 0 (`/private/tmp/minote-m1a-task1-core.log`). portable fixture `node Tools/PortableInk/roundtrip.mjs --check` exit 0.
 - 검증: 이주 두 번의 멱등성, v1/정상 backup 복구, 지원하지 않는 버전/누락 PDF/손상 JSON/경로 I/O 차단, catalog commit 실패 후 재시도와 미연결 노트 회수. catalog 복구는 손상 JSON에만 적용하고 미래 버전·I/O 오류를 덮지 않는다.
 - 다음 첫 작업: LibraryMutationTests RED → 독립 노트/PDF·폴더 순환 거부·휴지통·실패한 commit·동시 mutation 구현. 앱 UI/양 시뮬레이터/실기기/Notion은 아직 M1-A 미검증이다.
+
+### M1-A Task 2 완료
+- Task 1 커밋 aa92907. 노트 생성/최신 본문 기준 이름 변경, 폴더 생성/이름 변경/이동, 노트 이동/휴지통/복원을 구현했다. UUID 식별과 folder 관계를 유지하며 순환·누락 parent·빈 이름을 거부한다. 본문 저장 뒤 catalog 실패한 생성은 다음 load에서 회수한다.
+- RED: mutation API 없음 (`/private/tmp/minote-m1a-mutation-red.log`, exit 1). GREEN: `swift test --package-path Packages/MiNoteCore` **44/0**, exit 0 (`/private/tmp/minote-m1a-task2-core.log`). 서로 다른 노트의 필기/PDF/리비전 분리, 최신 필기 후 rename, 폴더/휴지통 원본 불변, write 실패, 동시 mutation busy 차단 및 stale actor commit 거부를 확인했다.
+- 다음 첫 작업: LibrarySessionTests RED. MainActor 세션이 outgoing editor 저장 상태를 확인한 뒤만 교체하며 실패/미지원 필기는 그대로 유지한다. 앱 UI·양 OS·단계 말 리뷰는 미완료.
