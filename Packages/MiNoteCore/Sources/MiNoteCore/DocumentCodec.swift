@@ -35,6 +35,7 @@ public enum DocumentCodec {
             throw DocumentError.corruptDocument
         }
         guard (1...3).contains(header.schemaVersion) else { throw DocumentError.unsupportedSchema(header.schemaVersion) }
+        decoder.userInfo[NotePage.schemaKey] = header.schemaVersion
         guard var document = try? decoder.decode(NoteDocument.self, from: data) else {
             throw DocumentError.corruptDocument
         }

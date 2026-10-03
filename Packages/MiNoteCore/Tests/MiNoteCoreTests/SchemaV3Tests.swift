@@ -114,4 +114,23 @@ import XCTest
         }
     }
 
+    func testV3RequiresPageMetadataAndLimitsAllRetainedAssets() throws {
+        let original = NoteDocument.blank()
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: DocumentCodec.encode(original)) as? [String: Any])
+        for missing in ["paper", "isBookmarked"] {
+            var bad = json; var pages = json["pages"] as! [[String: Any]]
+            pages[0].removeValue(forKey: missing); bad["pages"] = pages
+            XCTAssertThrowsError(try DocumentCodec.decode(JSONSerialization.data(withJSONObject: bad)))
+        }
+        var document = original
+        document.pdfAssets = (0..<5).map { _ in PDFAsset(originalFilename: "a.pdf", pageCount: 1, byteCount: 100 * 1024 * 1024) }
+        XCTAssertNoThrow(try DocumentCodec.encode(document))
+        document.pdfAssets.append(PDFAsset(originalFilename: "a.pdf", pageCount: 1, byteCount: 1))
+        XCTAssertThrowsError(try DocumentCodec.encode(document))
+        document = original; document.deletedPages = (0..<1_000).map { i in
+            DeletedPage(page: NotePage(), originalIndex: i, deletedAt: 100)
+        }
+        XCTAssertThrowsError(try DocumentCodec.encode(document))
+    }
+
 }

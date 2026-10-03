@@ -13,7 +13,7 @@ import XCTest
         let source = directory.appendingPathComponent("source.pdf")
         try bytes.write(to: source)
         let prepared = try await PDFImporter().prepare(data: bytes, filename: "source.pdf")
-        var document = NoteDocument(title: "export", pages: prepared.pages, pdfAsset: prepared.asset)
+        var document = NoteDocument(title: "export", pages: prepared.pages, pdfAssets: [prepared.asset])
         for index in document.pages.indices { document.pages[index].strokes = [testInk()] }
         let destination = directory.appendingPathComponent("annotated.pdf")
         let snapshot = document
@@ -50,7 +50,7 @@ import XCTest
         let source = directory.appendingPathComponent("source.pdf")
         try bytes.write(to: source)
         let prepared = try await PDFImporter().prepare(data: bytes, filename: "source.pdf")
-        let document = NoteDocument(title: "export", pages: prepared.pages, pdfAsset: prepared.asset)
+        let document = NoteDocument(title: "export", pages: prepared.pages, pdfAssets: [prepared.asset])
         XCTAssertThrowsError(try PDFExporter.export(document, sourceURLs: [prepared.asset.id: source], destination: source))
         XCTAssertEqual(try Data(contentsOf: source), bytes)
         let destination = directory.appendingPathComponent("target.pdf")

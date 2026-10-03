@@ -58,7 +58,7 @@ struct LibraryView: View {
                     }
                 }
             }
-            .listStyle(.sidebar).frame(width: 228)
+            .listStyle(.sidebar).frame(width: 228).accessibilityIdentifier("libraryFolders")
             Divider()
             VStack(spacing: 0) {
                 if let notice = session.recoveryNotice {
@@ -174,7 +174,7 @@ struct LibraryView: View {
             List {
                 moveDestination(nil, request: request)
                 ForEach(sortedFolders) { folder in moveDestination(folder.id, request: request) }
-            }.navigationTitle("이동할 폴더")
+            }.accessibilityIdentifier("moveDestinations").navigationTitle("이동할 폴더")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("취소") { moveRequest = nil } } }
         }.presentationDetents([.medium, .large])
     }

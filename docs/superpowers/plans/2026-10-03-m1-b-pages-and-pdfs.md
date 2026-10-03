@@ -101,8 +101,8 @@
 
 **Interfaces:** JS accepts v2 and v3; v2 input keeps v2 output to preserve existing exact fixtures. v3 source editing retains all assets/deleted pages/paper/bookmark metadata and untouched object IDs. Canvas 용지 geometry는 iPad와 같은 24pt 기준이다; PDF 원본 배경은 여전히 표시하지 않는다.
 
-- [ ] JS `testV3EditsKeepMultipleAssetsDeletedPagesAndPageMetadata`: 지원 v3 active-page ink edit가 자산/보관 페이지/순서/용지를 지우지 않음. future schema/잘못된 관계 거부. 기존 v2 fixture check 계속 동일.
-- [ ] RED → validator/편집 도구의 version별 계약 구현 → Node GREEN; iPad `testIndependentV3RoundTripPreservesPagesAssetsAndEditableInk`로 JS 결과 재편집/저장/재열기 확인.
+- [x] JS `testV3EditsKeepMultipleAssetsDeletedPagesAndPageMetadata`: 지원 v3 active-page ink edit가 자산/보관 페이지/순서/용지를 지우지 않음. future schema/잘못된 관계 거부. 기존 v2 fixture check 계속 동일.
+- [x] RED → validator/편집 도구의 version별 계약 구현 → Node GREEN; iPad `testIndependentV3RoundTripPreservesPagesAssetsAndEditableInk`로 JS 결과 재편집/저장/재열기 확인.
 - [ ] Node 전체+fixture check, core 전체, 18.6/26.4 앱/기존 라이브러리·ink·PDF/새 페이지 UI, 별도 seeded migration 모두 GREEN. 기존 fixture-only skip은 별도 실제 실행 결과와 분리한다.
 - [ ] 한 번의 fresh 전체 리뷰 → 중요한 문제 재현/수정/관련 검증 → 최종 전체 tests. 실기기 Pencil/손바닥/발열/큰 실제 PDF는 계속 대기.
 - [ ] 성공 근거/실패 이력/제한/커밋/Notion 반영 시점을 기록하고 M1-C 백업·파일 수명주기 계획을 실제 결과로 작성 → main 커밋. push는 별도 요청이다.

@@ -1,4 +1,4 @@
-// A deliberately narrow, DOM-free schema-v2 editor. Reject unsupported input
+// A deliberately narrow, DOM-free schema-v2/v3 editor. Reject unsupported input
 // before cloning/encoding so JSON.stringify cannot quietly discard user data.
 export class PortableInkError extends Error {}
 const fail = message => { throw new PortableInkError(message); };
@@ -51,7 +51,57 @@ function stroke(value, ids) {
     number(t.b * p.x + t.d * p.y + t.ty, '변환 y');
   }
 }
+function validateV3(document) {
+  shape(document, ['schemaVersion','id','revision','title','pages','pdfAssets','deletedPages','lastOpenedPageID'], '문서');
+  uuid(document.id, '문서 ID'); integer(document.revision, 'revision');
+  if (typeof document.title !== 'string') fail('문서 제목은 문자열이어야 합니다.');
+  if (!Array.isArray(document.pages) || !document.pages.length || !Array.isArray(document.deletedPages) ||
+      document.pages.length + document.deletedPages.length > 1000 || !Array.isArray(document.pdfAssets)) fail('페이지/자산 목록 또는 수 제한입니다.');
+  const ids = new Set([document.id.toLowerCase()]), assets = new Map(), active = new Set();
+  function objectID(value, label) {
+    uuid(value,label); const key=value.toLowerCase();
+    if (ids.has(key)) fail('중복된 object ID입니다.'); ids.add(key); return key;
+  }
+  let totalBytes=0;
+  for (const asset of document.pdfAssets) {
+    shape(asset, ['id','originalFilename','pageCount','byteCount','importedAt'], 'PDF asset');
+    const id=objectID(asset.id,'asset ID');
+    integer(asset.pageCount,'pageCount',1,500); integer(asset.byteCount,'byteCount',1,100*1024*1024);
+    number(asset.importedAt,'importedAt');
+    if (typeof asset.originalFilename !== 'string' || !asset.originalFilename) fail('PDF 파일명이 필요합니다.');
+    totalBytes+=asset.byteCount; if(totalBytes>500*1024*1024) fail('자산 용량 제한입니다.'); assets.set(id,asset);
+  }
+  function page(value,isActive) {
+    shape(value,['id','width','height','strokes','pdfSource','paper','isBookmarked'],'페이지');
+    const id=objectID(value.id,'페이지 ID'); if(isActive) active.add(id);
+    number(value.width,'width'); number(value.height,'height');
+    if(value.width<=0 || value.height<=0) fail('페이지 크기는 양수여야 합니다.');
+    if(!['blank','ruled','grid'].includes(value.paper) || typeof value.isBookmarked!=='boolean') fail('용지/책갈피 정보가 잘못되었습니다.');
+    const source=value.pdfSource;
+    if(source!=null) {
+      shape(source,['assetID','index','mediaBox','cropBox','rotation'],'PDF source'); uuid(source.assetID,'source assetID');
+      const asset=assets.get(source.assetID.toLowerCase()); if(!asset) fail('등록되지 않은 PDF 자산입니다.');
+      integer(source.index,'PDF index',0,asset.pageCount-1); rect(source.mediaBox); rect(source.cropBox);
+      if(![0,90,180,270].includes(source.rotation) || value.paper!=='blank' || Math.max(value.width,value.height)>2000) fail('PDF rotation/용지/크기를 확인하세요.');
+      const swap=source.rotation===90 || source.rotation===270;
+      if(Math.abs(value.width-source.cropBox[swap?'height':'width'])>=0.001 ||
+         Math.abs(value.height-source.cropBox[swap?'width':'height'])>=0.001) fail('PDF crop과 페이지 크기가 다릅니다.');
+    }
+    if(!Array.isArray(value.strokes)) fail('획 목록이 필요합니다.');
+    for(const valueStroke of value.strokes) stroke(valueStroke,ids);
+  }
+  for(const value of document.pages) page(value,true);
+  for(const deleted of document.deletedPages) {
+    shape(deleted,['page','originalIndex','deletedAt'],'삭제 페이지');
+    integer(deleted.originalIndex,'originalIndex',0,999); number(deleted.deletedAt,'deletedAt',0); page(deleted.page,false);
+  }
+  if(document.lastOpenedPageID!=null) {
+    uuid(document.lastOpenedPageID,'lastOpenedPageID');
+    if(!active.has(document.lastOpenedPageID.toLowerCase())) fail('마지막 활성 페이지가 없습니다.');
+  }
+}
 export function validateDocument(document) {
+  if(document?.schemaVersion===3) { validateV3(document); return; }
   shape(document, ['schemaVersion','id','revision','title','pages','pdfAsset','lastOpenedPageID'], '문서');
   if (document.schemaVersion !== 2) fail('시험 도구는 schema v2만 편집합니다.');
   uuid(document.id, '문서 ID'); integer(document.revision, 'revision');

@@ -309,3 +309,30 @@
 - RED: 실제 UI의 pageManager 버튼 미존재 assertion1(minote-m1b-page-ui-red.log, exit65), 화면 paperStyle API 부재(minote-m1b-paper-screen-red.log, exit65). GREEN: 18.6 앱 전체 **51/0** + 새 PageManager UI **1/0**, minote-m1b-pages-ui-green.log exit0 TEST SUCCEEDED. result: /private/tmp/minote-m1b-dd18/Logs/Test/Test-MiNote-2026.10.03_19-12-15-+0900.xcresult.
 - UI는 실제 손가락 gesture로 blank/ruled/PDF에 필기하고 페이지 추가/복제/이동/책갈피 필터/삭제/복원/실제 Files A·B 선택/재실행/원래 PDF ink/출력 미리보기를 확인했다. 스토어 직접 호출 시험과 구분한다. 라이브러리 다른 노트 전환 후 다중 PDF/복원 ink는 단위 시험으로도 확인했다.
 - 다음: Task 5 JS v2/v3 계약과 iPad 역방향 fixture → 모든 양 OS/별도 migration → fresh 리뷰 한 번 → Notion/정리. 현재 Task 4 완료 근거이며 M1-B 전체 완료는 아님.
+
+### M1-B Task 5 互換 검증 체크포인트
+- Task 4 세션 0f87b10/화면 ad46dc4. 기존 전체 18.6 UI 회귀는 task-4-tests.log/result minote-m1b-task4-full.xcresult로 실행 중이다. 새 앱51/새UI1은 이미 통과했다. compiled app을 바꾸지 않는 독립 JS 작업을 겹쳐 수행한다.
+- JS v3 RED **4실패**(미지원 pdfAssets/용지 선 부재), minote-m1b-js-red.log. v2 계약을 유지하며 v3 assets/deleted/page metadata 검증·편집 보존·24pt 용지를 구현해 Node 전체 **29/0**, minote-m1b-js-green.log. 기존 v2 roundtrip --check exit0.
+- 다음: iPad가 만든 v3 multi-source fixture를 회수 → 실제 JS multi-edited 생성 → native 재편집/Undo/저장/재열기 GREEN → 모든 양 OS/이주 UI/리뷰. 임시 단일 자산 Swift API는 제거 중이며 현재 변경은 아직 최종 검증/커밋 전이다.
+
+### M1-B Task 5 최초 양 OS 전체 결과 / UI 진단
+- Node31/0, core60/0. 실제 native v3 generator1/0에서 multi-source.json을 만들고 JS manifest로 multi-edited.json을 생성했다. native fixture 부재 RED1에서 시작했으며 양 OS app53/0에 새 v3 재편집/Undo/저장/재열기가 포함되어 통과했다. v2 fixture --check와 v3 --check도 exit0.
+- 최초 전체 xcodebuild 양 exit65: 18.6 LibraryUI에서 누적 폴더로 인해 sheet target이 off-screen/미생성(NoMatches), 26.4 PageUI에서 SwiftUI alert의 동일 ID 부모·자식 Button 두 개로 selector 모호함. app53은 양0실패지만 UI 실패를 성공으로 기록하지 않는다. /private/tmp/minote-m1b18-full.log/xcresult, minote-m1b26-full.log/xcresult.
+- 접근성 tree로 원인 확인: sheet에는 Notes/Twin 초반 target만 있고 새 Work는 아래에 있다; 26.4 alert 아래 '삭제' 부모/자식이 같은 ID다. product List에는 범위를 잡을 ID만 추가하고 테스트가 scroll하며 실제 target을 찾도록 수정한다. 삭제는 정확한 alert 아래 firstMatch를 탭한다. 기능 assertion은 유지한다.
+- 새 migration18 UUID2021A9D8-702A-4C3E-AD29-FCF747CCFD45, migration26 UUID554DA7BF-9D47-4502-8C8D-1E86FC69568F를 생성·boot·install·seed했다. 이전 사용자/시험 데이터는 덮지 않았다. 아직 migration UI/verify는 실행 전이다.
+- 다음: 수정된 UI 관련 양 OS GREEN → 이주 실제 실행/원본 verify → fresh 전체 review 한 번. SDK screenshot export는 sandbox cache 쓰기 거부로 아직 회수하지 않았고 근거는 XCTest tree/결과다.
+
+### M1-B UI 재검증 원인 확인
+- 두 번째 양 OS 전체도 app53/0, 페이지/ink/PDF UI 통과지만 LibraryUI scroll 실패로 exit65다(minote-m1b18-ui-retry, minote-m1b26-ui-retry). 실패 attachment를 승인된 xcresulttool로 회수했다.
+- 26.4 로그는 moveDestinations 존재 → top에서 swipeDown 3회 → sheet 사라짐이며 실패 AX에는 libraryFolders만 남았다. 이동 sheet를 위로 찾기 전에 반복 아래 drag한 테스트가 interactive dismissal을 유발했다. 새 이동 sheet는 위쪽부터 시작하므로 swipeUp만 사용하고, persistent sidebar만 top으로 돌아간다. 재실행 후 off-screen renamed folder를 미리 존재한다고 요구하던 assertion도 같은 scroll helper로 대체한다. 기존 데이터 삭제/성공 assertion 생략은 없다.
+- 다음: LibraryUITests만 양 OS 검증 → 별도 seeded migration/verify → Task5 커밋 및 fresh 리뷰 한 번. 아직 전체 M1-B 완료는 아니다.
+- 수정 후 18.6 LibraryUI는 2통과/fixture-only1skip/0실패(minote-m1b18-library-scroll, exit0). 별도 migration18 UI1/0/skip0와 helper --verify exit0까지 확인했다.
+- 26.4 library-scroll은 여전히 수정 전 swipeDown/이전 line82를 실행했다. 생성/설치 시험 바이너리 SHA256은 동일하므로 설치 누락으로 단정하지 않는다. 실제 compiled 실행 경로/캐시 경계를 분리하기 위해 새 DerivedData+compile cache 비활성화로 전체 실행한다. 실패 후 diagnostic 수집에 머문 xcodebuild18339만 중단했고 데이터는 보존했다. 26.4 전용 migration은 별도 DerivedData로 실행 중이다.
+- 다음 M1-C 계획 docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md 작성/자기 점검. ZIP stored-only 편집 백업, 새 note 복원, backup 참조/삭제 journal 보호, 공유 lease가 구체 인터페이스/시험에 대응한다. 계획만 작성했고 M1-C 코드는 이번 실행에 포함하지 않는다.
+
+### M1-B 최종 검증 진행 체크포인트
+- Node31/0와 v2/v3 roundtrip --check 각 exit0를 다시 확인했다(minote-m1b-node-before-review.log). core60/0도 재실행 exit0(minote-m1b-core-before-review.log).
+- 양 전용 migration UI 각각1/0/skip0, xcodebuild exit0 TEST SUCCEEDED(minote-m1b18-migration, minote-m1b26-migration). --verify 양 exit0: raw v2 document/backup/PDF bytes, migrated v3 IDs/ink/geometry/assets 불변을 확인했다. boot 중 이미 Booted 안내는 검증 결과와 구분한다.
+- 최종 전체18(minote-m1b18-final-full), 새 DerivedData 전체26(minote-m1b26-fresh-full)는 app53/0을 통과했고 일반 UI 실행 중이다. 26 새 빌드는 수정된 swipeUp을 실제로 실행하므로 이전 결과와 구분한다. 전체 종료 결과를 확인하기 전 완료로 표시하지 않는다.
+- 다음: 전체 UI 종료 → Task5 코드/문서 commit → 80d14c2부터 fresh 전체 review 한 번. 리뷰/Notion/최종 인계는 아직 미완료다.
+- Task5의 구현/관련 core·Node·native·18.6 LibraryUI 검증을 코드 체크포인트로 커밋한다. 마지막 전체 UI 실행과 읽기 전용 리뷰는 코드 변경 없이 병행하며, 양 OS 전체 결과와 리뷰 수정 검증까지 단계 완료 표시는 보류한다.

@@ -19,7 +19,7 @@ import XCTest
         XCTAssertEqual(try Data(contentsOf: newRoot.appendingPathComponent("document.backup.json")), raw)
         XCTAssertEqual(try Data(contentsOf: root.appendingPathComponent("document.json")), raw)
         XCTAssertEqual(try Data(contentsOf: root.appendingPathComponent("document.backup.json")), raw)
-        let asset = try XCTUnwrap(expected.pdfAsset)
+        let asset = try XCTUnwrap(expected.pdfAssets.first)
         XCTAssertEqual(try Data(contentsOf: newRoot.appendingPathComponent(asset.relativePath)), try LibraryTestSupport.data("source", extension: "pdf"))
     }
 
@@ -68,7 +68,7 @@ import XCTest
     func testMissingLegacyAssetBlocksMigrationAndPreservesSource() async throws {
         let root = try LibraryTestSupport.directory(self)
         let doc = try LibraryTestSupport.seedLegacy(at: root)
-        try FileManager.default.removeItem(at: root.appendingPathComponent(try XCTUnwrap(doc.pdfAsset).relativePath))
+        try FileManager.default.removeItem(at: root.appendingPathComponent(try XCTUnwrap(doc.pdfAssets.first).relativePath))
         do { _ = try await LibraryStore(directory: root).load(); XCTFail("Missing asset cannot be hidden by a blank library") }
         catch { XCTAssertEqual(error as? DocumentError, .missingAsset) }
         XCTAssertEqual(try Data(contentsOf: root.appendingPathComponent("document.json")), try LibraryTestSupport.data("source"))

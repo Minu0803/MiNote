@@ -28,22 +28,6 @@ public struct NoteDocument: Codable, Equatable, Sendable {
         self.pdfAssets = pdfAssets; self.deletedPages = deletedPages; self.lastOpenedPageID = lastOpenedPageID
     }
 
-    // Temporary source compatibility for M1-B Task 1. Serialized output uses only arrays.
-    public var pdfAsset: PDFAsset? {
-        get { pdfAssets.first }
-        set { pdfAssets = newValue.map { [$0] } ?? [] }
-    }
-    public init(id: UUID = UUID(), revision: Int64 = 0, title: String, pages: [NotePage],
-                pdfAsset: PDFAsset?, lastOpenedPageID: UUID? = nil) {
-        self.init(id: id, revision: revision, title: title, pages: pages.map { page in
-            var page = page
-            if let asset = pdfAsset, var source = page.pdfSource, source.assetID == nil {
-                source.assetID = asset.id; page.pdfSource = source
-            }
-            return page
-        }, pdfAssets: pdfAsset.map { [$0] } ?? [], lastOpenedPageID: lastOpenedPageID)
-    }
-
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, id, revision, title, pages, pdfAssets, deletedPages, pdfAsset, lastOpenedPageID
     }
@@ -86,14 +70,16 @@ public struct NotePage: Codable, Equatable, Sendable, Identifiable {
         self.id = id; self.width = width; self.height = height; self.strokes = strokes; self.pdfSource = pdfSource
         self.paper = paper; self.isBookmarked = isBookmarked
     }
+    static let schemaKey = CodingUserInfoKey(rawValue: "MiNote.schemaVersion")!
     private enum CodingKeys: String, CodingKey { case id, width, height, strokes, pdfSource, paper, isBookmarked }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        let legacy = (decoder.userInfo[Self.schemaKey] as? Int ?? 3) <= 2
         self.init(id: try c.decode(UUID.self, forKey: .id), width: try c.decode(Double.self, forKey: .width),
                   height: try c.decode(Double.self, forKey: .height), strokes: try c.decode([InkStroke].self, forKey: .strokes),
                   pdfSource: try c.decodeIfPresent(PDFPageSource.self, forKey: .pdfSource),
-                  paper: try c.decodeIfPresent(PaperStyle.self, forKey: .paper) ?? .blank,
-                  isBookmarked: try c.decodeIfPresent(Bool.self, forKey: .isBookmarked) ?? false)
+                  paper: try legacy ? (c.decodeIfPresent(PaperStyle.self, forKey: .paper) ?? .blank) : c.decode(PaperStyle.self, forKey: .paper),
+                  isBookmarked: try legacy ? (c.decodeIfPresent(Bool.self, forKey: .isBookmarked) ?? false) : c.decode(Bool.self, forKey: .isBookmarked))
     }
 }
 

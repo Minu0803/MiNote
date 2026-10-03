@@ -86,7 +86,7 @@ import XCTest
     func testRepeatedPDFPageMappingAndWrongDimensionsAreValidated() throws {
         let bytes = Data("PDF".utf8)
         var document = NoteDocument.blank()
-        document.pdfAsset = PDFAsset(originalFilename: "test.pdf", pageCount: 1, byteCount: bytes.count)
+        document.pdfAssets = [PDFAsset(originalFilename: "test.pdf", pageCount: 1, byteCount: bytes.count)]
         document.pages.append(pdfFixturePage(assetID: document.pdfAssets[0].id))
         XCTAssertNoThrow(try DocumentCodec.encode(document))
         document.pages[1].width = 500

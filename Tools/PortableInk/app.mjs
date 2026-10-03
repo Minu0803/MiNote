@@ -20,7 +20,7 @@ function refresh(){
   $('empty').hidden=true;$('canvas').style.display='inline-block';
   $('title').textContent=doc.title;$('summary').textContent=`revision ${doc.revision} · ${doc.pages.length}페이지 · 현재 ${page.strokes.length}획`;
   const selected=$('stroke').value;
-  options($('page'),doc.pages.map((p,i)=>[p.id,`${i+1} / ${doc.pages.length}${p.pdfSource?' · PDF':''}`]));$('page').value=page.id;
+  options($('page'),doc.pages.map((p,i)=>[p.id,`${i+1} / ${doc.pages.length}${p.pdfSource?' · PDF':p.paper==='grid'?' · 격자':p.paper==='ruled'?' · 줄':''}${p.isBookmarked?' · 책갈피':''}`]));$('page').value=page.id;
   options($('stroke'),page.strokes.map((s,i)=>[s.id,`${i+1}. ${s.tool} · …${s.id.slice(-6)}`]));
   if(page.strokes.some(s=>s.id===selected))$('stroke').value=selected;
   for(const id of ['page','pen','download'])$(id).disabled=false;

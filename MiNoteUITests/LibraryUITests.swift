@@ -2,6 +2,7 @@ import XCTest
 
 @MainActor final class LibraryUITests: XCTestCase {
     func testCreateOrganizeTrashRestoreAndRelaunch() {
+        continueAfterFailure = false
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.buttons["newNote"].waitForExistence(timeout: 15))
         let suffix = UUID().uuidString.prefix(6)
@@ -10,8 +11,8 @@ import XCTest
         create(app, button: "newNote", name: b)
         create(app, button: "newFolder", name: folder)
         app.buttons["노트 관리 \(a)"].tap(); app.buttons["moveNote"].tap()
-        app.buttons["대상 폴더 \(folder)"].tap()
-        app.buttons[folder].tap()
+        tapScrolling(app, button: app.buttons["대상 폴더 \(folder)"], listID: "moveDestinations")
+        tapScrolling(app, button: app.buttons[folder], listID: "libraryFolders")
         XCTAssertTrue(app.buttons[a].waitForExistence(timeout: 10)); XCTAssertFalse(app.buttons[b].exists)
         app.buttons["폴더 관리 \(folder)"].tap(); app.buttons["renameFolder"].tap(); name(app, renamed)
         app.buttons[a].tap()
@@ -30,9 +31,9 @@ import XCTest
         app.buttons["노트 관리 \(a)"].tap(); app.buttons["trashNote"].tap()
         XCTAssertTrue(app.buttons["filter-trash"].waitForExistence(timeout: 5)); app.buttons["filter-trash"].tap()
         XCTAssertTrue(app.buttons["복원 \(a)"].waitForExistence(timeout: 10)); app.buttons["복원 \(a)"].tap()
-        app.buttons[renamed].tap(); XCTAssertTrue(app.buttons[a].waitForExistence(timeout: 10))
+        tapScrolling(app, button: app.buttons[renamed], listID: "libraryFolders"); XCTAssertTrue(app.buttons[a].waitForExistence(timeout: 10))
         app.terminate(); app.launch()
-        XCTAssertTrue(app.buttons[renamed].waitForExistence(timeout: 15)); app.buttons[renamed].tap()
+        tapScrolling(app, button: app.buttons[renamed], listID: "libraryFolders")
         XCTAssertTrue(app.buttons[a].waitForExistence(timeout: 10)); XCTAssertFalse(app.buttons[b].exists)
         app.buttons[a].tap(); XCTAssertTrue(wait(app.staticTexts["strokeCount"], "획 1"))
         let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.lifetime = .keepAlways; add(screenshot)
@@ -45,14 +46,16 @@ import XCTest
         create(app, button: "newFolder", name: twin)
         create(app, button: "newFolder", name: twin)
         let folders = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'folder-' AND label BEGINSWITH %@", twin))
+        let list = app.collectionViews["libraryFolders"]
+        for _ in 0..<20 { if folders.count == 2 { break }; list.swipeUp() }
         XCTAssertEqual(folders.count, 2)
         let first = folders.element(boundBy: 0).label, second = folders.element(boundBy: 1).label
         XCTAssertNotEqual(first, second, "Same-name folders need stable visible and accessible distinctions")
         create(app, button: "newNote", name: note)
         app.buttons["노트 관리 \(note)"].tap(); app.buttons["moveNote"].tap()
-        app.buttons["대상 폴더 \(second)"].tap()
-        app.buttons[second].tap(); XCTAssertTrue(app.buttons[note].waitForExistence(timeout: 10))
-        app.buttons[first].tap(); XCTAssertFalse(app.buttons[note].exists)
+        tapScrolling(app, button: app.buttons["대상 폴더 \(second)"], listID: "moveDestinations")
+        tapScrolling(app, button: app.buttons[second], listID: "libraryFolders"); XCTAssertTrue(app.buttons[note].waitForExistence(timeout: 10))
+        tapScrolling(app, button: app.buttons[first], listID: "libraryFolders"); XCTAssertFalse(app.buttons[note].exists)
     }
 
     func testLegacyMigrationInSeededSimulator() throws {
@@ -71,6 +74,24 @@ import XCTest
         app.terminate(); app.launch()
         XCTAssertTrue(legacy.waitForExistence(timeout: 15)); legacy.tap()
         XCTAssertTrue(wait(app.staticTexts["pageIndicator"], "2 / 5"))
+    }
+
+    private func tapScrolling(_ app: XCUIApplication, button: XCUIElement, listID: String) {
+        let list = app.collectionViews[listID]
+        XCTAssertTrue(list.waitForExistence(timeout: 10))
+        // A fresh move sheet starts at the top. Pulling down there dismisses it.
+        // The persistent sidebar can start at any offset, so return it to the top first.
+        if listID == "libraryFolders" {
+            var previous: String?
+            for _ in 0..<20 {
+                if button.exists && button.isHittable { button.tap(); return }
+                let visible = list.buttons.allElementsBoundByIndex.filter(\.isHittable).map(\.label).joined(separator: "|")
+                if visible == previous { break }; previous = visible
+                list.swipeDown()
+            }
+        }
+        for _ in 0..<30 { if button.exists && button.isHittable { button.tap(); return }; list.swipeUp() }
+        XCTFail("Target is not reachable in \(listID): \(button)")
     }
 
     private func create(_ app: XCUIApplication, button: String, name value: String) {

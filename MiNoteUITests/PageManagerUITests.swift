@@ -25,7 +25,8 @@ import XCTest
         XCTAssertTrue(app.buttons["selectPage-2"].waitForExistence(timeout: 5)); XCTAssertFalse(app.buttons["selectPage-1"].exists)
         app.buttons["filter-pages-all"].tap()
         app.buttons["pageActions-2"].tap(); app.buttons["deletePage"].tap()
-        XCTAssertTrue(app.buttons["confirmDeletePage"].waitForExistence(timeout: 5)); app.buttons["confirmDeletePage"].tap()
+        let confirmation = app.alerts["페이지를 삭제할까요?"].buttons.matching(identifier: "confirmDeletePage").firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5)); confirmation.tap()
         app.buttons["filter-pages-deleted"].tap()
         let restore = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'restorePage-'")).firstMatch
         XCTAssertTrue(restore.waitForExistence(timeout: 5)); restore.tap()

@@ -64,3 +64,17 @@ test('secondary cancel cannot erase active primary gesture; normal input commits
   ui.get('canvas').onpointerup(ui.event(1,30));
   assert.deepEqual(ui.snapshot(),result);
 });
+
+test('actual file-open and ink handlers retain v3 assets deleted pages and paper metadata',async()=>{
+  const text=readFileSync(new URL('../../Packages/MiNoteCore/Tests/MiNoteCoreTests/Fixtures/PortableInk/multi-source.json',import.meta.url),'utf8');
+  const expected=JSON.parse(text), ui=await lab();
+  await ui.get('file').onchange({target:{files:[{text:async()=>text}],value:'selected'}});
+  assert.deepEqual(ui.snapshot(),expected);
+  assert.ok(ui.get('page').children[0].textContent.includes('격자'));
+  assert.ok(ui.get('page').children[0].textContent.includes('책갈피'));
+  ui.start();ui.get('canvas').onpointerup(ui.event(1,20));
+  const edited=ui.snapshot();
+  assert.equal(edited.schemaVersion,3);assert.equal(edited.revision,41);
+  assert.deepEqual(edited.pdfAssets,expected.pdfAssets);assert.deepEqual(edited.deletedPages,expected.deletedPages);
+  assert.equal(edited.pages[0].paper,'grid');assert.equal(edited.pages[0].isBookmarked,true);
+});

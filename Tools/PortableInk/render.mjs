@@ -14,6 +14,12 @@ export function drawPage(context, page, viewportScale) {
   context.scale(viewportScale,viewportScale);
   context.beginPath(); context.rect(0,0,page.width,page.height); context.clip();
   context.fillStyle = 'white'; context.fillRect(0,0,page.width,page.height);
+  if (page.paper==='ruled' || page.paper==='grid') {
+    context.strokeStyle='rgb(217, 217, 217)'; context.lineWidth=0.5; context.beginPath();
+    for(let y=24;y<page.height;y+=24) { context.moveTo(0,y); context.lineTo(page.width,y); }
+    if(page.paper==='grid') for(let x=24;x<page.width;x+=24) { context.moveTo(x,0); context.lineTo(x,page.height); }
+    context.stroke();
+  }
   for (const stroke of page.strokes) {
     context.save(); const t = stroke.transform;
     context.transform(t.a,t.b,t.c,t.d,t.tx,t.ty);

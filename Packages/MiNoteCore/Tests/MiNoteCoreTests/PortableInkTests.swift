@@ -15,7 +15,7 @@ final class PortableInkTests: XCTestCase {
             XCTAssertEqual(result.id, source.id)
             XCTAssertEqual(result.revision, 43)
             XCTAssertEqual(result.title, source.title)
-            XCTAssertEqual(result.pdfAsset, source.pdfAsset)
+            XCTAssertEqual(result.pdfAssets, source.pdfAssets)
             XCTAssertEqual(result.lastOpenedPageID, source.lastOpenedPageID)
             XCTAssertEqual(Array(result.pages.dropFirst()), Array(source.pages.dropFirst()))
             let strokes = result.pages[0].strokes
@@ -44,7 +44,7 @@ final class PortableInkTests: XCTestCase {
         XCTAssertEqual(document.pages[0].strokes[1].tool, .marker)
         XCTAssertNotEqual(document.pages[0].strokes[0].id, document.pages[0].strokes[2].id)
         XCTAssertEqual(document.pages[0].strokes[0].points, document.pages[0].strokes[2].points)
-        XCTAssertEqual(document.pdfAsset?.pageCount, 4)
+        XCTAssertEqual(document.pdfAssets.first?.pageCount, 4)
         XCTAssertEqual(document.pages[2].pdfSource?.rotation, 90)
         XCTAssertEqual(try DocumentCodec.decode(DocumentCodec.encode(document)), document)
     }

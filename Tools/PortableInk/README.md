@@ -26,3 +26,15 @@ Shared fixtures live in `Packages/MiNoteCore/Tests/MiNoteCoreTests/Fixtures/Port
 On 2026-10-03, Codex IAB showed those edits and output, but its download event timed out. The browser fixture was saved from the visible read-only output. Native file download in a general browser remains unverified. See `docs/PROGRESS.md` for Swift/iPad reverse-edit evidence and remaining limits.
 
 The gesture controller binds input to its starting document/page and scale. Document replacement, page/zoom changes, mode exit and lost capture cancel it; secondary pointer events cannot cancel the primary stroke. Tests run the actual UI handlers with DOM/canvas boundaries faked. The final browser test reopened `browser-edited.json`, changed zoom 100→200→100%, and confirmed exported text exactly unchanged.
+
+## M1-B schema v3
+
+v2/v3 JSON을 읽고 원래 버전을 유지해 저장한다. v3 자산 배열·삭제 페이지·용지·책갈피를 지우지 않으며 활성 페이지의 기본 획만 편집한다. 줄/격자 24pt 선을 표시하고 PDF 배경은 여전히 표시하지 않는다. 상세는 `docs/format/document-v3.md`.
+
+```sh
+node --test Tools/PortableInk/*.test.mjs
+node Tools/PortableInk/roundtrip.mjs --check
+node Tools/PortableInk/roundtrip.mjs --v3 --check
+```
+
+`multi-source.json`은 실제 PencilKit에서 만든 다중 자산/삭제 페이지 fixture다. v3 결과를 재생성하려면 `node Tools/PortableInk/roundtrip.mjs --v3`를 실행한다. 기존 v2의 source/edited/browser-edited 원본은 바꾸지 않는다.

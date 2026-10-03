@@ -15,7 +15,7 @@ def simctl(*items):
 
 devices = json.loads(simctl("list", "devices", "available", "-j"))["devices"]
 device = next(d for group in devices.values() for d in group if d["udid"] == args.device)
-if not device["name"].startswith("MiNote M1-A Migration "):
+if not device["name"].startswith(("MiNote M1-A Migration ", "MiNote M1-B Migration ")):
     raise SystemExit("Refusing to seed a general-purpose simulator.")
 container = pathlib.Path(simctl("get_app_container", args.device, "com.minote.foundation", "data"))
 root = container / "Documents" / "MiNote"
@@ -33,7 +33,13 @@ if args.verify:
     assert [note["id"].lower() for note in catalog["notes"]] == [document["id"].lower()]
     migrated = root / "notes" / document["id"]
     actual = json.loads((migrated / "document.json").read_bytes())
-    assert actual["id"] == document["id"] and actual["pages"] == document["pages"]
+    expected_pages = json.loads(json.dumps(document["pages"]))
+    for page in expected_pages:
+        page["paper"] = "blank"; page["isBookmarked"] = False
+        if page.get("pdfSource"): page["pdfSource"]["assetID"] = asset["id"]
+    assert actual["schemaVersion"] == 3
+    assert actual["id"] == document["id"] and actual["pages"] == expected_pages
+    assert actual["pdfAssets"] == [asset] and actual["deletedPages"] == []
     assert actual["revision"] > document["revision"]
     assert (migrated / asset_path).read_bytes() == pdf
     assert (migrated / "document.backup.json").exists()

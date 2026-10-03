@@ -1,0 +1,563 @@
+{
+  "deletedPages": [
+    {
+      "deletedAt": 1700000002,
+      "originalIndex": 4,
+      "page": {
+        "height": 300,
+        "id": "00000000-0000-4000-8000-000000000014",
+        "isBookmarked": false,
+        "paper": "blank",
+        "pdfSource": {
+          "assetID": "00000000-0000-4000-8000-000000000002",
+          "cropBox": {
+            "height": 450,
+            "width": 300,
+            "x": 40,
+            "y": 70
+          },
+          "index": 3,
+          "mediaBox": {
+            "height": 600,
+            "width": 400,
+            "x": 10,
+            "y": 20
+          },
+          "rotation": 270
+        },
+        "strokes": [],
+        "width": 450
+      }
+    }
+  ],
+  "id": "00000000-0000-4000-8000-000000000001",
+  "lastOpenedPageID": "00000000-0000-4000-8000-000000000010",
+  "pages": [
+    {
+      "height": 841.8898,
+      "id": "00000000-0000-4000-8000-000000000010",
+      "isBookmarked": true,
+      "paper": "grid",
+      "strokes": [
+        {
+          "color": {
+            "alpha": 1,
+            "blue": 0.8,
+            "green": 0.3,
+            "red": 0.2
+          },
+          "creationTime": 1700000000,
+          "id": "00000000-0000-4000-8000-000000000101",
+          "points": [
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.4,
+              "height": 3.9989999999999997,
+              "opacity": 0.5999847409781033,
+              "secondaryScale": 1,
+              "timeOffset": 0,
+              "width": 3,
+              "x": 80,
+              "y": 100
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.5,
+              "height": 5,
+              "opacity": 0.6999923704890516,
+              "secondaryScale": 1.5,
+              "timeOffset": 0.10000000149011612,
+              "width": 4,
+              "x": 115,
+              "y": 125
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.6,
+              "height": 6,
+              "opacity": 0.8,
+              "secondaryScale": 1,
+              "timeOffset": 0.20000000298023224,
+              "width": 5,
+              "x": 150,
+              "y": 100
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.7,
+              "height": 6.9959999999999996,
+              "opacity": 0.899977111467155,
+              "secondaryScale": 1,
+              "timeOffset": 0.30000001192092896,
+              "width": 6,
+              "x": 185,
+              "y": 125
+            }
+          ],
+          "randomSeed": 42,
+          "tool": "pen",
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 17,
+            "ty": -2
+          }
+        },
+        {
+          "color": {
+            "alpha": 0.35,
+            "blue": 0,
+            "green": 0.7,
+            "red": 1
+          },
+          "creationTime": 1700000000,
+          "id": "00000000-0000-4000-8000-000000000102",
+          "points": [
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.4,
+              "height": 3.9989999999999997,
+              "opacity": 0.5999847409781033,
+              "secondaryScale": 1,
+              "timeOffset": 0,
+              "width": 3,
+              "x": 80,
+              "y": 100
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.5,
+              "height": 5,
+              "opacity": 0.6999923704890516,
+              "secondaryScale": 1.5,
+              "timeOffset": 0.10000000149011612,
+              "width": 4,
+              "x": 115,
+              "y": 125
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.6,
+              "height": 6,
+              "opacity": 0.8,
+              "secondaryScale": 1,
+              "timeOffset": 0.20000000298023224,
+              "width": 5,
+              "x": 150,
+              "y": 100
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.7,
+              "height": 6.9959999999999996,
+              "opacity": 0.899977111467155,
+              "secondaryScale": 1,
+              "timeOffset": 0.30000001192092896,
+              "width": 6,
+              "x": 185,
+              "y": 125
+            }
+          ],
+          "randomSeed": 9,
+          "tool": "marker",
+          "transform": {
+            "a": 1.2,
+            "b": 0,
+            "c": 0,
+            "d": 0.8,
+            "tx": 20,
+            "ty": 65
+          }
+        },
+        {
+          "color": {
+            "alpha": 1,
+            "blue": 0.8,
+            "green": 0.3,
+            "red": 0.2
+          },
+          "creationTime": 1700000000,
+          "id": "00000000-0000-4000-8000-000000000104",
+          "points": [
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.4,
+              "height": 3.9989999999999997,
+              "opacity": 0.5999847409781033,
+              "secondaryScale": 1,
+              "timeOffset": 0,
+              "width": 3,
+              "x": 80,
+              "y": 100
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.5,
+              "height": 5,
+              "opacity": 0.6999923704890516,
+              "secondaryScale": 1.5,
+              "timeOffset": 0.10000000149011612,
+              "width": 4,
+              "x": 115,
+              "y": 125
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.6,
+              "height": 6,
+              "opacity": 0.8,
+              "secondaryScale": 1,
+              "timeOffset": 0.20000000298023224,
+              "width": 5,
+              "x": 150,
+              "y": 100
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.7,
+              "height": 6.9959999999999996,
+              "opacity": 0.899977111467155,
+              "secondaryScale": 1,
+              "timeOffset": 0.30000001192092896,
+              "width": 6,
+              "x": 185,
+              "y": 125
+            }
+          ],
+          "randomSeed": 42,
+          "tool": "pen",
+          "transform": {
+            "a": 0,
+            "b": 1,
+            "c": -1,
+            "d": 0,
+            "tx": 300,
+            "ty": 20
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000106",
+          "tool": "pen",
+          "color": {
+            "red": 0.1,
+            "green": 0.2,
+            "blue": 0.9,
+            "alpha": 1
+          },
+          "creationTime": 1700000002,
+          "randomSeed": 12,
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 0,
+            "ty": 0
+          },
+          "points": [
+            {
+              "x": 200,
+              "y": 220,
+              "timeOffset": 0,
+              "width": 5,
+              "height": 5,
+              "opacity": 1,
+              "force": 1,
+              "azimuth": 0,
+              "altitude": 1,
+              "secondaryScale": 1
+            },
+            {
+              "x": 260,
+              "y": 250,
+              "timeOffset": 0.2,
+              "width": 5,
+              "height": 5,
+              "opacity": 1,
+              "force": 1,
+              "azimuth": 0,
+              "altitude": 1,
+              "secondaryScale": 1
+            }
+          ]
+        }
+      ],
+      "width": 595.2756
+    },
+    {
+      "height": 450,
+      "id": "00000000-0000-4000-8000-000000000011",
+      "isBookmarked": false,
+      "paper": "blank",
+      "pdfSource": {
+        "assetID": "00000000-0000-4000-8000-000000000002",
+        "cropBox": {
+          "height": 450,
+          "width": 300,
+          "x": 40,
+          "y": 70
+        },
+        "index": 0,
+        "mediaBox": {
+          "height": 600,
+          "width": 400,
+          "x": 10,
+          "y": 20
+        },
+        "rotation": 0
+      },
+      "strokes": [
+        {
+          "color": {
+            "alpha": 1,
+            "blue": 0.8,
+            "green": 0.3,
+            "red": 0.2
+          },
+          "creationTime": 1700000000,
+          "id": "00000000-0000-4000-8000-000000000105",
+          "points": [
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.4,
+              "height": 3.9989999999999997,
+              "opacity": 0.5999847409781033,
+              "secondaryScale": 1,
+              "timeOffset": 0,
+              "width": 3,
+              "x": 80,
+              "y": 100
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.5,
+              "height": 5,
+              "opacity": 0.6999923704890516,
+              "secondaryScale": 1.5,
+              "timeOffset": 0.10000000149011612,
+              "width": 4,
+              "x": 115,
+              "y": 125
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.6,
+              "height": 6,
+              "opacity": 0.8,
+              "secondaryScale": 1,
+              "timeOffset": 0.20000000298023224,
+              "width": 5,
+              "x": 150,
+              "y": 100
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.7,
+              "height": 6.9959999999999996,
+              "opacity": 0.899977111467155,
+              "secondaryScale": 1,
+              "timeOffset": 0.30000001192092896,
+              "width": 6,
+              "x": 185,
+              "y": 125
+            }
+          ],
+          "randomSeed": 42,
+          "tool": "pen",
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 5,
+            "ty": 6
+          }
+        }
+      ],
+      "width": 300
+    },
+    {
+      "height": 300,
+      "id": "00000000-0000-4000-8000-000000000012",
+      "isBookmarked": false,
+      "paper": "blank",
+      "pdfSource": {
+        "assetID": "00000000-0000-4000-8000-000000000002",
+        "cropBox": {
+          "height": 450,
+          "width": 300,
+          "x": 40,
+          "y": 70
+        },
+        "index": 1,
+        "mediaBox": {
+          "height": 600,
+          "width": 400,
+          "x": 10,
+          "y": 20
+        },
+        "rotation": 90
+      },
+      "strokes": [],
+      "width": 450
+    },
+    {
+      "height": 450,
+      "id": "00000000-0000-4000-8000-000000000013",
+      "isBookmarked": false,
+      "paper": "blank",
+      "pdfSource": {
+        "assetID": "00000000-0000-4000-8000-000000000002",
+        "cropBox": {
+          "height": 450,
+          "width": 300,
+          "x": 40,
+          "y": 70
+        },
+        "index": 2,
+        "mediaBox": {
+          "height": 600,
+          "width": 400,
+          "x": 10,
+          "y": 20
+        },
+        "rotation": 180
+      },
+      "strokes": [],
+      "width": 300
+    },
+    {
+      "height": 450,
+      "id": "00000000-0000-4000-8000-000000000090",
+      "isBookmarked": true,
+      "paper": "blank",
+      "pdfSource": {
+        "assetID": "00000000-0000-4000-8000-000000000003",
+        "cropBox": {
+          "height": 450,
+          "width": 300,
+          "x": 40,
+          "y": 70
+        },
+        "index": 0,
+        "mediaBox": {
+          "height": 600,
+          "width": 400,
+          "x": 10,
+          "y": 20
+        },
+        "rotation": 0
+      },
+      "strokes": [
+        {
+          "color": {
+            "alpha": 1,
+            "blue": 0.8,
+            "green": 0.3,
+            "red": 0.2
+          },
+          "creationTime": 1700000000,
+          "id": "00000000-0000-4000-8000-000000000190",
+          "points": [
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.4,
+              "height": 3.9989999999999997,
+              "opacity": 0.5999847409781033,
+              "secondaryScale": 1,
+              "timeOffset": 0,
+              "width": 3,
+              "x": 80,
+              "y": 100
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.5,
+              "height": 5,
+              "opacity": 0.6999923704890516,
+              "secondaryScale": 1.5,
+              "timeOffset": 0.10000000149011612,
+              "width": 4,
+              "x": 115,
+              "y": 125
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.6,
+              "height": 6,
+              "opacity": 0.8,
+              "secondaryScale": 1,
+              "timeOffset": 0.20000000298023224,
+              "width": 5,
+              "x": 150,
+              "y": 100
+            },
+            {
+              "altitude": 1.1000008518440252,
+              "azimuth": 0.29994575774031196,
+              "force": 0.7,
+              "height": 6.9959999999999996,
+              "opacity": 0.899977111467155,
+              "secondaryScale": 1,
+              "timeOffset": 0.30000001192092896,
+              "width": 6,
+              "x": 185,
+              "y": 125
+            }
+          ],
+          "randomSeed": 42,
+          "tool": "pen",
+          "transform": {
+            "a": 1,
+            "b": 0,
+            "c": 0,
+            "d": 1,
+            "tx": 5,
+            "ty": 6
+          }
+        }
+      ],
+      "width": 300
+    }
+  ],
+  "pdfAssets": [
+    {
+      "byteCount": 2115,
+      "id": "00000000-0000-4000-8000-000000000002",
+      "importedAt": 1700000001,
+      "originalFilename": "source.pdf",
+      "pageCount": 4
+    },
+    {
+      "byteCount": 2115,
+      "id": "00000000-0000-4000-8000-000000000003",
+      "importedAt": 1700000001,
+      "originalFilename": "source.pdf",
+      "pageCount": 4
+    }
+  ],
+  "revision": 43,
+  "schemaVersion": 3,
+  "title": "MiNote portable ink fixture"
+}

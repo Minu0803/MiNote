@@ -21,7 +21,7 @@ import XCTest
         let restored = try await restoredStore.load(), other = try await storeB.load()
         XCTAssertEqual(restored?.document, imported)
         XCTAssertEqual(other?.document.title, "B"); XCTAssertEqual(other?.document.revision, 0)
-        XCTAssertEqual(other?.document.pages[0].strokes, []); XCTAssertNil(other?.document.pdfAsset)
+        XCTAssertEqual(other?.document.pages[0].strokes, []); XCTAssertNil(other?.document.pdfAssets.first)
         let path = try await restoredStore.assetURL(for: asset)
         XCTAssertEqual(try Data(contentsOf: path), bytes)
     }

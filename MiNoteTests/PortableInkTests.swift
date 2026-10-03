@@ -77,7 +77,39 @@ import XCTest
     }
 
     func testJavaScriptAndBrowserResultsCanBeReeditedUndoneSavedAndReopened() async throws {
-        for name in ["edited", "browser-edited"] {
+        for name in ["edited", "browser-edited"] { try await assertEditableRoundtrip(name) }
+    }
+
+    func testIndependentV3RoundTripPreservesPagesAssetsAndEditableInk() async throws {
+        let fixture = try fixtureDocument("multi-edited")
+        XCTAssertEqual(fixture.schemaVersion, 3); XCTAssertEqual(fixture.pdfAssets.count, 2)
+        XCTAssertEqual(fixture.deletedPages.count, 1); XCTAssertEqual(fixture.pages[0].paper, .grid)
+        XCTAssertTrue(fixture.pages[0].isBookmarked)
+        try await assertEditableRoundtrip("multi-edited")
+    }
+
+    func testGenerateV3PencilKitFixture() throws {
+        var document = try PortableFixture.make()
+        document.pages[0].paper = .grid; document.pages[0].isBookmarked = true
+        let deleted = document.pages.removeLast()
+        document.deletedPages = [DeletedPage(page: deleted, originalIndex: 4, deletedAt: 1_700_000_002)]
+        let original = document.pdfAssets[0]
+        let second = PDFAsset(id: PortableFixture.id(3), originalFilename: original.originalFilename,
+            pageCount: original.pageCount, byteCount: original.byteCount, importedAt: original.importedAt)
+        document.pdfAssets.append(second)
+        var page = document.pages[1]; page.id = PortableFixture.id(90); page.isBookmarked = true
+        if var source = page.pdfSource { source.assetID = second.id; page.pdfSource = source }
+        for i in page.strokes.indices { page.strokes[i].id = PortableFixture.id(190 + i) }
+        document.pages.append(page)
+        for page in document.pages + document.deletedPages.map(\.page) {
+            XCTAssertEqual(try InkAdapter.encode(InkAdapter.decode(page.strokes), preserving: page.strokes), page.strokes)
+        }
+        let output = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("PortableInkGenerated/multi-source.json")
+        try FileManager.default.createDirectory(at: output.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try DocumentCodec.encode(document).write(to: output, options: .atomic)
+    }
+
+    private func assertEditableRoundtrip(_ name: String) async throws {
             let imported = try fixtureDocument(name)
             for page in imported.pages {
                 XCTAssertEqual(try InkAdapter.encode(InkAdapter.decode(page.strokes), preserving: page.strokes), page.strokes)
@@ -89,10 +121,10 @@ import XCTest
             let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             try FileManager.default.createDirectory(at: directory.appendingPathComponent("assets"), withIntermediateDirectories: true)
             defer { try? FileManager.default.removeItem(at: directory) }
-            let asset = try XCTUnwrap(imported.pdfAsset)
             let bytes = try Data(contentsOf: fixtureURL("source", extension: "pdf"))
-            let assetURL = directory.appendingPathComponent(asset.relativePath)
-            try bytes.write(to: assetURL)
+            for asset in imported.pdfAssets {
+                try bytes.write(to: directory.appendingPathComponent(asset.relativePath))
+            }
             let store = DocumentStore(directory: directory)
             try await store.save(imported)
             let session = EditorSession(store: store, saveDelay: .seconds(60))
@@ -136,8 +168,11 @@ import XCTest
             await reopened.loadIfNeeded()
             XCTAssertEqual(reopened.document, final)
             XCTAssertEqual(try InkAdapter.encode(reopened.drawing, preserving: final.pages[0].strokes), final.pages[0].strokes)
-            XCTAssertEqual(try Data(contentsOf: assetURL), bytes)
-        }
+            for asset in imported.pdfAssets { XCTAssertEqual(try Data(contentsOf: directory.appendingPathComponent(asset.relativePath)), bytes) }
+            XCTAssertEqual(final.pdfAssets, imported.pdfAssets)
+            XCTAssertEqual(final.deletedPages, imported.deletedPages)
+            XCTAssertEqual(final.pages[0].paper, imported.pages[0].paper)
+            XCTAssertEqual(final.pages[0].isBookmarked, imported.pages[0].isBookmarked)
     }
 }
 
@@ -178,7 +213,7 @@ import XCTest
         for i in ink.indices { ink[i].id = id(101 + i) }
         var pages = [NotePage(id: id(10), strokes: ink)]
         for (i, rotation) in [0, 90, 180, 270].enumerated() {
-            let source = PDFPageSource(index: i, mediaBox: PageRect(x: 10, y: 20, width: 400, height: 600),
+            let source = PDFPageSource(assetID: id(2), index: i, mediaBox: PageRect(x: 10, y: 20, width: 400, height: 600),
                 cropBox: PageRect(x: 40, y: 70, width: 300, height: 450), rotation: rotation)
             var strokes: [InkStroke] = []
             if i == 0 { var stroke = ink[0]; stroke.id = id(105); strokes = [stroke] }
@@ -186,8 +221,8 @@ import XCTest
                 height: rotation % 180 == 0 ? 450 : 300, strokes: strokes, pdfSource: source))
         }
         return NoteDocument(id: id(1), revision: 40, title: "MiNote portable ink fixture", pages: pages,
-            pdfAsset: PDFAsset(id: id(2), originalFilename: "source.pdf", pageCount: 4,
-                byteCount: try PDFFixture.data().count, importedAt: 1_700_000_001), lastOpenedPageID: id(10))
+            pdfAssets: [PDFAsset(id: id(2), originalFilename: "source.pdf", pageCount: 4,
+                byteCount: try PDFFixture.data().count, importedAt: 1_700_000_001)], lastOpenedPageID: id(10))
     }
 }
 

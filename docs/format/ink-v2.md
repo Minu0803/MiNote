@@ -1,5 +1,7 @@
 # MiNote schema v2 기본 필기 계약
 
+현재 앱은 schema v3를 기록하며 v1/v2를 계속 읽는다. 이 문서는 v2 및 공통 획 규격의 기록이고, 다중 자산/용지/책갈피/삭제 페이지 계약은 `document-v3.md`를 따른다.
+
 2026-10-03. 현재 코드 `DocumentCodec`, `Document.swift`, `PDFAsset.swift`, `InkAdapter`의 계약이다. M0-C 시험 편집기의 지원 범위는 더 좁으며 완전한 브러시/플랫폼 호환성을 의미하지 않는다.
 
 ## 문서와 페이지
