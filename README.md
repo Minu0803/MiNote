@@ -45,7 +45,7 @@ xcodebuild -project MiNote.xcodeproj -scheme MiNote \
 
 The Xcode scheme covers PencilKit conversion, PDF coordinates and raster placement, import/export failures, edit sessions, zoom rendering and a 500-page fixture. UI tests exercise writing, undo/redo, Files import, page navigation, rotation, relaunch, export preview and the share sheet. Run on both iPadOS 18.6 and 26.4. Actual results and logs are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
 
-The final M1-A run passed 25 Node tests, 44 core tests and, on each OS, 42 app unit tests and 4 regular UI tests. One fixture-only migration test is skipped in ordinary suites; it passed separately on a seeded isolated simulator for each OS, with raw legacy files verified unchanged. See [migration setup](Tools/LibraryTests/README.md) and [the M1-A results](docs/milestones/2026-10-03-m1-a-local-library.md). [Simulator export preview](docs/assets/m0b-export-preview.png).
+The final M1-B run passed 31 Node tests, 60 core tests and, on each OS, 53 app unit tests and 5 regular UI tests. One fixture-only migration test is skipped in ordinary suites; it passed separately on a seeded isolated simulator for each OS, with raw legacy files verified unchanged. See [migration setup](Tools/LibraryTests/README.md), [the M1-B results](docs/milestones/2026-10-03-m1-b-pages-and-pdfs.md) and [the actual nine-page export preview](docs/assets/m1b-multi-page-export-preview.png).
 
 ## Current limits
 

@@ -103,12 +103,12 @@
 
 - [x] JS `testV3EditsKeepMultipleAssetsDeletedPagesAndPageMetadata`: 지원 v3 active-page ink edit가 자산/보관 페이지/순서/용지를 지우지 않음. future schema/잘못된 관계 거부. 기존 v2 fixture check 계속 동일.
 - [x] RED → validator/편집 도구의 version별 계약 구현 → Node GREEN; iPad `testIndependentV3RoundTripPreservesPagesAssetsAndEditableInk`로 JS 결과 재편집/저장/재열기 확인.
-- [ ] Node 전체+fixture check, core 전체, 18.6/26.4 앱/기존 라이브러리·ink·PDF/새 페이지 UI, 별도 seeded migration 모두 GREEN. 기존 fixture-only skip은 별도 실제 실행 결과와 분리한다.
-- [ ] 한 번의 fresh 전체 리뷰 → 중요한 문제 재현/수정/관련 검증 → 최종 전체 tests. 실기기 Pencil/손바닥/발열/큰 실제 PDF는 계속 대기.
-- [ ] 성공 근거/실패 이력/제한/커밋/Notion 반영 시점을 기록하고 M1-C 백업·파일 수명주기 계획을 실제 결과로 작성 → main 커밋. push는 별도 요청이다.
+- [x] Node 전체+fixture check, core 전체, 18.6/26.4 앱/기존 라이브러리·ink·PDF/새 페이지 UI, 별도 seeded migration 모두 GREEN. 기존 fixture-only skip은 별도 실제 실행 결과와 분리한다.
+- [x] 한 번의 fresh 전체 리뷰 → 중요한 문제 재현/수정/관련 검증 → 최종 전체 tests. 실기기 Pencil/손바닥/발열/큰 실제 PDF는 계속 대기.
+- [x] 성공 근거/실패 이력/제한/커밋/Notion 반영 시점을 기록하고 M1-C 백업·파일 수명주기 계획을 실제 결과로 작성 → main 커밋. push는 별도 요청이다.
 
 ## 완료 조건·계획 자기 점검
 
 M1-B는 페이지/다중 PDF/기본 용지/책갈피/삭제 복원과 해당 데이터의 양방향 호환·출력을 완료 범위로 삼는다. schema/명령/PDF/session/UI/독립 검증은 Task 1~5로 연결된다. Review Focus 다섯 항목은 각 작업의 구체 테스트에 대응한다. API 명칭과 입력/출력 타입을 교차 점검했다.
 
-노트 즐겨찾기/제목·폴더 검색/텍스트·이미지·올가미는 M2, `.minote` 전체 백업·복원/영구 제거/공유 중 임시 export cleanup은 M1-C, 표지/커스텀 템플릿/통합 Undo·다중 창/성능·실기기는 후속이다. 전체 제품 명세의 해당 항목을 완료에서 제외했다. 이 계획은 다음 실행용이며 아직 구현/검증하지 않았다.
+노트 즐겨찾기/제목·폴더 검색/텍스트·이미지·올가미는 M2, `.minote` 전체 백업·복원/영구 제거/공유 중 임시 export cleanup은 M1-C, 표지/커스텀 템플릿/통합 Undo·다중 창/성능·실기기는 후속이다. 전체 제품 명세의 해당 항목을 완료에서 제외했다. 2026-10-03 M1-B 구현·검증·한 번 리뷰를 완료했다. 실제 결과와 최종 커밋/Notion 시각은 docs/PROGRESS.md 및 docs/milestones/2026-10-03-m1-b-pages-and-pdfs.md를 따른다.

@@ -1,6 +1,8 @@
 # Local library catalog v1
 
 M1-A stores library metadata separately from the authoritative note document.
+M1-B keeps catalog version 1 while note bodies use schema v3; see
+[the current document contract](document-v3.md).
 `LibraryCatalog` is Foundation-only. A title is read from `NoteDocument.title`;
 the catalog never keeps a second title that could overwrite newer ink or text.
 

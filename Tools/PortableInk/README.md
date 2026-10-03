@@ -1,6 +1,6 @@
 # PortableInk lab
 
-A dependency-free JavaScript/Canvas **test editor**, not an Android or Windows product app. It reads MiNote schema-v2 documents, translates or deletes strokes by UUID, appends editable pen strokes, and exports JSON. PDF metadata remains intact; the PDF background is not rendered.
+A dependency-free JavaScript/Canvas **test editor**, not an Android or Windows product app. It reads MiNote schema-v2 and schema-v3 documents, translates or deletes strokes by UUID, appends editable pen strokes, and exports JSON. PDF metadata remains intact; the PDF background is not rendered.
 
 From the repository root:
 
