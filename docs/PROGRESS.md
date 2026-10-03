@@ -336,3 +336,16 @@
 - 최종 전체18(minote-m1b18-final-full), 새 DerivedData 전체26(minote-m1b26-fresh-full)는 app53/0을 통과했고 일반 UI 실행 중이다. 26 새 빌드는 수정된 swipeUp을 실제로 실행하므로 이전 결과와 구분한다. 전체 종료 결과를 확인하기 전 완료로 표시하지 않는다.
 - 다음: 전체 UI 종료 → Task5 코드/문서 commit → 80d14c2부터 fresh 전체 review 한 번. 리뷰/Notion/최종 인계는 아직 미완료다.
 - Task5의 구현/관련 core·Node·native·18.6 LibraryUI 검증을 코드 체크포인트로 커밋한다. 마지막 전체 UI 실행과 읽기 전용 리뷰는 코드 변경 없이 병행하며, 양 OS 전체 결과와 리뷰 수정 검증까지 단계 완료 표시는 보류한다.
+
+### M1-B 리뷰 결과 / 최종 UI 조사
+- fresh reviewer 한 번: 80d14c2..1d67d9a, 확정 Critical/Important/Minor 코드 결함 없음. With fixes 판정은 최종 UI 검증 게이트 때문이다. M1-C/전체 메모리/실기기/외부 프로세스 범위 제외 항목과 판단은 최종 절에 보존한다. 추가 reviewer는 만들지 않는다.
+- final-full18은 app53/0·LibraryUI2/0·기존 ink/PDF UI2/0이지만 PageUI의 Files local location 셀 실패로 UI총6/skip1/failure1이다. 새 PageUI는 이전 양 OS 실행에서 통과했으나 이를 최종 전체 성공으로 대체하지 않는다. xcresult가 실패 snapshot을 남기지 않아 다음 집중 실행에 actual AX tree를 실패 메시지로 추가한다.
+- full26은 duplicate-folder 두 번째 filter 탭 뒤 idle 응답이 멈췄다. 호스트16GiB/free 약70MiB, 중단된 진단 수집/샘플링과 구별한다. 이미 검증한 두 migration 기기를 shutdown하고 과도한 이번 시험 sysdiagnose만 중단했다. 앱 stack sample은 회수하지 못했다. 원인을 특정했다고 주장하지 않는다. 이후 시험은 serial/collect-test-diagnostics never로 환경 경합을 줄인다.
+- 마지막 코드1d67d9a. PageUI diagnostic assertion 변경은 미커밋, M1-C 계획/milestone 초안 미커밋. 다음은 집중 PageUI18에서 실제 Files 화면 확인→필요한 selector/탐색 수정→양 OS 전체 UI GREEN→기록/Notion/커밋이다.
+- picker-diagnose18 집중 PageUI **1/0**, xcodebuild exit0 TEST SUCCEEDED. 앱 동작/탐색 selector 수정 없이 diagnostic 메시지 추가만으로 실제 A/B 가져오기·재실행·출력을 통과했다. 직전 실패 원인이 특정됐다고 주장하지 않는다. 두 OS를 순서대로 전체 실행하는 serial-final 명령을 시작했다.
+- fresh26 LibraryUI는 멈춤 뒤 결국 2통과/fixture1skip/0실패(767초)를 기록했으나 이번 invocation 종료143으로 나머지 UI는 미실행이다. 전체 통과가 아니다. 스택 sample 실패·sysdiagnose 종료/VM 상태도 기능 성공 근거에 포함하지 않는다.
+- 통과한 집중 PageUI18의 keepAlways screenshot을 xcresult에서 회수·육안 확인하고 docs/assets/m1b-multi-page-export-preview.png로 보존했다(9페이지 출력/필기 표시). 화면 근거와 실제 Pencil 검증을 구분한다. final serial suites는 아직 실행 중이다.
+
+### M1-B serial-final18 GREEN
+- 최종18.6 전체: app **53/0**, 일반 UI **5 passed / fixture-only 1 skipped / 0 failures**, xcodebuild exit0 TEST SUCCEEDED. /private/tmp/minote-m1b18-serial-final.log/xcresult. 마지막 변경은 PageUI 실패 때 AX tree를 남기는 diagnostic뿐이며 실제 A/B 가져오기·페이지/필기/복원·재실행·출력을 모두 통과했다.
+- serial-final26는 이어 실행 중이다. stage 완료/Notion 마감은 아직 대기한다. 별도 migration 양1/0/skip0와 raw-byte verify는 직전 정상 근거를 유지한다. 다음 첫 작업은 이 명령의26 결과 확인→README/AGENTS/PROGRESS final→Notion append/re-fetch→문서 커밋이다.

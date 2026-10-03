@@ -60,7 +60,10 @@ import XCTest
         let sample = app.cells.matching(NSPredicate(format: "label CONTAINS %@", filename)).firstMatch
         if !sample.waitForExistence(timeout: 2) {
             let local = app.cells.matching(NSPredicate(format: "label == '나의 iPad' OR label == 'On My iPad'")).firstMatch
-            XCTAssertTrue(local.waitForExistence(timeout: 20)); local.tap()
+            guard local.waitForExistence(timeout: 20) else {
+                XCTFail("Files location unavailable: \(app.debugDescription)"); return
+            }
+            local.tap()
             let folder = app.cells.matching(NSPredicate(format: "label BEGINSWITH 'MiNote'")).firstMatch
             XCTAssertTrue(folder.waitForExistence(timeout: 10)); folder.tap()
         }
