@@ -21,11 +21,38 @@ enum InkAdapter {
     private static let contentID = UUID(uuid: (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
 
     static func encode(_ drawing: PKDrawing, preserving known: [InkStroke]) throws -> [InkStroke] {
-        var identities: [InkStroke: [UUID]] = [:]
+        var identities: [InkStroke: [InkStroke]] = [:]
         for stroke in known.reversed() {
-            identities[key(stroke), default: []].append(stroke.id)
+            identities[key(stroke), default: []].append(stroke)
+        }
+        var restoredIdentities: [InkStroke: [InkStroke]] = [:]
+        var didBuildRestoredIdentities = false
+        var used = Set<UUID>()
+        func consume(_ fingerprint: InkStroke, from values: inout [InkStroke: [InkStroke]]) -> InkStroke? {
+            while let candidate = values[fingerprint]?.popLast() {
+                if used.insert(candidate.id).inserted { return candidate }
+            }
+            return nil
         }
         return try drawing.strokes.map { stroke in
+            let value = try portableValue(stroke)
+            let fingerprint = key(value)
+            if let original = consume(fingerprint, from: &identities) { return original }
+            if !didBuildRestoredIdentities {
+                // PencilKit can quantize angles again when reconstructing a point.
+                // Compare with the exact reconstruction, not a broad epsilon that
+                // could mistake a user's small edit for an unchanged stroke.
+                let reconstructed = try decode(known).strokes
+                for (original, restored) in zip(known, reconstructed).reversed() {
+                    restoredIdentities[key(try portableValue(restored)), default: []].append(original)
+                }
+                didBuildRestoredIdentities = true
+            }
+            return consume(fingerprint, from: &restoredIdentities) ?? value
+        }
+    }
+
+    private static func portableValue(_ stroke: PKStroke) throws -> InkStroke {
             guard stroke.requiredContentVersion == .version1 else { throw InkAdapterError.unsupportedContentVersion(stroke.requiredContentVersion.rawValue) }
             guard stroke.mask == nil else { throw InkAdapterError.unsupportedMask }
             let tool: InkTool
@@ -50,13 +77,9 @@ enum InkAdapter {
                     secondaryScale: point.secondaryScale)
             }
             let t = stroke.transform
-            var value = InkStroke(tool: tool, color: InkColor(red: red, green: green, blue: blue, alpha: alpha),
+            return InkStroke(tool: tool, color: InkColor(red: red, green: green, blue: blue, alpha: alpha),
                 points: points, transform: InkTransform(a: t.a, b: t.b, c: t.c, d: t.d, tx: t.tx, ty: t.ty),
                 randomSeed: stroke.randomSeed, creationTime: stroke.path.creationDate.timeIntervalSince1970)
-            let fingerprint = key(value)
-            if let id = identities[fingerprint]?.popLast() { value.id = id }
-            return value
-        }
     }
 
     static func decode(_ strokes: [InkStroke]) throws -> PKDrawing {

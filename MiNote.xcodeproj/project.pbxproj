@@ -5,6 +5,16 @@
 	};
 	"objectVersion" = 77;
 	"objects" = {
+		"C00000000000000000000001" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "folder";
+			"path" = "Packages/MiNoteCore/Tests/MiNoteCoreTests/Fixtures/PortableInk";
+			"sourceTree" = "SOURCE_ROOT";
+		};
+		"C00000000000000000000002" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "C00000000000000000000001";
+		};
 		"582681C2EAE02B3F3D399C0C" = {
 			"isa" = "XCLocalSwiftPackageReference";
 			"relativePath" = "Packages/MiNoteCore";
@@ -147,7 +157,7 @@
 		"49A945181137754158380F48" = {
 			"isa" = "PBXResourcesBuildPhase";
 			"buildActionMask" = 2147483647;
-			"files" = ();
+			"files" = ("C00000000000000000000002");
 			"runOnlyForDeploymentPostprocessing" = 0;
 		};
 		"9A69FD620151AACF785C41B9" = {
@@ -316,7 +326,7 @@
 		};
 		"B28B7AF69320201D1CF206EB" = {
 			"isa" = "PBXGroup";
-			"children" = ("64AF70EFF33A99A0A5963023", "7B76480643FFF14070BAC9ED", "42477464F062D5D6CF3AA9B8", "FBDC4F23F93125BBEEAE800C");
+			"children" = ("64AF70EFF33A99A0A5963023", "7B76480643FFF14070BAC9ED", "42477464F062D5D6CF3AA9B8", "C00000000000000000000001", "FBDC4F23F93125BBEEAE800C");
 			"sourceTree" = "<group>";
 		};
 		"89E1FD6268CC0F221A2BE178" = {

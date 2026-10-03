@@ -10,7 +10,7 @@
 - 이번 실행: 2026-10-01 재개 요청에 따라 M0-B 전체를 구현·검증·별도 리뷰·Notion 기록까지 완료했다. 한 번에 한 개발 단위 원칙을 유지한다.
 - M0-B 기준 커밋: `a943a49`; 구현/검증 커밋: `27f634c`, `4babcf6`, `991b481`, `0cd0139`, `26faf40`, `31a766c`.
 - 마지막 코드 커밋: `31a766cbcfa570cf089eebe0ee52b2218dff3bf3`. 최종 인계 문서는 이 기록을 포함하는 마지막 `docs` 커밋에 있다(`git log -1 --oneline`으로 확인). 이번 6개 코드 커밋과 문서 커밋은 **로컬 main에만 있으며 push하지 않았다**.
-- 진행 중 코드/알려진 테스트 실패: 없음. 다음 개발 단위 **M0-C — 공통 필기 왕복 검증**은 계획만 작성했고 구현하지 않았다. iPad 전체 개발은 아직 M1/M2/M3 등이 남아 있다.
+- 진행 단계: **M0-C — 공통 필기 왕복 검증**. 2026-10-03 사용자가 계획대로 재개를 요청했다. 기준 `18843b0`, main clean, local/main과 origin/main 추적 ref 일치(이번에는 원격 새 조회 없음). 이전 단계는 반복하지 않는다.
 
 ## M0-B 완료 결과와 현재 재개 지점
 - Files에서 PDF를 가져와 페이지별로 필기·확대·현재 페이지 undo/redo하고, 마지막 페이지와 획을 저장·재실행 후 복원한다. 기존 A4를 유지하며 한 PDF만 연결한다.
@@ -133,3 +133,20 @@
   26.4는 device `423D4FF6-C678-45F9-9D3E-CB886EE82462`, derivedData `/private/tmp/minote-m0b26`, result `/private/tmp/minote-m0b26-review-final.xcresult`로 실행했다.
 - 검증 완료 시점의 미커밋 변경은 P2 캔버스 명령/zoom 수정과 회귀 테스트/이 기록이었다. 이를 `31a766c`로 커밋했다. 이후 README/AGENTS/단계 계획/다음 M0-C 계획과 최종 화면을 정리했고 Notion 결과·동기화 시점을 위에 반영했다. 마지막 코드 변경 이후 테스트 대상 코드는 바꾸지 않았다.
 - 완료 인계: 현재 코드 작업은 없고, 최종 기록/계획/스크린샷을 문서 커밋으로 보존한다. 재개 시 `git status --short --branch`로 미커밋 변경을 먼저 대조한다. `git diff --check`는 최종 문서에도 적용한다. M0-C 구현은 이번 실행에 포함하지 않았다.
+
+## M0-C 실행 체크포인트 — 2026-10-03
+- [x] 1: 실제 PencilKit fixture·필기 계약·공통 리소스
+- [ ] 2: 독립 JSON 검증·ID 편집·결정적 왕복 출력
+- [ ] 3: Canvas 시험 UI·브라우저 다운로드 검증
+- [ ] 4: iPad 역방향 편집·양 OS 전체 검증·리뷰·Notion
+- 시작: 계획·관련 codec/store/PencilKit 테스트·Git 상태를 읽었다. Node v23.11.0은 `/opt/homebrew/bin/node`; 기존 18.6/26.4 iPad simulator를 확인했다. 작업은 사용자 지정 main에서 직접 수행한다.
+- 판단: 기존 승인된 설계/계획을 실행하고 새 승인 단계를 만들지 않는다. scratch와 durable 기록 모두 보존한다. task 추출기가 영어 제목을 요구해 계획의 작업 제목만 Task N으로 정리했다.
+- 다음 즉시 작업: fixture 없는 RED → 실제 PencilKit JSON 생성/회수 → 양 test bundle 등록 → core/app 관련 테스트 GREEN. 아직 M0-C 완료 기능은 없다.
+
+### M0-C Task 1 완료
+- 실제 PencilKit pen/marker, 크기·압력·불투명도·기울기·secondaryScale와 transform, 같은 모양/다른 ID를 포함한 고정 JSON/PDF fixture를 만들었다. 두 test bundle이 동일 resource를 읽는다. `docs/format/ink-v2.md`에 현재 계약과 시험 범위를 기록했다.
+- RED: core fixture URL 없음(`minote-m0c-fixture-core-red.log`). 앱 첫 빌드는 복잡한 식의 type-check timeout이며 분리 후 실제 누락 fixture와 원본 기울기 정규화/ID 손실 RED를 확인했다(`minote-m0c-fixture-app-red2.log`).
+- 원인: altitude 1.1000008518440252가 PKStrokePoint 재구성 후 1.1000248206595709로 바뀌어 strict fingerprint가 변경으로 판단했다. `InkAdapter`는 원본 fingerprint를 우선하고 실제 재구성 결과를 lazy 보조 fingerprint로 비교해 기존 ID와 원본 전체 속성을 보존한다. epsilon으로 임의 변경을 숨기지 않으며 같은 ID를 두 번 사용하지 않는다.
+- GREEN: core 전체 **25/0** (`/private/tmp/minote-m0c-fixture-core-green.log`), 18.6 앱 단위 전체 **27/0** (`/private/tmp/minote-m0c-fixture-app-green2.log`), 두 명령 exit 0. 관련 8개 실행은 fixture 회수 전 URL 없음 1실패였으며 이를 전체 통과로 기록하지 않는다.
+- fixture 회수 판단: test 후 simulator가 Shutdown이라 `simctl get_app_container`가 실패했다. 생성 전용 `PortableInkGenerated` 디렉터리만 검색해 JSON/PDF를 회수했다. Xcode 재설치는 app container UUID를 바꾸므로 하드코딩 경로를 쓰지 않는다. 사용자 노트는 읽거나 바꾸지 않았다.
+- 다음: Task 2의 Node 계약/ID 편집 RED를 확인하고 JS 독립 명령을 구현한다. browser/iPad 역방향/26.4/실기기 검증은 아직 완료 아님.

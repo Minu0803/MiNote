@@ -38,17 +38,17 @@
 - `Tools/PortableInk/document.test.mjs`, `roundtrip.mjs`: DOM 없는 계약/편집 테스트와 결정적 fixture 생성.
 - `Packages/MiNoteCore/Tests/MiNoteCoreTests/PortableInkTests.swift`, `MiNoteTests/PortableInkTests.swift`: 양방향 JSON·어댑터·임시 저장소 검증.
 
-### 작업 1 — 계약과 실제 입력 fixture
+### Task 1: 계약과 실제 입력 fixture
 
 **Interfaces:** 기존 `DocumentCodec.encode(_:) -> Data`, `decode(_:) -> NoteDocument`, `InkAdapter.encode(_:preserving:) -> [InkStroke]`를 소비한다. 입력/기대 fixture와 필드 계약을 산출한다.
 
-- [ ] 기존 테스트 helper와 고정 UUID/시각을 사용해 pen/marker, 투명 색, 서로 다른 size/secondaryScale, 중복 모양의 다른 ID, 이동/회전/비등방 transform을 포함한 실제 PencilKit→JSON fixture를 만든다. schema v2 여러 페이지/PDF metadata도 포함한다. 테스트 앱의 Documents에 출력한 뒤 `simctl get_app_container`로 회수해 commit한다.
-- [ ] `PortableInkTests`에 fixture decode/re-encode 후 document/page/stroke ID·revision·points·style·asset metadata 유지 assertions를 작성한다.
-- [ ] `swift test --package-path Packages/MiNoteCore` 및 `xcodebuild ... -only-testing:MiNoteTests/PortableInkTests ... test`로 새 fixture 누락/계약 실패를 확인한다.
-- [ ] `docs/format/ink-v2.md`에 이미 구현된 수치 범위와 affine 적용 순서, PDF crop 좌표, 지원 불가 처리 규칙을 명시한다. fixture를 재생성 가능한 방법과 함께 저장하고 core `.copy("Fixtures/PortableInk")` 및 앱 test resources에 같은 디렉터리를 등록한다.
-- [ ] 두 테스트 통과를 확인하고 PROGRESS·로그·다음 작업을 기록한 뒤 커밋한다.
+- [x] 기존 테스트 helper와 고정 UUID/시각을 사용해 pen/marker, 투명 색, 서로 다른 size/secondaryScale, 중복 모양의 다른 ID, 이동/회전/비등방 transform을 포함한 실제 PencilKit→JSON fixture를 만든다. schema v2 여러 페이지/PDF metadata도 포함한다. 테스트 앱의 Documents에 출력한 뒤 `simctl get_app_container`로 회수해 commit한다.
+- [x] `PortableInkTests`에 fixture decode/re-encode 후 document/page/stroke ID·revision·points·style·asset metadata 유지 assertions를 작성한다.
+- [x] `swift test --package-path Packages/MiNoteCore` 및 `xcodebuild ... -only-testing:MiNoteTests/PortableInkTests ... test`로 새 fixture 누락/계약 실패를 확인한다.
+- [x] `docs/format/ink-v2.md`에 이미 구현된 수치 범위와 affine 적용 순서, PDF crop 좌표, 지원 불가 처리 규칙을 명시한다. fixture를 재생성 가능한 방법과 함께 저장하고 core `.copy("Fixtures/PortableInk")` 및 앱 test resources에 같은 디렉터리를 등록한다.
+- [x] 두 테스트 통과를 확인하고 PROGRESS·로그·다음 작업을 기록한 뒤 커밋한다.
 
-### 작업 2 — 독립 문서 편집 명령
+### Task 2: 독립 문서 편집 명령
 
 **Interfaces:** `readDocument(text: string) -> object`, `applyEdit(document: object, command: object) -> object`, `writeDocument(document: object) -> string`. command는 `{kind:"translateStroke", pageID, strokeID, dx, dy}`, `{kind:"deleteStroke", pageID, strokeID}`, `{kind:"appendStroke", pageID, stroke}` 세 종류이며 DOM/PencilKit에 의존하지 않는다. ID는 UUID string, dx/dy는 number, stroke는 schema-v2 InkStroke object다.
 
@@ -58,7 +58,7 @@
 - [ ] 이동은 document pt의 dx/dy를 stroke.transform.tx/ty에 더한다. point/style/seed/creationTime 및 다른 페이지와 PDF metadata는 그대로 둔다. revision 상한 초과는 거부한다.
 - [ ] 동일 입력/manifest로 `roundtrip.mjs`가 기대 JSON을 결정적으로 생성하게 한다. 모든 계약 테스트 통과와 입력 원본 bytes 불변을 확인하고 기록·커밋한다.
 
-### 작업 3 — 독립 렌더링과 시험 UI
+### Task 3: 독립 렌더링과 시험 UI
 
 **Interfaces:** `drawPage(context: CanvasRenderingContext2D, page: object, viewportScale: number) -> void`는 작업 2의 검증된 문서를 소비한다. 앱 UI는 세 편집 명령을 호출하며 다운로드 전에 `writeDocument`를 통과한다.
 
@@ -67,7 +67,7 @@
 - [ ] HTML 시험 UI에서 JSON 열기, 페이지/획 ID 선택, 수치 dx/dy 이동, 획 전체 삭제, 기본 pen 추가와 결과 다운로드를 연결한다. 파일은 로컬에서 처리한다. PDF metadata는 유지하며 PDF 배경 자체 렌더링은 이 시험 도구 범위 밖이다.
 - [ ] 브라우저에서 fixture를 열고 이동/삭제/추가한 다운로드 JSON을 Node 검사로 확인한다. 빈 획 페이지, marker, 화면 확대도 확인하고 스크린샷·차이를 기록한 뒤 커밋한다.
 
-### 작업 4 — iPad 역방향 편집·전체 검증
+### Task 4: iPad 역방향 편집·전체 검증
 
 **Interfaces:** 작업 2가 생성한 기대 JSON을 `DocumentCodec.decode`, `InkAdapter.decode(_:) -> PKDrawing`, `EditorSession`과 임시 `DocumentStore`에 전달한다. 사용자 노트를 가져오기/교체하는 제품 UI는 추가하지 않는다.
 
