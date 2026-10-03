@@ -156,3 +156,11 @@
 - Node RED: 문서 module 없음(`minote-m0c-document-red.log`). GREEN: `node --test Tools/PortableInk/document.test.mjs` **11/0** (`/private/tmp/minote-m0c-document-green.log`). 도구/필드/미래 schema, UUID 대소문자/중복, geometry/style/time/PDF mapping, invalid commands, 원본 불변을 확인했다. `node Tools/PortableInk/roundtrip.mjs --check`도 exit 0.
 - 판단: JS는 safe integer로 정확히 표현되는 revision/정수 metadata만 편집한다. Swift Int64 상한까지 지원하는 척하며 반올림하지 않고 거부한다. 도구의 지원 범위가 iPad보다 좁다는 점을 계약에 명시했다. null secondaryScale/미지 필드를 제거한 JSON 저장도 허용하지 않는다.
 - 다음: renderer 좌표·size/alpha 테스트 RED → Canvas UI → 실제 브라우저 편집/다운로드 검증. iPad의 edited.json 역방향 테스트는 Task 4다.
+
+### M0-C Task 3 완료 / Task 4 시작 체크포인트
+- Canvas 시험 도구에서 샘플/JSON 열기, 페이지/획 선택, ID 이동·삭제, 드래그 새 pen, 확대, JSON 출력을 구현했다. 좌표 변환/opacity/secondaryScale와 오류 시 현재 문서 보존 테스트를 추가했다.
+- RED: renderer/editor module 없음(`minote-m0c-ui-red.log`). GREEN: `node --test Tools/PortableInk/*.test.mjs` **17/0** (`/private/tmp/minote-m0c-ui-green.log`); `node --check Tools/PortableInk/app.mjs` exit 0.
+- 실제 브라우저에서 101을 (12,-8) 이동, 103만 삭제, 새 pen 드래그하여 revision 40→43, 4획을 확인했다. PDF 90도 빈 페이지 선택 시 0획/편집 버튼 비활성도 확인했다. 실제 UI 출력 텍스트를 `browser-edited.json`으로 보존했다. 자동 Node 생성 `edited.json`과 별도로 iPad가 모두 읽는다. 화면 증거 `/private/tmp/minote-m0c-browser.jpg`.
+- 제한/판단: Codex IAB의 download 이벤트가 두 번 timeout했고 파일 저장 완료는 확인하지 못했다. anchor를 DOM에 연결하고 readonly JSON 출력 대안을 제공했다. 버튼은 저장 요청만 안내한다. 실제 UI 출력이 Swift로 전달되므로 왕복 데이터 검증을 계속하고, 일반 브라우저의 native 다운로드는 미검증으로 남긴다. 실패를 통과로 기록하지 않는다.
+- 서버: 저장소 루트 `python3 -m http.server 8765 --bind 127.0.0.1`, 실행 중 session 60760. 테스트 종료 시 이 서버만 정리한다.
+- 다음 즉시 작업: 공통 codec의 JS/browser 결과 검증 → 실제 PKDrawing 추가/삭제·Canvas undo/redo·임시 저장소 재열기. 전체 양 OS/별도 리뷰/Notion은 아직 완료 아님.
