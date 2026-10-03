@@ -121,7 +121,7 @@ public actor LibraryStore {
         let document = loaded.document
         let destination = notesURL.appendingPathComponent(document.id.uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-        if let asset = document.pdfAsset {
+        for asset in document.pdfAssets {
             let assetURL = try await source.assetURL(for: asset)
             try FileManager.default.createDirectory(at: destination.appendingPathComponent("assets"), withIntermediateDirectories: true)
             try LibraryFiles.writeIfAbsent(Data(contentsOf: assetURL), to: destination.appendingPathComponent(asset.relativePath))

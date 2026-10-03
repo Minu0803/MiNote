@@ -47,7 +47,7 @@ public actor DocumentStore {
 
     public func save(_ document: NoteDocument) throws {
         let data = try DocumentCodec.encode(document)
-        if let asset = document.pdfAsset { _ = try assetURL(for: asset) }
+        for asset in document.pdfAssets { _ = try assetURL(for: asset) }
         let previous = try load()
         if let previous {
             guard document.id == previous.document.id else { throw DocumentError.documentConflict }
@@ -75,7 +75,11 @@ public actor DocumentStore {
         guard expectedRevision < Int64.max, data.count == asset.byteCount else { throw DocumentError.invalidDocument("PDF 자산 크기/리비전") }
         var updated = prior.document
         updated.pdfAsset = asset
-        updated.pages += pages
+        updated.pages += pages.map { page in
+            var page = page
+            if var source = page.pdfSource { source.assetID = asset.id; page.pdfSource = source }
+            return page
+        }
         updated.lastOpenedPageID = pages.first?.id
         updated.revision += 1
         try DocumentCodec.validate(updated)
@@ -114,7 +118,7 @@ public actor DocumentStore {
             throw POSIXError(code)
         }
         let document = try DocumentCodec.decode(dataReader(url))
-        if let asset = document.pdfAsset { _ = try assetURL(for: asset) }
+        for asset in document.pdfAssets { _ = try assetURL(for: asset) }
         return document
     }
 }

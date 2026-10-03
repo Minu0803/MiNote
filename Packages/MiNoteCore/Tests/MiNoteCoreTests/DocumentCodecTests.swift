@@ -12,7 +12,7 @@ final class DocumentCodecTests: XCTestCase {
         let decoded = try DocumentCodec.decode(data)
         XCTAssertEqual(decoded, document)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        XCTAssertEqual(object["schemaVersion"] as? Int, 2)
+        XCTAssertEqual(object["schemaVersion"] as? Int, 3)
         XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("PKDrawing"))
     }
 
@@ -39,7 +39,7 @@ final class DocumentCodecTests: XCTestCase {
         var json = try XCTUnwrap(JSONSerialization.jsonObject(with: DocumentCodec.encode(original)) as? [String: Any])
         json["schemaVersion"] = 1
         let migrated = try DocumentCodec.decode(JSONSerialization.data(withJSONObject: json))
-        XCTAssertEqual(migrated.schemaVersion, 2)
+        XCTAssertEqual(migrated.schemaVersion, 3)
         XCTAssertEqual(migrated.id, original.id)
         XCTAssertEqual(migrated.revision, 27)
         XCTAssertEqual(migrated.pages, original.pages)

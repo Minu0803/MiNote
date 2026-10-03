@@ -34,42 +34,81 @@ public enum DocumentCodec {
         guard let header = try? decoder.decode(Header.self, from: data) else {
             throw DocumentError.corruptDocument
         }
-        guard (1...2).contains(header.schemaVersion) else { throw DocumentError.unsupportedSchema(header.schemaVersion) }
+        guard (1...3).contains(header.schemaVersion) else { throw DocumentError.unsupportedSchema(header.schemaVersion) }
         guard var document = try? decoder.decode(NoteDocument.self, from: data) else {
             throw DocumentError.corruptDocument
         }
-        if header.schemaVersion == 1 {
-            guard document.pages.count == 1, document.pdfAsset == nil, document.pages[0].pdfSource == nil else { throw DocumentError.invalidDocument("v1 페이지 수") }
-            document.schemaVersion = 2
+        if header.schemaVersion <= 2 {
+            try validateLegacy(document)
+            document.schemaVersion = 3
+            for i in document.pages.indices {
+                if var source = document.pages[i].pdfSource {
+                    source.assetID = document.pdfAssets.first?.id; document.pages[i].pdfSource = source
+                }
+                document.pages[i].paper = .blank; document.pages[i].isBookmarked = false
+            }
         }
         try validate(document)
         return document
     }
 
+    public static let maximumPages = 1_000
+    public static let maximumAssetBytes = 500 * 1024 * 1024
+
+    private static func validateLegacy(_ document: NoteDocument) throws {
+        if document.schemaVersion == 1 {
+            guard document.pages.count == 1, document.pdfAssets.isEmpty, document.pages[0].pdfSource == nil else {
+                throw DocumentError.invalidDocument("v1 페이지 수")
+            }
+        }
+        var indices = Set<Int>()
+        for page in document.pages {
+            if let source = page.pdfSource {
+                guard let asset = document.pdfAssets.first, source.index >= 0, source.index < asset.pageCount,
+                      indices.insert(source.index).inserted else { throw DocumentError.invalidDocument("legacy PDF 매핑") }
+            }
+        }
+        guard indices.count == (document.pdfAssets.first?.pageCount ?? 0) else {
+            throw DocumentError.invalidDocument("legacy PDF 페이지 누락")
+        }
+    }
+
     public static func validate(_ document: NoteDocument) throws {
-        guard document.schemaVersion == 2 else { throw DocumentError.unsupportedSchema(document.schemaVersion) }
-        guard document.revision >= 0, !document.pages.isEmpty else {
-            throw DocumentError.invalidDocument("페이지와 0 이상의 리비전이 필요합니다.")
+        guard document.schemaVersion == 3 else { throw DocumentError.unsupportedSchema(document.schemaVersion) }
+        guard document.revision >= 0, !document.pages.isEmpty,
+              document.pages.count + document.deletedPages.count <= maximumPages else {
+            throw DocumentError.invalidDocument("페이지 수 또는 리비전")
         }
         if let selected = document.lastOpenedPageID, !document.pages.contains(where: { $0.id == selected }) {
             throw DocumentError.invalidDocument("마지막 페이지 ID")
         }
-        if let asset = document.pdfAsset {
-            guard asset.pageCount > 0, asset.byteCount > 0, !asset.originalFilename.isEmpty,
-                  asset.importedAt.isFinite else { throw DocumentError.invalidDocument("PDF 자산") }
+        var ids: Set<UUID> = [document.id]
+        var assets: [UUID: PDFAsset] = [:]
+        var totalBytes = 0
+        for asset in document.pdfAssets {
+            guard ids.insert(asset.id).inserted, (1...500).contains(asset.pageCount),
+                  asset.byteCount > 0, asset.byteCount <= 100 * 1024 * 1024,
+                  asset.byteCount <= maximumAssetBytes - totalBytes,
+                  !asset.originalFilename.isEmpty, asset.importedAt.isFinite else {
+                throw DocumentError.invalidDocument("PDF 자산 또는 용량 제한")
+            }
+            totalBytes += asset.byteCount; assets[asset.id] = asset
         }
-        var pdfIndices = Set<Int>()
-        var pageIDs = Set<UUID>()
-        var ids = Set<UUID>()
-        for page in document.pages {
-            guard pageIDs.insert(page.id).inserted else { throw DocumentError.invalidDocument("페이지 ID") }
+        for deleted in document.deletedPages {
+            guard (0..<maximumPages).contains(deleted.originalIndex), deleted.deletedAt.isFinite, deleted.deletedAt >= 0 else {
+                throw DocumentError.invalidDocument("삭제 페이지 기록")
+            }
+        }
+        for page in document.pages + document.deletedPages.map(\.page) {
+            guard ids.insert(page.id).inserted else { throw DocumentError.invalidDocument("페이지 ID") }
             guard page.width.isFinite, page.height.isFinite, page.width > 0, page.height > 0 else {
                 throw DocumentError.invalidDocument("페이지 크기")
             }
             if let source = page.pdfSource {
-                guard let asset = document.pdfAsset, source.index >= 0, source.index < asset.pageCount,
-                      pdfIndices.insert(source.index).inserted, source.mediaBox.isValid, source.cropBox.isValid,
-                      [0, 90, 180, 270].contains(source.rotation) else {
+                guard let assetID = source.assetID, let asset = assets[assetID],
+                      source.index >= 0, source.index < asset.pageCount, source.mediaBox.isValid, source.cropBox.isValid,
+                      [0, 90, 180, 270].contains(source.rotation), page.paper == .blank,
+                      max(page.width, page.height) <= 2_000 else {
                     throw DocumentError.invalidDocument("PDF 페이지 매핑")
                 }
                 let rotated = source.rotation == 90 || source.rotation == 270
@@ -103,9 +142,6 @@ public enum DocumentCodec {
                     previousTime = point.timeOffset
                 }
             }
-        }
-        guard pdfIndices.count == (document.pdfAsset?.pageCount ?? 0) else {
-            throw DocumentError.invalidDocument("PDF 페이지 누락")
         }
     }
 }

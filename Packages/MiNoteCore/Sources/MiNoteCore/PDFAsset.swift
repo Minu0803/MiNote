@@ -25,11 +25,12 @@ public struct PageRect: Codable, Equatable, Sendable {
 }
 
 public struct PDFPageSource: Codable, Equatable, Sendable {
+    public var assetID: UUID?
     public let index: Int
     public let mediaBox: PageRect
     public let cropBox: PageRect
     public let rotation: Int
-    public init(index: Int, mediaBox: PageRect, cropBox: PageRect, rotation: Int) {
-        self.index = index; self.mediaBox = mediaBox; self.cropBox = cropBox; self.rotation = rotation
+    public init(assetID: UUID? = nil, index: Int, mediaBox: PageRect, cropBox: PageRect, rotation: Int) {
+        self.assetID = assetID; self.index = index; self.mediaBox = mediaBox; self.cropBox = cropBox; self.rotation = rotation
     }
 }

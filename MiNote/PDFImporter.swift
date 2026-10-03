@@ -62,7 +62,11 @@ enum PDFValidation {
 
     static func open(url: URL, for document: NoteDocument) throws -> PDFDocument {
         guard let asset = document.pdfAsset, let pdf = PDFDocument(url: url) else { throw PDFError.missingAsset }
-        let pages = try pages(of: pdf)
+        let pages = try pages(of: pdf).map { page in
+            var page = page
+            if var source = page.pdfSource { source.assetID = asset.id; page.pdfSource = source }
+            return page
+        }
         guard pages.count == asset.pageCount,
               document.pages.compactMap(\.pdfSource).sorted(by: { $0.index < $1.index }) == pages.compactMap(\.pdfSource) else {
             throw PDFError.missingAsset

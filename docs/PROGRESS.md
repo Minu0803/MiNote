@@ -12,8 +12,8 @@
 - M0-B 종료 당시 코드 커밋: `31a766cbcfa570cf089eebe0ee52b2218dff3bf3`. 최종 인계 문서는 이 기록을 포함하는 마지막 `docs` 커밋에 있다(`git log -1 --oneline`으로 확인). 이번 6개 코드 커밋과 문서 커밋은 **로컬 main에만 있으며 push하지 않았다**.
 - 이전 실행: **2026-10-03 M0-C 완료**. 시작 기준 `18843b0`; 시작 시 main clean, origin/main 추적 ref 일치(이번에는 원격 새 조회 없음). 코드 커밋 `0ef4587`, `f9fe764`, `da0a6f7`, `40aef65`, 최종 리뷰 수정 `28b9889e8b186771f163d6a98d551dabda5c2149`.
 - M0-C 종료 당시 변경은 로컬 main에만 커밋했고 push하지 않았다. 현재 원격 상태를 의미하는 문장은 아니다. 최종 인계 문서 커밋은 `git log -1 --oneline`으로 확인한다.
-- 이번 실행: **2026-10-03 M1-A 완료**. 기준 `fd4def6`; 마지막 코드 `d968701`. 시작 시 main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음). 모든 구현은 main에 커밋했고 push하지 않았다.
-- 다음 단계: **M1-B 페이지/다중 PDF**, `docs/superpowers/plans/2026-10-03-m1-b-pages-and-pdfs.md`. 코드 구현은 아직 시작하지 않았다.
+- 이전 실행: **2026-10-03 M1-A 완료**. 기준 `fd4def6`; 마지막 코드 `d968701`. 시작 시 main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음). 모든 구현은 main에 커밋했고 push하지 않았다.
+- 현재 단계: **M1-B 페이지/다중 PDF 진행 중**, `docs/superpowers/plans/2026-10-03-m1-b-pages-and-pdfs.md`. 기준 80d14c2, main clean에서 시작; origin/main 추적 ref 일치(새 원격 조회 없음). Task 1 schema migration부터 구현한다.
 - 다음 작업자가 할 첫 작업: Git 상태 대조 → 이 문서의 M1-A 최종 근거/제한과 M1-B 계획 읽기 → Document/Codec/Store와 PDF validation/EditorSession 대조 → M1-B Task 1 v1/v2→v3 migration RED. 완료된 M0/M1-A를 반복하지 않는다.
 - 마지막 Notion 반영: 2026-10-03T06:02:45.909Z (15:02:45 KST); 재조회/내용 검증 06:04:12 UTC. M1-A 결과와 리뷰 수정/검증/제한/다음 계획을 기존 페이지에 추가했다.
 - 최종 검증: Node 25/0, core44/0, 18.6/26.4 각각 app42/0 + 일반 UI4통과/fixture-only1skip/0실패. 별도 seeded migration UI 양1/0과 원본 bytes 검증 통과. 로그/result와 리뷰 판단은 아래 M1-A 최종 절을 따른다.
@@ -272,3 +272,16 @@
 - 선택적인 파일 선택기 상태 스크린샷은 simctl의 Timeout waiting for screen surfaces(exit60)로 생성하지 못했다. 해당 UI는 XCTest에서 실제 가져오기/출력/공유까지 통과했고 screenshot 실패를 기능 통과 근거로 쓰지 않았다. 전용 이주 기기 두 개만 shutdown했고 자료/기기는 보존했다. 일반 기기는 건드리지 않았다.
 - 다음 첫 작업: git status/HEAD 대조 → AGENTS/PROGRESS/M1-B 계획/기존 모델·PDF 경계 읽기 → SchemaV3Tests의 v1/v2 ID·ink·asset mapping 보존 RED. M1-B 구현은 이번 실행에 포함하지 않았다. Notebook별 한 PDF/흰색 A4, page Undo reset, `.minote`/cleanup/검색/객체/실기기 대기를 유지한다.
 - 계획 자기 점검: M1-B 모델/명령/PDF/session/UI/독립 계약은 Task 1~5; v1/v2 규칙을 migration 전에 검사하고 같은 index 복제/삭제복원/다중PDF실패/주석누적/미래버전·누락 자산은 구체 테스트로 연결했다. PaperRenderer는 Task 3에서 만들고 Task 4가 소비해 의존 순서를 맞췄다. 지원 밖 전체 제품 목표는 후속으로 명시했다.
+
+### M1-B 시작 체크포인트
+- 2026-10-03, 기준 80d14c2, main clean. 완료된 M0/M1-A는 반복하지 않는다. 원격 push 없이 main에서 직접 구현하며 기존 scratch/기록은 보존한다.
+- 실행 순서: Task 1 v3 migration → 2 페이지 명령 → 3 여러 PDF/출력 → 4 세션/화면 → 5 JS 왕복/양 OS/리뷰/Notion/인계.
+- 사전 인터페이스 확인: legacy mapping 검증 후 assetID 연결; 구조+선택을 같은 revision에 commit; 현재 drawing flush와 늦은 callback 검사는 모든 구조 작업에 적용; PaperRenderer는 PDF 작업에서 만든 뒤 UI가 사용; JS v2 fixtures는 원본 v2로 유지.
+- 다음 즉시 작업: SchemaV3Tests RED → 모델/codec/저장/library 모든 자산 검사 → core/기존 앱 단위 GREEN. 아직 M1-B 기능·검증은 완료되지 않았다.
+
+### M1-B Task 1 완료
+- v3 pdfAssets/assetID/삭제 페이지/용지/책갈피 모델을 추가했다. v1/v2는 기존 유일·전체 PDF mapping과 v1 단일 페이지를 먼저 검사한 뒤 IDs/revision/ink/geometry를 유지해 v3로 읽는다. encode는 v3만 기록한다. library catalog는 v1 그대로다.
+- 모든 보관 PDF 자산의 파일/byteCount 검사 및 legacy library 복사를 적용했다. raw v1/v2 backup 유지, 같은 원본 index 복제 허용, active+deleted object ID uniqueness와 1000페이지/500MB 제한을 검증했다.
+- RED: initial sandbox Swift cache 접근 실패는 기능 RED가 아니다(minote-m1b-schema-red.log). 승인된 테스트 실행에서 v2→v3/필드 누락 assertion4 실패(red2), 새 API 부재 컴파일 실패(red3)를 확인했다.
+- GREEN: swift test --package-path Packages/MiNoteCore 전체 **49/0**, /private/tmp/minote-m1b-task1-core-green.log, exit0. 기존 schema2 기대값과 source.assetID 기대를 v3 계약으로 바꿨다. iPadOS18.6 xcodebuild -only-testing:MiNoteTests **42/0**, minote-m1b-task1-app.log/xcresult, exit0 TEST SUCCEEDED.
+- 다음: Task 2 PageCommands/actor 저장 RED. 다중 PDF/페이지 UI/JS v3/26.4/리뷰/Notion은 아직 미완료. 단일 자산 source compatibility는 Task 3/4에서 제거할 임시 연결이다.

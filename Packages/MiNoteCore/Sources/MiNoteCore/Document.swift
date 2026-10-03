@@ -1,33 +1,99 @@
 import Foundation
 
+public enum PaperStyle: String, Codable, Sendable { case blank, ruled, grid }
+
+public struct DeletedPage: Codable, Equatable, Sendable, Identifiable {
+    public var page: NotePage
+    public var originalIndex: Int
+    public var deletedAt: Double
+    public var id: UUID { page.id }
+    public init(page: NotePage, originalIndex: Int, deletedAt: Double) {
+        self.page = page; self.originalIndex = originalIndex; self.deletedAt = deletedAt
+    }
+}
+
 public struct NoteDocument: Codable, Equatable, Sendable {
-    public var schemaVersion: Int = 2
+    public var schemaVersion: Int = 3
     public var id: UUID
     public var revision: Int64
     public var title: String
     public var pages: [NotePage]
-    public var pdfAsset: PDFAsset?
+    public var pdfAssets: [PDFAsset]
+    public var deletedPages: [DeletedPage]
     public var lastOpenedPageID: UUID?
 
-    public init(id: UUID = UUID(), revision: Int64 = 0, title: String, pages: [NotePage], pdfAsset: PDFAsset? = nil, lastOpenedPageID: UUID? = nil) {
-        self.id = id; self.revision = revision; self.title = title; self.pages = pages; self.pdfAsset = pdfAsset; self.lastOpenedPageID = lastOpenedPageID
+    public init(id: UUID = UUID(), revision: Int64 = 0, title: String, pages: [NotePage],
+                pdfAssets: [PDFAsset] = [], deletedPages: [DeletedPage] = [], lastOpenedPageID: UUID? = nil) {
+        self.id = id; self.revision = revision; self.title = title; self.pages = pages
+        self.pdfAssets = pdfAssets; self.deletedPages = deletedPages; self.lastOpenedPageID = lastOpenedPageID
     }
 
-    public static func blank() -> Self {
-        Self(title: "나의 첫 노트", pages: [NotePage()])
+    // Temporary source compatibility for M1-B Task 1. Serialized output uses only arrays.
+    public var pdfAsset: PDFAsset? {
+        get { pdfAssets.first }
+        set { pdfAssets = newValue.map { [$0] } ?? [] }
     }
+    public init(id: UUID = UUID(), revision: Int64 = 0, title: String, pages: [NotePage],
+                pdfAsset: PDFAsset?, lastOpenedPageID: UUID? = nil) {
+        self.init(id: id, revision: revision, title: title, pages: pages.map { page in
+            var page = page
+            if let asset = pdfAsset, var source = page.pdfSource, source.assetID == nil {
+                source.assetID = asset.id; page.pdfSource = source
+            }
+            return page
+        }, pdfAssets: pdfAsset.map { [$0] } ?? [], lastOpenedPageID: lastOpenedPageID)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, id, revision, title, pages, pdfAssets, deletedPages, pdfAsset, lastOpenedPageID
+    }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try c.decode(Int.self, forKey: .schemaVersion)
+        id = try c.decode(UUID.self, forKey: .id); revision = try c.decode(Int64.self, forKey: .revision)
+        title = try c.decode(String.self, forKey: .title); pages = try c.decode([NotePage].self, forKey: .pages)
+        lastOpenedPageID = try c.decodeIfPresent(UUID.self, forKey: .lastOpenedPageID)
+        if schemaVersion <= 2 {
+            pdfAssets = try c.decodeIfPresent(PDFAsset.self, forKey: .pdfAsset).map { [$0] } ?? []
+            deletedPages = []
+        } else {
+            pdfAssets = try c.decode([PDFAsset].self, forKey: .pdfAssets)
+            deletedPages = try c.decode([DeletedPage].self, forKey: .deletedPages)
+        }
+    }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(schemaVersion, forKey: .schemaVersion); try c.encode(id, forKey: .id)
+        try c.encode(revision, forKey: .revision); try c.encode(title, forKey: .title); try c.encode(pages, forKey: .pages)
+        try c.encode(pdfAssets, forKey: .pdfAssets); try c.encode(deletedPages, forKey: .deletedPages)
+        try c.encodeIfPresent(lastOpenedPageID, forKey: .lastOpenedPageID)
+    }
+    public static func blank() -> Self { Self(title: "나의 첫 노트", pages: [NotePage()]) }
 }
 
-public struct NotePage: Codable, Equatable, Sendable {
+public struct NotePage: Codable, Equatable, Sendable, Identifiable {
     public var id: UUID
     public var width: Double
     public var height: Double
     public var strokes: [InkStroke]
     public var pdfSource: PDFPageSource?
+    public var paper: PaperStyle
+    public var isBookmarked: Bool
 
     public init(id: UUID = UUID(), width: Double = 595.2756, height: Double = 841.8898,
-                strokes: [InkStroke] = [], pdfSource: PDFPageSource? = nil) {
+                strokes: [InkStroke] = [], pdfSource: PDFPageSource? = nil,
+                paper: PaperStyle = .blank, isBookmarked: Bool = false) {
         self.id = id; self.width = width; self.height = height; self.strokes = strokes; self.pdfSource = pdfSource
+        self.paper = paper; self.isBookmarked = isBookmarked
+    }
+    private enum CodingKeys: String, CodingKey { case id, width, height, strokes, pdfSource, paper, isBookmarked }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(id: try c.decode(UUID.self, forKey: .id), width: try c.decode(Double.self, forKey: .width),
+                  height: try c.decode(Double.self, forKey: .height), strokes: try c.decode([InkStroke].self, forKey: .strokes),
+                  pdfSource: try c.decodeIfPresent(PDFPageSource.self, forKey: .pdfSource),
+                  paper: try c.decodeIfPresent(PaperStyle.self, forKey: .paper) ?? .blank,
+                  isBookmarked: try c.decodeIfPresent(Bool.self, forKey: .isBookmarked) ?? false)
     }
 }
 

@@ -49,12 +49,12 @@
 
 **Interfaces:** 위 v3 모델/codec; 이후 Task 2/3의 명령과 PDF가 같은 타입을 사용한다.
 
-- [ ] `testV1AndV2MigrateToV3WithoutIdentityOrGeometryLoss`: 기존 raw fixtures decode 후 IDs/revision/ink/asset metadata 같음, source.assetID 연결, 새 필드 기본값. encode/decode 후 동일 v3 문서.
-- [ ] `testDuplicatedPDFIndicesAreValidWithUniquePageAndStrokeIDs`: 한 asset/index를 다른 pageID/새 strokeID로 두 번 참조하면 통과; 잘못된 assetID/index/중복 object ID는 거부.
-- [ ] `testUnsupportedSchemaAndMissingSecondAssetPreservePrimaryAndBackup`: 미래 version/두 번째 자산 누락/byteCount 불일치 때 blank 또는 이전 단일 PDF로 fallback하지 않음, raw 파일 불변.
-- [ ] core 관련 `swift test --package-path Packages/MiNoteCore --filter SchemaV3Tests` RED 확인 → 모델/codec/자산 검증 최소 구현 → 전체 core GREEN.
-- [ ] LibraryStore legacy copy가 모든 pdfAssets를 복사하고 기존 catalog/노트별 directory를 유지하게 수정. raw v1/v2 backup을 보존하는 재저장 테스트 포함.
-- [ ] 기존 앱 단위 컴파일/왕복 tests GREEN → PROGRESS/계획 체크 → 커밋.
+- [x] `testV1AndV2MigrateToV3WithoutIdentityOrGeometryLoss`: 기존 raw fixtures decode 후 IDs/revision/ink/asset metadata 같음, source.assetID 연결, 새 필드 기본값. encode/decode 후 동일 v3 문서.
+- [x] `testDuplicatedPDFIndicesAreValidWithUniquePageAndStrokeIDs`: 한 asset/index를 다른 pageID/새 strokeID로 두 번 참조하면 통과; 잘못된 assetID/index/중복 object ID는 거부.
+- [x] `testUnsupportedSchemaAndMissingSecondAssetPreservePrimaryAndBackup`: 미래 version/두 번째 자산 누락/byteCount 불일치 때 blank 또는 이전 단일 PDF로 fallback하지 않음, raw 파일 불변.
+- [x] core 관련 `swift test --package-path Packages/MiNoteCore --filter SchemaV3Tests` RED 확인 → 모델/codec/자산 검증 최소 구현 → 전체 core GREEN.
+- [x] LibraryStore legacy copy가 모든 pdfAssets를 복사하고 기존 catalog/노트별 directory를 유지하게 수정. raw v1/v2 backup을 보존하는 재저장 테스트 포함.
+- [x] 기존 앱 단위 컴파일/왕복 tests GREEN → PROGRESS/계획 체크 → 커밋.
 
 ### Task 2: 페이지 명령과 삭제 복원 저장
 

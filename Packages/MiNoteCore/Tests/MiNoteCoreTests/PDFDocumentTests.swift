@@ -18,7 +18,7 @@ import XCTest
         try await store.save(original)
         let bytes = Data("immutable PDF bytes".utf8)
         let asset = PDFAsset(originalFilename: "lesson.pdf", pageCount: 1, byteCount: bytes.count)
-        let page = pdfFixturePage()
+        let page = pdfFixturePage(assetID: asset.id)
         let imported = try await store.attachPDF(data: bytes, asset: asset, pages: [page], expectedRevision: 0)
         XCTAssertEqual(imported.id, original.id)
         XCTAssertEqual(imported.pages[0], original.pages[0])
@@ -82,17 +82,17 @@ import XCTest
         XCTAssertEqual(try Data(contentsOf: url.appendingPathComponent("document.json")), before)
     }
 
-    func testDuplicatePDFPageMappingAndWrongDimensionsAreRejected() throws {
+    func testRepeatedPDFPageMappingAndWrongDimensionsAreValidated() throws {
         let bytes = Data("PDF".utf8)
         var document = NoteDocument.blank()
         document.pdfAsset = PDFAsset(originalFilename: "test.pdf", pageCount: 1, byteCount: bytes.count)
-        document.pages.append(pdfFixturePage())
+        document.pages.append(pdfFixturePage(assetID: document.pdfAssets[0].id))
         XCTAssertNoThrow(try DocumentCodec.encode(document))
         document.pages[1].width = 500
         XCTAssertThrowsError(try DocumentCodec.encode(document))
-        document.pages[1] = pdfFixturePage()
-        document.pages.append(pdfFixturePage())
-        XCTAssertThrowsError(try DocumentCodec.encode(document))
+        document.pages[1] = pdfFixturePage(assetID: document.pdfAssets[0].id)
+        document.pages.append(pdfFixturePage(assetID: document.pdfAssets[0].id))
+        XCTAssertNoThrow(try DocumentCodec.encode(document))
     }
 
     func testSavingMigratedDocumentKeepsRawV1Backup() async throws {
@@ -108,12 +108,12 @@ import XCTest
         try await store.save(migrated)
         XCTAssertEqual(try Data(contentsOf: url.appendingPathComponent("document.backup.json")), old)
         let saved = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url.appendingPathComponent("document.json"))) as? [String: Any])
-        XCTAssertEqual(saved["schemaVersion"] as? Int, 2)
+        XCTAssertEqual(saved["schemaVersion"] as? Int, 3)
     }
 }
 
-func pdfFixturePage() -> NotePage {
-    NotePage(width: 300, height: 450, pdfSource: PDFPageSource(index: 0,
+func pdfFixturePage(assetID: UUID? = nil) -> NotePage {
+    NotePage(width: 300, height: 450, pdfSource: PDFPageSource(assetID: assetID, index: 0,
         mediaBox: PageRect(x: 10, y: 20, width: 400, height: 600),
         cropBox: PageRect(x: 40, y: 70, width: 300, height: 450), rotation: 0))
 }
