@@ -12,7 +12,7 @@
 - M0-B 종료 당시 코드 커밋: `31a766cbcfa570cf089eebe0ee52b2218dff3bf3`. 최종 인계 문서는 이 기록을 포함하는 마지막 `docs` 커밋에 있다(`git log -1 --oneline`으로 확인). 이번 6개 코드 커밋과 문서 커밋은 **로컬 main에만 있으며 push하지 않았다**.
 - 이번 실행: **2026-10-03 M0-C 완료**. 시작 기준 `18843b0`; 시작 시 main clean, origin/main 추적 ref 일치(이번에는 원격 새 조회 없음). 코드 커밋 `0ef4587`, `f9fe764`, `da0a6f7`, `40aef65`, 최종 리뷰 수정 `28b9889e8b186771f163d6a98d551dabda5c2149`.
 - 이번 변경은 **로컬 main에만 커밋했고 push하지 않았다**. 최종 인계 문서 커밋은 `git log -1 --oneline`으로 확인한다.
-- 다음 개발 단위: **M1-A 로컬 라이브러리**, `docs/superpowers/plans/2026-10-03-m1-a-local-library.md`. M1 코드는 아직 미구현이다.
+- 진행 단계: **M1-A 로컬 라이브러리**, `docs/superpowers/plans/2026-10-03-m1-a-local-library.md`. 2026-10-03 사용자 계속 요청으로 M1-A를 시작한다. 기준 `fd4def6`, main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음).
 - 다음 작업자가 할 첫 작업: Git 상태 대조 → 이 문서의 M0-C 최종 근거/제한과 M1-A 계획 읽기 → 기존 DocumentStore/NoteEditorView를 확인하고 M1-A Task 1의 기존 노트 migration 실패 테스트부터 작성한다. 완료된 M0 단계를 반복하지 않는다.
 - 최종 검증: Node 25/0, core26/0, 18.6/26.4 각각 app32/0 + UI2/0. 로그/result와 리뷰 판단은 아래 M0-C 최종 절을 따른다.
 
@@ -202,3 +202,19 @@
 - Notion 업데이트 성공/재조회 시각은 위 Notion 절을 따른다. 브라우저 화면·출력 fixture·명령 재현 방법은 저장소에 있다. 시험 HTTP 서버 session 60760과 임시 브라우저 탭은 종료했다.
 - 다음 첫 작업: `git status --short --branch` → 이 문서/`2026-10-03-m1-a-local-library.md`/기존 저장 코드를 대조 → M1-A Task 1의 기존 노트·원본 PDF·backup 이주 테스트 RED. 이번 실행에서 M1 코드는 만들지 않았다.
 - 계획 자기 점검: M1-A에서 라이브러리와 안전한 세션 전환만 구현하며 M1-B/C/M2의 페이지·백업·객체를 완료로 표현하지 않는다. LibraryLoadResult는 transient 복구 안내, LibraryCatalog는 영구 metadata로 구분했고 Task 간 API/파일/검증 연결을 확인했다.
+
+## M1-A 실행 체크포인트 (2026-10-03)
+- [x] Task 1: 기존 노트 보존 이주·catalog 읽기/저장
+- [ ] Task 2: 독립 노트·폴더·휴지통 변경
+- [ ] Task 3: 저장 완료를 보장하는 세션 전환
+- [ ] Task 4: 라이브러리 UI·전체 검증·fresh 리뷰·Notion·인계
+- 시작 기준 `fd4def65ac952a0d5efc1a9ea07d02f2d6630689`. main에서 직접 구현하고 별도 브랜치/worktree/PR/push는 하지 않는다. 기존 M0 결과를 반복하지 않는다.
+- 사용자가 앞서 제시한 제품 설계와 작성된 M1-A 계획에 대해 계속 진행을 요청했다. 직접 구현/단계 말 한 번 리뷰를 유지하며 새 승인 질문은 만들지 않는다.
+- 사전 인터페이스 점검: catalog에는 제목을 중복 저장하지 않는다. LibraryLoadResult가 transient 복구 안내를 포함하고 notes/<UUID>마다 동일 DocumentStore 인스턴스를 사용한다. 저장 실패/미지원 필기 때 close/open을 차단한다. catalog commit은 본문/자산 저장 뒤 수행한다.
+- scratch 진행 기록을 보존한다. 다음 즉시 작업은 LibraryMigrationTests/LibraryStoreTests RED 확인이다. 아직 M1-A 완료 기능/검증은 없다.
+
+### M1-A Task 1 완료
+- LibraryCatalog/Note/Folder와 Foundation LibraryStore를 추가했다. 기존 v1/v2 노트·PDF·raw backup을 새 notes/<UUID>에 복사 후 catalog를 마지막에 commit한다. 기존 루트 파일은 보존한다. 미연결 디렉터리는 오류 노트라도 목록으로 회수하며, 누락 본문은 blank 생성으로 처리하지 않는다.
+- RED: 타입/API 부재 (`/private/tmp/minote-m1a-library-red.log`, exit 1). GREEN 시도 1/2는 테스트 assertion RHS의 try 누락으로 컴파일 실패였으며 실제 기능 통과로 기록하지 않는다. RHS 수정 후 core 전체 **36/0**, exit 0 (`/private/tmp/minote-m1a-task1-core.log`). portable fixture `node Tools/PortableInk/roundtrip.mjs --check` exit 0.
+- 검증: 이주 두 번의 멱등성, v1/정상 backup 복구, 지원하지 않는 버전/누락 PDF/손상 JSON/경로 I/O 차단, catalog commit 실패 후 재시도와 미연결 노트 회수. catalog 복구는 손상 JSON에만 적용하고 미래 버전·I/O 오류를 덮지 않는다.
+- 다음 첫 작업: LibraryMutationTests RED → 독립 노트/PDF·폴더 순환 거부·휴지통·실패한 commit·동시 mutation 구현. 앱 UI/양 시뮬레이터/실기기/Notion은 아직 M1-A 미검증이다.
