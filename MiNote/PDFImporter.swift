@@ -80,10 +80,4 @@ enum PDFValidation {
         return pdf
     }
 
-    // Temporary Task 1/3 call bridge, removed when EditorSession becomes asset-specific.
-    static func open(url: URL, for document: NoteDocument) throws -> PDFDocument {
-        guard let asset = document.pdfAssets.first else { throw PDFError.missingAsset }
-        return try open(url: url, asset: asset,
-                        referencedPages: document.pages.filter { $0.pdfSource?.assetID == asset.id })
-    }
 }

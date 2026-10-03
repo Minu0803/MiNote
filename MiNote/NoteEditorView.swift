@@ -113,7 +113,7 @@ struct NoteEditorView: View {
             NoteCanvas(session: session, reference: canvasReference, tool: brush,
                        color: palette[colorIndex].uiColor, width: width,
                        fingerDrawingEnabled: fingerDrawingEnabled)
-                .id(session.currentPage?.id)
+                .id(session.canvasGeneration)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(uiColor: .systemGroupedBackground))
                 .overlay { if session.isProcessing { ProgressView("문서 처리 중").padding(24).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16)) } }
@@ -124,27 +124,28 @@ struct NoteEditorView: View {
 
     private var documentBar: some View {
         HStack(spacing: 16) {
-            Button { canvasReference.refresh(); session.selectPage(session.currentPageIndex - 1) } label: {
+            Button { captureDrawing(); Task { await session.selectPage(session.currentPageIndex - 1) } } label: {
                 Image(systemName: "chevron.left")
             }
             .accessibilityLabel("이전 페이지").accessibilityIdentifier("previousPage")
             .disabled(session.currentPageIndex == 0 || session.isProcessing)
             Text("\(session.currentPageIndex + 1) / \(session.document?.pages.count ?? 1)")
                 .font(.caption.monospacedDigit()).accessibilityIdentifier("pageIndicator")
-            Button { canvasReference.refresh(); session.selectPage(session.currentPageIndex + 1) } label: {
+            Button { captureDrawing(); Task { await session.selectPage(session.currentPageIndex + 1) } } label: {
                 Image(systemName: "chevron.right")
             }
             .accessibilityLabel("다음 페이지").accessibilityIdentifier("nextPage")
             .disabled(session.currentPageIndex + 1 >= (session.document?.pages.count ?? 1) || session.isProcessing)
             Spacer()
-            Button { showsPDFImporter = true } label: { Label("PDF 가져오기", systemImage: "doc.badge.plus") }
+            Button { captureDrawing(); showsPDFImporter = true } label: { Label("PDF 가져오기", systemImage: "doc.badge.plus") }
                 .accessibilityIdentifier("importPDF")
-                .disabled(session.document?.pdfAsset != nil || session.isProcessing)
+                .disabled(session.isProcessing)
             Button {
+                captureDrawing()
                 Task { if let url = await session.exportPDF() { exportedFile = ExportedPDF(url: url) } }
             } label: { Image(systemName: "square.and.arrow.up") }
             .accessibilityLabel("PDF 내보내기").accessibilityIdentifier("exportPDF")
-            .disabled(session.document?.pdfAsset == nil || session.isProcessing)
+            .disabled(session.isProcessing)
         }
         .font(.callout).padding(.horizontal, 26).padding(.vertical, 10).background(.white)
     }
@@ -225,6 +226,11 @@ struct NoteEditorView: View {
         }
         .frame(height: 96)
         .disabled(session.isProcessing)
+    }
+
+    private func captureDrawing() {
+        if let drawing = canvasReference.canvas?.drawing { session.receiveDrawing(drawing) }
+        canvasReference.refresh()
     }
 
     private func toolButton(_ value: Brush, symbol: String, title: String) -> some View {

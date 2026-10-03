@@ -202,11 +202,12 @@ struct NoteCanvas: UIViewRepresentable {
         var reference: CanvasReference
         var isApplyingSessionDrawing = false
         let pageID: UUID?
+        let generation: UUID
         init(session: EditorSession, reference: CanvasReference) {
-            self.session = session; self.reference = reference; self.pageID = session.currentPage?.id
+            self.session = session; self.reference = reference; self.pageID = session.currentPage?.id; self.generation = session.canvasGeneration
         }
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-            guard !isApplyingSessionDrawing, pageID == session.currentPage?.id else { return }
+            guard !isApplyingSessionDrawing, pageID == session.currentPage?.id, generation == session.canvasGeneration else { return }
             session.receiveDrawing(canvasView.drawing)
             reference.refresh()
         }

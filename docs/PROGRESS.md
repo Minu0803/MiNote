@@ -297,3 +297,9 @@
 - PDFValidation은 자산별 원본 count/byteCount/geometry와 참조 페이지를 검사하며, 같은 index 반복·부분 index만 남은 노트를 허용한다. PDFExporter sourceURLs는 모든 자산의 누락/출력 경로 중복을 거부하고 PDFPage.copy 후 해당 page ink만 붙인다. 반복 출력에서 주석 누적/다른 복제본 ink가 섞이지 않는 픽셀 검증을 통과했다. PaperRenderer 24pt/0.5pt 용지를 output에 공유한다.
 - RED: 새 afterPageID 및 asset-specific validation/export API 부재(core exit1, app exit65), /private/tmp/minote-m1b-multi-core-red.log, minote-m1b-multi-app-red.log. GREEN: core 전체 **59/0**, minote-m1b-task3-core.log; 18.6 app 전체 **44/0**, minote-m1b-task3-app.log, TEST SUCCEEDED/exit0. 기존 원본 bytes·실패 출력·암호 PDF·4회전 검증 포함.
 - 남은 임시 연결: EditorSession의 첫 자산 load와 단일 가져오기 UI는 Task 4에서 교체한다. exporter는 이미 전체 sourceURLs를 사용한다. 다음 즉시 작업: PageEditorTests 늦은 callback/flush/자산 전환 RED → 구조 변경 세션/페이지 UI/썸네일. JS·26.4·전체 UI·리뷰·Notion은 미완료.
+
+### M1-B Task 4A 세션 체크포인트
+- Task 3 코드 c977bd4. 비동기 페이지 전환/명령/다중 가져오기/빈 노트 PDF 출력에 await 전 잠금, 현재 필기 flush와 await 후 snapshot 검사, 페이지+선택 한 저장, 세대별 canvas owner 보호를 연결했다. 모든 원본 PDF를 순차 검증하고 assetID로 현재 PDF를 선택하며 PDF cache2/thumbnail24·256px 상한을 구현했다.
+- RED: 세션 API/cache 미구현, minote-m1b-session-red.log exit65. GREEN: 18.6 앱 전체 **48/0**, minote-m1b-session-green.log exit0 TEST SUCCEEDED. PageEditorTests는 실제 actor reader 안에서 MainActor native callback을 전달해 flush 중/commit 중의 지원/미지원 획 경합을 재현했다.
+- 결정: actor commit 대기 중 늦은 callback을 버리지 않는다. commit 완료 후 경합이 감지되면 기존 페이지 구조+최신 필기를 더 높은 revision으로 보상 저장해 작업을 취소하고 화면을 유지한다. 지원하지 않는 drawing은 실패 상태/메모리에 보존한다. 세션 구조 작업은 보상 revision 하나를 위해 Int64.max-1 이상에서 차단한다(현실적인 문서에 영향 없음, 잘못 판단하면 한 번 이른 revision 한도).
+- 다음: 페이지 manager 실제 UI RED → 화면·용지 배경·삭제 복원/책갈피·썸네일 연결 → 앱/UI GREEN. Task 4 전체는 아직 완료 아님. JS/26.4/리뷰/Notion은 미완료.

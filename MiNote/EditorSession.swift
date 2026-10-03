@@ -16,11 +16,23 @@ final class EditorSession: ObservableObject {
     @Published private(set) var currentPageIndex = 0
     @Published private(set) var pdfDocument: PDFDocument?
     @Published private(set) var isProcessing = false
+    @Published private(set) var canvasGeneration = UUID()
     @Published var operationError: String?
     private var hasUnserializedDrawing = false
     private let importer = PDFImporter()
+    private var pdfCache: [UUID: PDFDocument] = [:]
+    private var pdfOrder: [UUID] = []
+    private var thumbnails: [ThumbnailKey: UIImage] = [:]
+    private var thumbnailOrder: [ThumbnailKey] = []
+    var cachedPDFCount: Int { pdfCache.count }
+    var cachedThumbnailCount: Int { thumbnails.count }
+    private struct ThumbnailKey: Hashable { let id: UUID; let revision: Int64; let edge: Int }
 
-    var currentPage: NotePage? { document?.pages[currentPageIndex] }
+
+    var currentPage: NotePage? {
+        guard let document, document.pages.indices.contains(currentPageIndex) else { return nil }
+        return document.pages[currentPageIndex]
+    }
     var currentPDFPage: PDFPage? {
         guard let index = currentPage?.pdfSource?.index else { return nil }
         return pdfDocument?.page(at: index)
@@ -61,10 +73,10 @@ final class EditorSession: ObservableObject {
             let loaded = result?.document ?? .blank()
             let selected = loaded.pages.firstIndex(where: { $0.id == loaded.lastOpenedPageID }) ?? 0
             let restored = try InkAdapter.decode(loaded.pages[selected].strokes)
-            if let asset = loaded.pdfAsset {
-                let url = try await store.assetURL(for: asset)
-                pdfDocument = try PDFValidation.open(url: url, for: loaded)
-            }
+            // Validate every retained source, including assets used only by deleted pages.
+            for asset in loaded.pdfAssets { _ = try await pdf(for: asset.id, in: loaded) }
+            let selectedPDF = try await pdf(for: loaded.pages[selected].pdfSource?.assetID, in: loaded)
+            pdfDocument = selectedPDF
             currentPageIndex = selected
             document = loaded
             drawing = restored
@@ -79,7 +91,7 @@ final class EditorSession: ObservableObject {
                 await persist(loaded)
             } else {
                 saveState = .saved
-                // Also persist a v1→v2 migration without changing document identity.
+                // Also persist a v1/v2→v3 migration without changing document identity.
                 await persist(loaded)
             }
         } catch {
@@ -96,7 +108,6 @@ final class EditorSession: ObservableObject {
 
     /// Called for PencilKit changes and for explicit save/flush events.
     func receiveDrawing(_ updatedDrawing: PKDrawing) {
-        guard !isProcessing else { return }
         drawing = updatedDrawing
         guard var current = document else { return }
         do {
@@ -107,7 +118,7 @@ final class EditorSession: ObservableObject {
             hasUnserializedDrawing = false
             guard strokes != prior else {
                 if savedRevision == current.revision { saveState = .saved }
-                else { saveState = .saving; scheduleSave() }
+                else { saveState = .saving; if !isProcessing { scheduleSave() } }
                 return
             }
             current.pages[currentPageIndex].strokes = strokes
@@ -118,8 +129,9 @@ final class EditorSession: ObservableObject {
                 history.append(stroke)
             }
             histories[pageID] = history
+            invalidateThumbnails()
             saveState = .saving
-            scheduleSave()
+            if !isProcessing { scheduleSave() }
         } catch {
             hasUnserializedDrawing = true
             // Keep both the visible PencilKit drawing and the last saved portable document.
@@ -129,77 +141,68 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    func selectPage(_ index: Int) {
-        guard !isProcessing, !hasUnserializedDrawing, var current = document,
-              current.pages.indices.contains(index), index != currentPageIndex else { return }
+    func selectPage(_ index: Int) async {
+        guard !isProcessing, let current = document, current.pages.indices.contains(index), index != currentPageIndex else { return }
+        isProcessing = true; defer { finishProcessing() }
+        operationError = nil
+        guard let base = await flushedBase() else { return }
         do {
-            let restored = try InkAdapter.decode(current.pages[index].strokes)
-            guard current.revision < Int64.max else { throw DocumentError.invalidDocument("리비전 한도") }
-            current.lastOpenedPageID = current.pages[index].id
-            current.revision += 1
-            currentPageIndex = index
-            drawing = restored
-            document = current
-            saveState = .saving
-            scheduleSave()
+            var updated = base
+            let page = updated.pages[index]
+            _ = try InkAdapter.decode(page.strokes)
+            let pdf = try await pdf(for: page.pdfSource?.assetID, in: base)
+            guard stable(base), base.revision < Int64.max - 1 else { throw DocumentError.staleRevision }
+            updated.lastOpenedPageID = page.id; updated.revision += 1
+            try await store.save(updated)
+            if await acceptCommitted(updated, over: base) { try publish(updated, pdf: pdf) }
+        } catch { operationError = error.localizedDescription }
+    }
+
+    func applyPageCommand(_ command: PageCommand) async {
+        guard !isProcessing, document != nil else { return }
+        isProcessing = true; defer { finishProcessing() }
+        operationError = nil
+        guard let base = await flushedBase() else { return }
+        do {
+            let proposed = try PageCommands.apply(command, to: base)
+            let selected = proposed.pages.first(where: { $0.id == proposed.lastOpenedPageID }) ?? proposed.pages[0]
+            _ = try InkAdapter.decode(selected.strokes)
+            let pdf = try await pdf(for: selected.pdfSource?.assetID, in: base)
+            guard stable(base), base.revision < Int64.max - 1 else { throw DocumentError.staleRevision }
+            let updated = try await store.applyPageCommand(command, expectedRevision: base.revision)
+            if await acceptCommitted(updated, over: base) { try publish(updated, pdf: pdf) }
         } catch { operationError = error.localizedDescription }
     }
 
     func importPDF(from url: URL) async {
-        guard !isProcessing, let current = document else { return }
-        guard current.pdfAsset == nil else {
-            operationError = "현재 노트에는 PDF가 연결되어 있습니다. 다른 PDF는 새 노트로 가져와 주세요."
-            return
-        }
-        isProcessing = true
-        defer { isProcessing = false }
+        guard !isProcessing, document != nil else { return }
+        isProcessing = true; defer { finishProcessing() }
         operationError = nil
-        await flush()
-        guard saveState == .saved, let base = document else {
-            operationError = "현재 필기를 먼저 저장해 주세요. 저장을 재시도한 뒤 PDF를 가져올 수 있습니다."
-            return
-        }
-        var committed = false
+        guard let base = await flushedBase() else { return }
         do {
+            let selectedID = base.pages[currentPageIndex].id
             let prepared = try await importer.prepare(url: url)
-            let imported = try await store.attachPDF(data: prepared.data, asset: prepared.asset,
-                pages: prepared.pages, afterPageID: base.pages[currentPageIndex].id, expectedRevision: base.revision)
-            committed = true
-            let assetURL = try await store.assetURL(for: prepared.asset)
-            let pdf = try PDFValidation.open(url: assetURL, for: imported)
-            document = imported
-            pdfDocument = pdf
-            histories = Dictionary(uniqueKeysWithValues: imported.pages.map { ($0.id, $0.strokes) })
-            savedRevision = imported.revision
-            currentPageIndex = base.pages.count
-            drawing = PKDrawing()
-            saveState = .saved
-        } catch {
-            if committed {
-                // A disk transaction succeeded but its assets could not be reopened.
-                // Block edits against a stale in-memory document; retry authoritative load.
-                document = nil
-                pdfDocument = nil
-                loadError = error.localizedDescription
-                saveState = .failed(error.localizedDescription)
+            // Parse before the durable transaction; no failing asset reopen follows commit.
+            guard let pdf = PDFDocument(data: prepared.data) else { throw PDFError.invalidPDF }
+            guard stable(base), base.revision < Int64.max - 1 else { throw DocumentError.staleRevision }
+            let updated = try await store.attachPDF(data: prepared.data, asset: prepared.asset,
+                pages: prepared.pages, afterPageID: selectedID, expectedRevision: base.revision)
+            if await acceptCommitted(updated, over: base) {
+                cache(pdf, for: prepared.asset.id)
+                try publish(updated, pdf: pdf)
             }
-            operationError = error.localizedDescription
-        }
+        } catch { operationError = error.localizedDescription }
     }
 
     func exportPDF() async -> URL? {
-        guard !isProcessing, document?.pdfAsset != nil else { return nil }
-        isProcessing = true
-        defer { isProcessing = false }
+        guard !isProcessing, document != nil else { return nil }
+        isProcessing = true; defer { finishProcessing() }
         operationError = nil
-        await flush()
-        guard saveState == .saved, let snapshot = document, !snapshot.pdfAssets.isEmpty else {
-            operationError = "최신 필기를 먼저 저장해 주세요. 저장을 재시도한 뒤 내보낼 수 있습니다."
-            return nil
-        }
+        guard let snapshot = await flushedBase() else { return nil }
         do {
             var sources: [UUID: URL] = [:]
-            for sourceAsset in snapshot.pdfAssets { sources[sourceAsset.id] = try await store.assetURL(for: sourceAsset) }
+            for asset in snapshot.pdfAssets { sources[asset.id] = try await store.assetURL(for: asset) }
+            guard stable(snapshot) else { throw DocumentError.staleRevision }
             let sourceURLs = sources
             let folder = FileManager.default.temporaryDirectory.appendingPathComponent("MiNote-Exports").appendingPathComponent(UUID().uuidString)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -207,15 +210,97 @@ final class EditorSession: ObservableObject {
             try await Task.detached(priority: .userInitiated) {
                 try PDFExporter.export(snapshot, sourceURLs: sourceURLs, destination: destination)
             }.value
+            guard stable(snapshot) else { throw DocumentError.staleRevision }
             return destination
-        } catch {
-            operationError = error.localizedDescription
-            return nil
-        }
+        } catch { operationError = error.localizedDescription; return nil }
     }
 
+    private func flushedBase() async -> NoteDocument? {
+        let before = document
+        await flush()
+        guard let base = document, base == before, stable(base) else {
+            operationError = "현재 필기가 변경되었거나 저장하지 못했습니다. 저장을 완료한 뒤 다시 시도해 주세요."
+            return nil
+        }
+        return base
+    }
+
+    private func stable(_ snapshot: NoteDocument) -> Bool {
+        document == snapshot && saveState == .saved && !hasUnserializedDrawing
+    }
+
+    /// A queued native callback can arrive while the actor commits. Restore the
+    /// pre-operation structure at a newer revision and retain its latest drawing.
+    private func acceptCommitted(_ committed: NoteDocument, over base: NoteDocument) async -> Bool {
+        guard !stable(base) else { return true }
+        operationError = "처리 중 필기가 변경되어 페이지 작업을 취소했습니다. 현재 필기는 유지됩니다."
+        guard var latest = document, max(latest.revision, committed.revision) < Int64.max else {
+            saveState = .failed("필기를 유지했지만 리비전 한도 때문에 저장하지 못했습니다."); return false
+        }
+        latest.revision = max(latest.revision, committed.revision) + 1
+        document = latest; savedRevision = nil
+        let failedDrawing = hasUnserializedDrawing
+        do {
+            try await store.save(latest)
+            if document == latest {
+                savedRevision = latest.revision
+                if !hasUnserializedDrawing { saveState = .saved }
+            }
+        } catch {
+            if !failedDrawing { saveState = .failed(error.localizedDescription) }
+        }
+        return false
+    }
+
+    private func publish(_ updated: NoteDocument, pdf: PDFDocument?) throws {
+        let selected = updated.pages.firstIndex(where: { $0.id == updated.lastOpenedPageID }) ?? 0
+        let restored = try InkAdapter.decode(updated.pages[selected].strokes)
+        document = updated; currentPageIndex = selected; drawing = restored; pdfDocument = pdf
+        histories = Dictionary(uniqueKeysWithValues: updated.pages.map { ($0.id, $0.strokes) })
+        savedRevision = updated.revision; hasUnserializedDrawing = false; saveState = .saved
+        canvasGeneration = UUID(); invalidateThumbnails()
+    }
+
+    private func finishProcessing() {
+        isProcessing = false
+        if saveState == .saving { scheduleSave() }
+    }
+
+    private func pdf(for id: UUID?, in snapshot: NoteDocument) async throws -> PDFDocument? {
+        guard let id else { return nil }
+        guard let asset = snapshot.pdfAssets.first(where: { $0.id == id }) else { throw PDFError.missingAsset }
+        if let cached = pdfCache[id] { cache(cached, for: id); return cached }
+        let url = try await store.assetURL(for: asset)
+        let loaded = try PDFValidation.open(url: url, asset: asset,
+            referencedPages: (snapshot.pages + snapshot.deletedPages.map(\.page)).filter { $0.pdfSource?.assetID == id })
+        cache(loaded, for: id); return loaded
+    }
+
+    private func cache(_ pdf: PDFDocument, for id: UUID) {
+        pdfCache[id] = pdf; pdfOrder.removeAll { $0 == id }; pdfOrder.append(id)
+        while pdfOrder.count > 2 { pdfCache.removeValue(forKey: pdfOrder.removeFirst()) }
+    }
+
+    func thumbnail(pageID: UUID, expectedRevision: Int64, maximumPixelEdge: Int = 256) async -> UIImage? {
+        guard let snapshot = document, snapshot.revision == expectedRevision,
+              let page = (snapshot.pages + snapshot.deletedPages.map(\.page)).first(where: { $0.id == pageID }) else { return nil }
+        let key = ThumbnailKey(id: pageID, revision: expectedRevision, edge: maximumPixelEdge)
+        if let image = thumbnails[key] { return image }
+        do {
+            let source = try await pdf(for: page.pdfSource?.assetID, in: snapshot)
+            guard document == snapshot else { return nil }
+            let image = try PageThumbnailRenderer.image(for: page,
+                pdfPage: page.pdfSource.flatMap { source?.page(at: $0.index) }, maximumPixelEdge: maximumPixelEdge)
+            guard document == snapshot else { return nil }
+            thumbnails[key] = image; thumbnailOrder.append(key)
+            while thumbnailOrder.count > 24 { thumbnails.removeValue(forKey: thumbnailOrder.removeFirst()) }
+            return image
+        } catch { return nil }
+    }
+    private func invalidateThumbnails() { thumbnails.removeAll(); thumbnailOrder.removeAll() }
+
     func retrySave() {
-        guard document != nil else { return }
+        guard document != nil, !isProcessing else { return }
         receiveDrawing(drawing)
         guard case .saving = saveState, let snapshot = document else { return }
         pendingSave?.cancel()
@@ -244,12 +329,12 @@ final class EditorSession: ObservableObject {
         saveState = .saving
         do {
             try await store.save(snapshot)
-            if document?.id == snapshot.id, document?.revision == snapshot.revision {
+            if document == snapshot, !hasUnserializedDrawing {
                 savedRevision = snapshot.revision
                 saveState = .saved
             }
         } catch {
-            if document?.id == snapshot.id, document?.revision == snapshot.revision {
+            if document == snapshot, !hasUnserializedDrawing {
                 saveState = .failed(error.localizedDescription)
             }
         }
