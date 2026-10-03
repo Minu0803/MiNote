@@ -285,3 +285,9 @@
 - RED: initial sandbox Swift cache 접근 실패는 기능 RED가 아니다(minote-m1b-schema-red.log). 승인된 테스트 실행에서 v2→v3/필드 누락 assertion4 실패(red2), 새 API 부재 컴파일 실패(red3)를 확인했다.
 - GREEN: swift test --package-path Packages/MiNoteCore 전체 **49/0**, /private/tmp/minote-m1b-task1-core-green.log, exit0. 기존 schema2 기대값과 source.assetID 기대를 v3 계약으로 바꿨다. iPadOS18.6 xcodebuild -only-testing:MiNoteTests **42/0**, minote-m1b-task1-app.log/xcresult, exit0 TEST SUCCEEDED.
 - 다음: Task 2 PageCommands/actor 저장 RED. 다중 PDF/페이지 UI/JS v3/26.4/리뷰/Notion은 아직 미완료. 단일 자산 source compatibility는 Task 3/4에서 제거할 임시 연결이다.
+
+### M1-B Task 2 완료
+- Task 1 코드 28ea031. PageCommands는 value 입력을 변경하지 않고 insert/duplicate/move/delete/restore/paper/bookmark마다 revision을 한 번 증가시킨다. 삭제 전체 페이지/원래 index/시간을 보관하고 선택을 가까운 활성 페이지로 옮기며, 복원 index는 clamp한다. PDF 참조·필기 값은 유지하고 복제 object IDs는 새로 발급한다.
+- actor applyPageCommand는 기대 revision 검사부터 원자 저장까지 suspension 없이 처리한다. stale/backup I/O 실패에서 최신 ink/primary가 그대로이며 retry/재열기 순서·용지·책갈피를 확인했다.
+- RED: PageCommand/actor API 부재 컴파일 실패, /private/tmp/minote-m1b-pages-red.log, exit1. GREEN: swift test --package-path Packages/MiNoteCore 전체 **56/0**, minote-m1b-task2-core.log, exit0.
+- 다음: Task 3 다중 PDF·독립 출력 RED → asset별 validation·용지 renderer → 관련 앱/core. 앱 UI/JS/양 OS 최종·리뷰·Notion은 아직 미완료.

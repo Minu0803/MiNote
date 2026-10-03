@@ -62,12 +62,12 @@
 
 **Interfaces:** consumes Task 1 v3. produces PageCommand/apply 및 store.applyPageCommand(_:expectedRevision:).
 
-- [ ] `testDuplicateAllocatesNewIDsAndPreservesInkValues`: 페이지·획 ID 새로 생성, 원본 ID/전체 필기 값 불변, 복제 책갈피 false, revision 한 번 증가.
-- [ ] `testMoveDeleteRestoreKeepSelectionAndAllData`: current 삭제 시 가까운 남은 페이지 선택; 다른 page 이동 시 선택 ID 유지; 보관 원본과 모든 ID 보존 후 복원; 재실행 후 같은 순서/책갈피/용지.
-- [ ] `testInvalidCommandCannotMutateOrExceedLimits`: 마지막 페이지/없는 ID/PDF 용지 변경/범위 밖 index/리비전 overflow/1000페이지 초과 거부. 입력 문서 불변.
-- [ ] RED: `swift test --package-path Packages/MiNoteCore --filter Page` → value 명령/validation/actor 기대 revision 저장 구현 → GREEN.
-- [ ] `testStalePageCommandAndDiskFailureKeepLatestInk`: 저장 직전 최신 revision으로 바뀜/backup path I/O 오류 때 command가 최신 필기를 덮지 않음. 정상 retry 후 정확한 page 순서.
-- [ ] 전체 core GREEN → PROGRESS → 커밋.
+- [x] `testDuplicateAllocatesNewIDsAndPreservesInkValues`: 페이지·획 ID 새로 생성, 원본 ID/전체 필기 값 불변, 복제 책갈피 false, revision 한 번 증가.
+- [x] `testMoveDeleteRestoreKeepSelectionAndAllData`: current 삭제 시 가까운 남은 페이지 선택; 다른 page 이동 시 선택 ID 유지; 보관 원본과 모든 ID 보존 후 복원; 재실행 후 같은 순서/책갈피/용지.
+- [x] `testInvalidCommandCannotMutateOrExceedLimits`: 마지막 페이지/없는 ID/PDF 용지 변경/범위 밖 index/리비전 overflow/1000페이지 초과 거부. 입력 문서 불변.
+- [x] RED: `swift test --package-path Packages/MiNoteCore --filter Page` → value 명령/validation/actor 기대 revision 저장 구현 → GREEN.
+- [x] `testStalePageCommandAndDiskFailureKeepLatestInk`: 저장 직전 최신 revision으로 바뀜/backup path I/O 오류 때 command가 최신 필기를 덮지 않음. 정상 retry 후 정확한 page 순서.
+- [x] 전체 core GREEN → PROGRESS → 커밋.
 
 ### Task 3: 여러 PDF 가져오기와 순서대로 내보내기
 

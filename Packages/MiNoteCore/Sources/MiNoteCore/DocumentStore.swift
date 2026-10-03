@@ -67,6 +67,13 @@ public actor DocumentStore {
         try data.write(to: primaryURL, options: .atomic)
     }
 
+    public func applyPageCommand(_ command: PageCommand, expectedRevision: Int64) throws -> NoteDocument {
+        guard let prior = try load(), prior.document.revision == expectedRevision else { throw DocumentError.staleRevision }
+        let updated = try PageCommands.apply(command, to: prior.document)
+        try save(updated)
+        return updated
+    }
+
     /// The asset is durable before the JSON can reference it. Failure leaves the old
     /// primary intact; an unreferenced asset is harmless and can be collected in M1.
     public func attachPDF(data: Data, asset: PDFAsset, pages: [NotePage], expectedRevision: Int64) throws -> NoteDocument {
