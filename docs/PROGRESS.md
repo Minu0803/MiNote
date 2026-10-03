@@ -1,18 +1,22 @@
 # MiNote 개발 진행 기록
 
 ## 현재 상태
-- 완료 단계: **M0-A — iPad 빈 페이지 필기·로컬 저장·복원**, **M0-B — PDF 가져오기·페이지별 필기·내보내기**
+- 완료 단계: **M0-A**, **M0-B**, **M0-C — 독립 공통 필기 편집·iPad 재편집/저장/재열기 검증**
 - 작업 공간: `/Users/minwookim/Documents/GitHub/MiNote`
 - 브랜치: `main`
 - 시작 기준 커밋: `9695ab6`; 사전 모델·저장소 체크포인트: `dfa943d`
 - M0-A 구현 커밋: `fedd789` (`feat(ipad): complete M0-A writing and local recovery`)
 - main 통합: `origin/codex/ipad-foundation`에서 `b07e9e2`까지 fast-forward 병합. 이후 사용자가 GitHub Desktop에서 `a943a49`를 push했고 local/main, origin/main, 실제 원격 main 일치를 확인했다.
-- 이번 실행: 2026-10-01 재개 요청에 따라 M0-B 전체를 구현·검증·별도 리뷰·Notion 기록까지 완료했다. 한 번에 한 개발 단위 원칙을 유지한다.
+- 이전 실행: 2026-10-01 재개 요청에 따라 M0-B 전체를 구현·검증·별도 리뷰·Notion 기록까지 완료했다. 한 번에 한 개발 단위 원칙을 유지한다.
 - M0-B 기준 커밋: `a943a49`; 구현/검증 커밋: `27f634c`, `4babcf6`, `991b481`, `0cd0139`, `26faf40`, `31a766c`.
-- 마지막 코드 커밋: `31a766cbcfa570cf089eebe0ee52b2218dff3bf3`. 최종 인계 문서는 이 기록을 포함하는 마지막 `docs` 커밋에 있다(`git log -1 --oneline`으로 확인). 이번 6개 코드 커밋과 문서 커밋은 **로컬 main에만 있으며 push하지 않았다**.
-- 진행 단계: **M0-C — 공통 필기 왕복 검증**. 2026-10-03 사용자가 계획대로 재개를 요청했다. 기준 `18843b0`, main clean, local/main과 origin/main 추적 ref 일치(이번에는 원격 새 조회 없음). 이전 단계는 반복하지 않는다.
+- M0-B 종료 당시 코드 커밋: `31a766cbcfa570cf089eebe0ee52b2218dff3bf3`. 최종 인계 문서는 이 기록을 포함하는 마지막 `docs` 커밋에 있다(`git log -1 --oneline`으로 확인). 이번 6개 코드 커밋과 문서 커밋은 **로컬 main에만 있으며 push하지 않았다**.
+- 이번 실행: **2026-10-03 M0-C 완료**. 시작 기준 `18843b0`; 시작 시 main clean, origin/main 추적 ref 일치(이번에는 원격 새 조회 없음). 코드 커밋 `0ef4587`, `f9fe764`, `da0a6f7`, `40aef65`, 최종 리뷰 수정 `28b9889e8b186771f163d6a98d551dabda5c2149`.
+- 이번 변경은 **로컬 main에만 커밋했고 push하지 않았다**. 최종 인계 문서 커밋은 `git log -1 --oneline`으로 확인한다.
+- 다음 개발 단위: **M1-A 로컬 라이브러리**, `docs/superpowers/plans/2026-10-03-m1-a-local-library.md`. M1 코드는 아직 미구현이다.
+- 다음 작업자가 할 첫 작업: Git 상태 대조 → 이 문서의 M0-C 최종 근거/제한과 M1-A 계획 읽기 → 기존 DocumentStore/NoteEditorView를 확인하고 M1-A Task 1의 기존 노트 migration 실패 테스트부터 작성한다. 완료된 M0 단계를 반복하지 않는다.
+- 최종 검증: Node 25/0, core26/0, 18.6/26.4 각각 app32/0 + UI2/0. 로그/result와 리뷰 판단은 아래 M0-C 최종 절을 따른다.
 
-## M0-B 완료 결과와 현재 재개 지점
+## M0-B 완료 결과와 이전 재개 지점
 - Files에서 PDF를 가져와 페이지별로 필기·확대·현재 페이지 undo/redo하고, 마지막 페이지와 획을 저장·재실행 후 복원한다. 기존 A4를 유지하며 한 PDF만 연결한다.
 - 원본 PDF 자산을 수정하지 않고 필기 포함 새 PDF를 생성해 QuickLook/공유 시트로 전달한다. 필기는 최대 216dpi/4096px 이미지로 고정하고 양식/원본 주석/일부 링크의 영향을 안내한다.
 - schema v2 migration과 raw v1 백업, asset-first 저장, revision 검사, asset 누락 오류 차단을 구현했다. 리뷰의 busy undo/redo와 zoom 해상도 문제를 회귀 테스트로 수정했다.
@@ -53,7 +57,8 @@
 
 ## Notion
 - 문서: [MiNote 제품 계획서](https://app.notion.com/p/3e76538f55f68051a2fad6f22562bd3d?pvs=204)
-- 마지막 반영: **2026-10-01 12:58:05 UTC (21:58:05 KST)**. Notion async update 성공 후 재조회했다(`page_last_edited_at = 2026-10-01T12:58:05.280Z`). M0-B 결과/코드 커밋/양 OS 25+2 tests/core 24 tests/메모리 수치/제한/M0-C 계획 경로를 확인했다. 파일명은 inline code로 기록해 잘못된 외부 자동 링크도 제거했다.
+- 마지막 반영: **2026-10-03 05:05:01 UTC (14:05:01 KST)**. Notion async update succeeded 후 재조회했다(`page_last_edited_at = 2026-10-03T05:05:01.427Z`). M0-C 실제 왕복·25/26/32+2 테스트·리뷰 2건 수정·제한·코드 커밋·M1-A 계획을 확인했다. 기존 M0-A/B 기록을 유지하고 마지막 문장에 결과 섹션을 추가했다.
+- M0-B 반영: 2026-10-01 12:58:05 UTC (21:58:05 KST), `2026-10-01T12:58:05.280Z`.
 - 이전 반영: 2026-09-26 09:33:38 UTC (18:33:38 KST), M0-A 결과와 M0-B 계획 요약.
 
 ## M0-B 실행 체크포인트 (2026-10-01)
@@ -138,7 +143,7 @@
 - [x] 1: 실제 PencilKit fixture·필기 계약·공통 리소스
 - [x] 2: 독립 JSON 검증·ID 편집·결정적 왕복 출력
 - [ ] 3: Canvas 시험 UI·브라우저 다운로드 검증
-- [ ] 4: iPad 역방향 편집·양 OS 전체 검증·리뷰·Notion
+- [x] 4: iPad 역방향 편집·양 OS 전체 검증·리뷰·Notion
 - 시작: 계획·관련 codec/store/PencilKit 테스트·Git 상태를 읽었다. Node v23.11.0은 `/opt/homebrew/bin/node`; 기존 18.6/26.4 iPad simulator를 확인했다. 작업은 사용자 지정 main에서 직접 수행한다.
 - 판단: 기존 승인된 설계/계획을 실행하고 새 승인 단계를 만들지 않는다. scratch와 durable 기록 모두 보존한다. task 추출기가 영어 제목을 요구해 계획의 작업 제목만 Task N으로 정리했다.
 - 다음 즉시 작업: fixture 없는 RED → 실제 PencilKit JSON 생성/회수 → 양 test bundle 등록 → core/app 관련 테스트 GREEN. 아직 M0-C 완료 기능은 없다.
@@ -183,10 +188,17 @@
 - fresh `m0c_code_review` 한 번, 범위 `18843b0..40aef65`. Critical 없음, Important 2건. reviewer는 읽기 전용이며 구현/추가 reviewer를 dispatch하지 않았다.
 - 1: raw fingerprint가 다른 획의 재구성 fingerprint와 같을 때 ID와 원본 point data가 서로 바뀌었다. 실제 iPad fixture A/재구성 B로 RED를 확인했다(`minote-m0c-review-ink-red.log`, exit 65). 원본/정규화 후보 전체의 순서를 비교하여 earliest/latest 대응이 같은 경우만 원본 ID/값을 보존한다. 여러 대응/지원하지 않는 재정렬이면 명시적 오류다. 0.0001pt 실제 이동은 숨기지 않는다.
 - 같은 모양 중 첫 획 삭제도 원래 순서로 surviving ID를 확인한다. 완전히 같은 인접 획 한 개만 남아 어느 ID인지 알 수 없을 때는 저장을 차단하고 화면/기존 JSON을 보존하는 세션 테스트를 추가했다. ‘모든 중복에서 ID 보존’으로 주장하지 않는다. 정규화는 이제 전체 후보를 재구성하므로 복잡한 페이지 비용은 M3 측정 대상이다.
-- 2: pointerup이 시작 페이지 대신 현재 페이지에 저장하는 실제 handler 오류. owner/시작 scale을 입력에 연결하고 open/page/zoom/mode-exit/lost-capture 때 active pointer만 취소·release한다. 실제 이전 `app.mjs`로 handler RED 4/0을 확인하고 현 코드 GREEN을 확인했다(`minote-m0c-review-handlers-red.log`, exit 1; `minote-m0c-review-node-green.log`, exit 0). Node test는 DOM/canvas 경계만 대체하고 실제 앱 handler를 실행한다.
+- 2: pointerup이 시작 페이지 대신 현재 페이지에 저장하는 실제 handler 오류. owner/시작 scale을 입력에 연결하고 open/page/zoom/mode-exit/lost-capture 때 active pointer만 취소·release한다. 실제 이전 `app.mjs`로 handler RED 4개 모두 실패를 확인하고 현 코드 GREEN을 확인했다(`minote-m0c-review-handlers-red.log`, exit 1; `minote-m0c-review-node-green.log`, exit 0). Node test는 DOM/canvas 경계만 대체하고 실제 앱 handler를 실행한다.
 - 집중 iPad GREEN: PortableInkTests 6/0(`minote-m0c-review-ink-green.log`). 이후 모호한 ID 실패 시 디스크 보존 테스트를 추가했다.
 - 리뷰 이후 최종 전체: Node **25/0**, core **26/0**(core 변경 없음), 18.6/26.4 각각 앱 **32/0**, UI **2/0**; 양 명령 exit 0 / TEST SUCCEEDED. 로그 `/private/tmp/minote-m0c-review-node-green.log`, `minote-m0c-core-final.log`, `minote-m0c18-review-final.log`, `minote-m0c26-review-final.log`; 결과 양 `minote-m0c<18|26>-review-final.xcresult`.
 - 실제 browser 파일 chooser로 `browser-edited.json` 재열기 성공. revision 43/4획, 확대 100→200→100 후 출력 텍스트가 fixture와 **완전히 동일**함을 확인했다. 최종 화면 `docs/assets/m0c-portable-ink.jpg`. native download 파일 저장 완료는 계속 미검증이다.
 - reviewer set-aside에 대한 판단: main 직접 작업/기록 보존은 사용자 지시; safe-integer/v2/pen 추가/미지 필드 거부는 도구의 선언된 범위; 근사 texture/marker/곡선과 PDF 배경 제외는 승인된 시험 범위; readonly 출력은 실제 왕복 근거이며 native download는 대기; programmatic undo는 명시적 command/session 검증이며 실제 Pencil 입력 결과가 아니다; 물리 Pencil/큰 문서/production JSON import/다른 플랫폼/부분 삭제·미래 객체는 후속이다.
 - Swift의 v2 unknown-key decoder는 기존 동작이며 이번에 future 객체를 보존한다고 확장 주장하지 않는다. 중복 삭제 ambiguity는 위의 명시적 차단으로 제한을 고쳤다. exotic JS object/중복 JSON key/extreme finite geometry는 지원 fixture 흐름에서 재현된 결함이 아니므로 지원 확대를 하지 않는다. 조밀한 시험 도구 formatting/입력 중 preview는 후속 개선이다. PDF xref 끝 공백은 원본 bytes 계약이라 제거하지 않는다. 남은 checkbox/Notion/인계는 이번 종료 작업으로 해결한다.
 - 다음: 리뷰 수정 코드 커밋 → 완료 기록/Notion 반영 → 다음 M1-A 계획을 인계한다. M1 코드는 이번에 작성하지 않는다.
+
+### M0-C 최종 인계
+- 완료 조건: 실제 독립 JSON 이동/삭제/새 pen → iPad 재편집/undo/redo/저장/재열기 통과. 근사 외관/지원 범위/모호한 ID 거부와 native download 미검증을 분리했다. 이 단계의 앱 테스트·리뷰·기록을 완료했다.
+- 현재 코드 `28b9889`, 문서는 이 기록이 포함된 마지막 docs 커밋. local main, 이번에는 push하지 않았다. 마지막 결과는 리뷰 후 최종 로그와 양 xcresult이며 이전 실패를 삭제하지 않았다.
+- Notion 업데이트 성공/재조회 시각은 위 Notion 절을 따른다. 브라우저 화면·출력 fixture·명령 재현 방법은 저장소에 있다. 시험 HTTP 서버 session 60760과 임시 브라우저 탭은 종료했다.
+- 다음 첫 작업: `git status --short --branch` → 이 문서/`2026-10-03-m1-a-local-library.md`/기존 저장 코드를 대조 → M1-A Task 1의 기존 노트·원본 PDF·backup 이주 테스트 RED. 이번 실행에서 M1 코드는 만들지 않았다.
+- 계획 자기 점검: M1-A에서 라이브러리와 안전한 세션 전환만 구현하며 M1-B/C/M2의 페이지·백업·객체를 완료로 표현하지 않는다. LibraryLoadResult는 transient 복구 안내, LibraryCatalog는 영구 metadata로 구분했고 Task 간 API/파일/검증 연결을 확인했다.

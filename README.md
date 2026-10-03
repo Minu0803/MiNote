@@ -22,9 +22,15 @@ Import and export lock editing, including undo and redo. One visible PDF page an
 
 The app has no third-party package dependencies and targets iPadOS 18 or later.
 
+## Portable ink lab
+
+The dependency-free [PortableInk lab](Tools/PortableInk/README.md) reads the same schema-v2 JSON and edits strokes by UUID in Canvas. Actual independent output is reconstructed, reedited, saved and reopened by iPad tests. See [the format contract](docs/format/ink-v2.md) and [browser evidence](docs/assets/m0c-portable-ink.jpg). This is a test tool; other platform apps and a production JSON import UI remain future work.
+
 ## Verify
 
 ```sh
+node --test Tools/PortableInk/*.test.mjs
+node Tools/PortableInk/roundtrip.mjs --check
 swift test --package-path Packages/MiNoteCore
 
 xcodebuild -project MiNote.xcodeproj -scheme MiNote \
@@ -34,12 +40,13 @@ xcodebuild -project MiNote.xcodeproj -scheme MiNote \
 
 The Xcode scheme covers PencilKit conversion, PDF coordinates and raster placement, import/export failures, edit sessions, zoom rendering and a 500-page fixture. UI tests exercise writing, undo/redo, Files import, page navigation, rotation, relaunch, export preview and the share sheet. Run on both iPadOS 18.6 and 26.4. Actual results and logs are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
 
-The final M0-B run passed 24 core tests and, on each OS, 25 app unit tests and 2 UI tests. [Simulator export preview](docs/assets/m0b-export-preview.png).
+The final M0-C run passed 25 Node tests, 26 core tests and, on each OS, 32 app unit tests and 2 UI tests. [Simulator export preview](docs/assets/m0b-export-preview.png).
 
 ## Current limits
 
 - One local note and one attached PDF; imports append to the initial A4 page. A second PDF cannot replace an existing attachment.
 - Imports are limited to 100 MB, 500 pages and 2,000 points per page edge. Password-protected, truncated and unsupported files are rejected. These are conservative limits, not a real-device performance guarantee.
+- Stroke identities are matched across the whole surviving order. If identical strokes leave more than one possible ID mapping, saving fails explicitly and retains both visible ink and the prior saved document. Stroke reordering is not supported yet.
 - Undo history starts again when switching pages. Partial erasing, selection, text and images are future work.
 - Export may normalize the raw PDF MediaBox origin. Visible crop geometry, rotation and ink placement are preserved; the source asset and its stored metadata stay unchanged.
 - Export temporary folders and interrupted-import orphan assets currently remain for later cleanup. Their lifetime management belongs to M1.
@@ -47,11 +54,11 @@ The final M0-B run passed 24 core tests and, on each OS, 25 app unit tests and 2
 
 ## Roadmap
 
-- **M0-A / M0-B implemented:** Blank-page ink, safe local recovery, PDF import, page-specific editable ink and flattened PDF export.
-- **M0-C:** Validate portable ink from another renderer.
+- **M0-A / M0-B / M0-C implemented:** Blank-page ink, safe local recovery, PDF import/export and independent portable-ink round-trip verification.
+- **Next M1-A:** Multiple notes, folders, trash/restore and safe switching between edit sessions.
 - **M1:** Multiple notes, folders, pages and local recovery management.
 - **M2:** Lasso, text, images and search.
 - **M3:** Performance and real-device Pencil, palm and thermal checks.
 - **Later:** Advanced editing, sync, collaboration and other platforms.
 
-This is a local technical foundation, not the completed iPad product. Sync and other platform apps are not implemented. See [the M0-C plan](docs/superpowers/plans/2026-10-01-m0-c-portable-ink.md) and [the product roadmap](docs/superpowers/specs/2026-09-26-minote-product-design.md).
+This is a local technical foundation, not the completed iPad product. Sync and other platform apps are not implemented. See [the next M1-A plan](docs/superpowers/plans/2026-10-03-m1-a-local-library.md) and [the product roadmap](docs/superpowers/specs/2026-09-26-minote-product-design.md).

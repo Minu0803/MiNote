@@ -8,7 +8,7 @@
 
 **Tech Stack:** Swift 6 / Foundation / PencilKit, JavaScript ES modules / Canvas 2D, Node 내장 test runner(실행 시 런타임 경로 확인).
 
-**Spec:** `docs/superpowers/specs/2026-09-26-minote-product-design.md`의 공통 문서 형식·0단계 왕복 검증. M0-B 결과는 `docs/PROGRESS.md`와 `MiNote/InkAdapter.swift`를 기준으로 한다. 상태: 다음 개발 단위의 계획이며 구현하지 않았다.
+**Spec:** `docs/superpowers/specs/2026-09-26-minote-product-design.md`의 공통 문서 형식·0단계 왕복 검증. M0-B 결과는 `docs/PROGRESS.md`와 `MiNote/InkAdapter.swift`를 기준으로 한다. 상태: 2026-10-03 구현·양 OS 검증·별도 리뷰 완료. Notion/최종 인계는 PROGRESS의 최신 기록을 따른다.
 
 ## Global Constraints
 
@@ -62,20 +62,25 @@
 
 **Interfaces:** `drawPage(context: CanvasRenderingContext2D, page: object, viewportScale: number) -> void`는 작업 2의 검증된 문서를 소비한다. 앱 UI는 세 편집 명령을 호출하며 다운로드 전에 `writeDocument`를 통과한다.
 
-- [ ] renderer 테스트에 identity/translation/rotation/비등방 transform의 기대 문서 좌표, viewportScale 0.5/1/2일 때 역변환, size/색/alpha 적용을 작성하고 RED를 확인한다. 공유 수학 함수를 DOM 없이 검증한다.
-- [ ] renderer는 기본 획을 점/구간의 size와 색으로 근사한다. marker alpha를 유지하고 seed/force/기울기 값은 JSON에 보존한다. 실제 PencilKit texture/곡선 차이는 기록한다.
-- [ ] HTML 시험 UI에서 JSON 열기, 페이지/획 ID 선택, 수치 dx/dy 이동, 획 전체 삭제, 기본 pen 추가와 결과 다운로드를 연결한다. 파일은 로컬에서 처리한다. PDF metadata는 유지하며 PDF 배경 자체 렌더링은 이 시험 도구 범위 밖이다.
-- [ ] 브라우저에서 fixture를 열고 이동/삭제/추가한 다운로드 JSON을 Node 검사로 확인한다. 빈 획 페이지, marker, 화면 확대도 확인하고 스크린샷·차이를 기록한 뒤 커밋한다.
+- [x] renderer 테스트에 identity/translation/rotation/비등방 transform의 기대 문서 좌표, viewportScale 0.5/1/2일 때 역변환, size/색/alpha 적용을 작성하고 RED를 확인한다. 공유 수학 함수를 DOM 없이 검증한다.
+- [x] renderer는 기본 획을 점/구간의 size와 색으로 근사한다. marker alpha를 유지하고 seed/force/기울기 값은 JSON에 보존한다. 실제 PencilKit texture/곡선 차이는 기록한다.
+- [x] HTML 시험 UI에서 JSON 열기, 페이지/획 ID 선택, 수치 dx/dy 이동, 획 전체 삭제, 기본 pen 추가와 결과 다운로드를 연결한다. 파일은 로컬에서 처리한다. PDF metadata는 유지하며 PDF 배경 자체 렌더링은 이 시험 도구 범위 밖이다.
+- [x] 브라우저에서 fixture를 열고 이동/삭제/추가한 실제 JSON 출력을 Swift/Node 검사에 연결한다. IAB download 이벤트가 timeout하여 readonly 출력 대안으로 보존했다(저장 완료 미검증). 파일 재열기·빈 획 페이지·marker·확대 후 출력 불변과 스크린샷을 확인했다.
+- [ ] 일반 브라우저의 native 파일 다운로드 확인: IAB에서 이벤트/저장 완료를 확인하지 못해 이 항목은 미검증이다. 실제 JSON 왕복 통과와 구분한다.
 
 ### Task 4: iPad 역방향 편집·전체 검증
 
 **Interfaces:** 작업 2가 생성한 기대 JSON을 `DocumentCodec.decode`, `InkAdapter.decode(_:) -> PKDrawing`, `EditorSession`과 임시 `DocumentStore`에 전달한다. 사용자 노트를 가져오기/교체하는 제품 UI는 추가하지 않는다.
 
-- [ ] iPad 테스트에 JS에서 수정한 JSON을 decode→PencilKit→encode해 수정하지 않은 ID/style 유지, 이동 좌표 오차 0.01pt 이내, 삭제 ID 부재, 새 pen 편집 가능 assertions를 작성한다. PDF metadata는 core 왕복에서 함께 확인한다.
-- [ ] PDF 문서는 원본 fixture bytes를 임시 저장소의 `PDFAsset.relativePath`에 함께 배치해 byteCount/geometry 검증을 통과시킨다. 복원된 drawing에 실제 획을 추가·삭제하고 저장·재열기를 검증한다. 현재 캔버스 undo/redo와도 연결해 JS의 삭제가 다시 나타나지 않는지 확인한다. 데이터 손실이나 속성 차이를 먼저 재현한 뒤 최소 어댑터 수정을 한다.
-- [ ] Node 전체, `swift test`, iPadOS 18.6/26.4 `MiNote` 스킴 전체 테스트를 실행한다. 수치·ID 보존과 근사 외관 결과를 구분한다.
-- [ ] 별도 에이전트 한 번 리뷰 후 중요한 문제를 수정하고 관련 테스트를 재실행한다. PROGRESS/Notion에 확인한 범위·차이·실기기 대기·다음 M1 시작점을 기록하고 커밋한다.
+- [x] iPad 테스트에 JS에서 수정한 JSON을 decode→PencilKit→encode해 수정하지 않은 ID/style 유지, 이동 좌표 오차 0.01pt 이내, 삭제 ID 부재, 새 pen 편집 가능 assertions를 작성한다. PDF metadata는 core 왕복에서 함께 확인한다.
+- [x] PDF 문서는 원본 fixture bytes를 임시 저장소의 `PDFAsset.relativePath`에 함께 배치해 byteCount/geometry 검증을 통과시킨다. 복원된 drawing에 실제 획을 추가·삭제하고 저장·재열기를 검증한다. 현재 캔버스 undo/redo와도 연결해 JS의 삭제가 다시 나타나지 않는지 확인한다. 데이터 손실이나 속성 차이를 먼저 재현한 뒤 최소 어댑터 수정을 한다.
+- [x] Node 전체, `swift test`, iPadOS 18.6/26.4 `MiNote` 스킴 전체 테스트를 실행한다. 수치·ID 보존과 근사 외관 결과를 구분한다.
+- [x] 별도 에이전트 한 번 리뷰 후 중요한 문제를 수정하고 관련 테스트를 재실행한다. PROGRESS/Notion에 확인한 범위·차이·실기기 대기·다음 M1 시작점을 기록하고 커밋한다.
 
 ## 완료 판정
 
 독립 도구에서 읽기만 하거나 PNG를 출력한 결과는 통과로 치지 않는다. 실제 JSON에서 이동/삭제/새 획 추가 후 iPad 재편집·저장·재열기가 통과해야 한다. 브러시 재현이 기대를 벗어나면 지원 범위를 더 좁히거나 어댑터·렌더러 변경을 별도 결정으로 기록하고, Android/Windows 호환 완료를 선언하지 않는다. M1의 노트/폴더/여러 PDF·페이지 관리, `.minote` 백업 UI, 임시 파일 정리는 이 단계 이후다.
+
+## 최종 판단과 다음 단계
+
+리뷰의 ID alias 충돌과 다른 페이지로 넘어가는 입력을 회귀 RED→GREEN으로 수정했다. ID는 원본/정규화 후보의 전체 순서 대응이 유일할 때만 유지한다. 완전히 동일한 인접 획 삭제 등 모호한 대응은 오류로 차단하며 현재 그림/기존 저장본을 보존한다. 곡선/texture/marker 외관은 근사, iPadOS 18/26의 공개 stroke ID와 제품용 타 플랫폼 앱은 가정하지 않는다. Node25/core26, 양 OS app32+UI2 전체 통과. 상세 근거·미검증 사항·Notion 시점은 PROGRESS에 있다. 다음 구현은 M1-A 계획이며 M1 코드는 아직 작성하지 않았다.
