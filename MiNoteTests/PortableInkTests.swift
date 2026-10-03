@@ -39,6 +39,43 @@ import XCTest
         XCTAssertNotEqual(encoded[0], original)
     }
 
+    func testConflictingRawAndReconstructedFingerprintsKeepOrderedProvenance() throws {
+        let a = try fixtureDocument("source").pages[0].strokes[0]
+        var b = try InkAdapter.encode(InkAdapter.decode([a]), preserving: [])[0]
+        b.id = PortableFixture.id(999)
+        let known = [a, b]
+        XCTAssertEqual(try InkAdapter.encode(InkAdapter.decode(known), preserving: known), known)
+    }
+
+    func testDuplicateShapeDeletionUsesRemainingStrokeOrderOrRejectsAmbiguity() throws {
+        let known = try fixtureDocument("source").pages[0].strokes
+        let drawing = try InkAdapter.decode(known)
+        XCTAssertEqual(try InkAdapter.encode(PKDrawing(strokes: Array(drawing.strokes.dropFirst())), preserving: known), Array(known.dropFirst()))
+        var duplicate = known[0]; duplicate.id = PortableFixture.id(999)
+        let ambiguous = [known[0], duplicate]
+        XCTAssertThrowsError(try InkAdapter.encode(InkAdapter.decode([duplicate]), preserving: ambiguous))
+    }
+
+    func testAmbiguousIdentityRetainsVisibleInkAndLastSavedDocument() async throws {
+        let stroke = try fixtureDocument("source").pages[0].strokes[0]
+        var duplicate = stroke; duplicate.id = PortableFixture.id(999)
+        let original = NoteDocument(title: "Ambiguous duplicate", pages: [NotePage(strokes: [stroke, duplicate])])
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = DocumentStore(directory: directory)
+        try await store.save(original)
+        let session = EditorSession(store: store)
+        await session.loadIfNeeded()
+        let remaining = PKDrawing(strokes: Array(session.drawing.strokes.dropFirst()))
+        session.receiveDrawing(remaining)
+        XCTAssertEqual(session.strokeCount, 1)
+        XCTAssertEqual(session.document, original)
+        guard case .failed = session.saveState else { return XCTFail("Ambiguous identity must block serialization") }
+        await session.flush()
+        let persisted = try await store.load()
+        XCTAssertEqual(persisted?.document, original)
+    }
+
     func testJavaScriptAndBrowserResultsCanBeReeditedUndoneSavedAndReopened() async throws {
         for name in ["edited", "browser-edited"] {
             let imported = try fixtureDocument(name)

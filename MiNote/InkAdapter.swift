@@ -3,11 +3,13 @@ import PencilKit
 
 /// UI framework details stay here; the document package only knows numeric values.
 enum InkAdapterError: Error, LocalizedError {
+    case ambiguousIdentity
     case unsupportedInk, unsupportedMask, unsupportedColor
     case unsupportedContentVersion(Int)
     case unsupportedPointAttribute(String)
     var errorDescription: String? {
         switch self {
+        case .ambiguousIdentity: "겹치는 획의 ID를 확정할 수 없어 저장하지 않았습니다. 현재 필기와 기존 저장본은 유지됩니다."
         case .unsupportedInk: "현재는 펜과 형광펜만 저장할 수 있습니다."
         case .unsupportedMask: "부분 지우개로 편집한 획은 아직 지원하지 않습니다."
         case .unsupportedContentVersion(let version): "PencilKit 콘텐츠 버전 \(version)은 지원하지 않습니다."
@@ -21,65 +23,69 @@ enum InkAdapter {
     private static let contentID = UUID(uuid: (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
 
     static func encode(_ drawing: PKDrawing, preserving known: [InkStroke]) throws -> [InkStroke] {
-        var identities: [InkStroke: [InkStroke]] = [:]
-        for stroke in known.reversed() {
-            identities[key(stroke), default: []].append(stroke)
+        let values = try drawing.strokes.map(portableValue)
+        guard !known.isEmpty else { return values }
+        let reconstructed = try decode(known).strokes.map(portableValue)
+        var candidates: [InkStroke: [Int]] = [:]
+        for index in known.indices {
+            let raw = key(known[index]), restored = key(reconstructed[index])
+            candidates[raw, default: []].append(index)
+            if restored != raw { candidates[restored, default: []].append(index) }
         }
-        var restoredIdentities: [InkStroke: [InkStroke]] = [:]
-        var didBuildRestoredIdentities = false
-        var used = Set<UUID>()
-        func consume(_ fingerprint: InkStroke, from values: inout [InkStroke: [InkStroke]]) -> InkStroke? {
-            while let candidate = values[fingerprint]?.popLast() {
-                if used.insert(candidate.id).inserted { return candidate }
+        // Supported PencilKit edits append or erase strokes without reordering
+        // surviving strokes. Match the entire ordered sequence, so a raw value
+        // cannot steal the provenance of another stroke's reconstruction alias.
+        let options = values.map { candidates[key($0)] ?? [] }
+        var earliest = Array<Int?>(repeating: nil, count: values.count)
+        var latest = earliest
+        var prior = -1
+        for index in values.indices where !options[index].isEmpty {
+            guard let match = options[index].first(where: { $0 > prior }) else {
+                throw InkAdapterError.ambiguousIdentity
             }
-            return nil
+            earliest[index] = match; prior = match
         }
-        return try drawing.strokes.map { stroke in
-            let value = try portableValue(stroke)
-            let fingerprint = key(value)
-            if let original = consume(fingerprint, from: &identities) { return original }
-            if !didBuildRestoredIdentities {
-                // PencilKit can quantize angles again when reconstructing a point.
-                // Compare with the exact reconstruction, not a broad epsilon that
-                // could mistake a user's small edit for an unchanged stroke.
-                let reconstructed = try decode(known).strokes
-                for (original, restored) in zip(known, reconstructed).reversed() {
-                    restoredIdentities[key(try portableValue(restored)), default: []].append(original)
-                }
-                didBuildRestoredIdentities = true
+        var following = known.count
+        for index in values.indices.reversed() where !options[index].isEmpty {
+            guard let match = options[index].last(where: { $0 < following }) else {
+                throw InkAdapterError.ambiguousIdentity
             }
-            return consume(fingerprint, from: &restoredIdentities) ?? value
+            latest[index] = match; following = match
+        }
+        guard earliest == latest else { throw InkAdapterError.ambiguousIdentity }
+        return values.indices.map { index in
+            earliest[index].map { known[$0] } ?? values[index]
         }
     }
 
     private static func portableValue(_ stroke: PKStroke) throws -> InkStroke {
-            guard stroke.requiredContentVersion == .version1 else { throw InkAdapterError.unsupportedContentVersion(stroke.requiredContentVersion.rawValue) }
-            guard stroke.mask == nil else { throw InkAdapterError.unsupportedMask }
-            let tool: InkTool
-            switch stroke.ink.inkType {
-            case .pen: tool = .pen
-            case .marker: tool = .marker
-            default: throw InkAdapterError.unsupportedInk
-            }
-            var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
-            guard stroke.ink.color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
-                throw InkAdapterError.unsupportedColor
-            }
-            let points = try stroke.path.map { point -> InkPoint in
-                let ordinary = PKStrokePoint(location: point.location, timeOffset: point.timeOffset,
-                    size: point.size, opacity: point.opacity, force: point.force,
-                    azimuth: point.azimuth, altitude: point.altitude)
-                if #available(iOS 26, *), point.threshold != ordinary.threshold { throw InkAdapterError.unsupportedPointAttribute("threshold") }
-                if #available(iOS 27, *), point.lateralJitter != ordinary.lateralJitter { throw InkAdapterError.unsupportedPointAttribute("lateralJitter") }
-                return InkPoint(x: point.location.x, y: point.location.y, timeOffset: point.timeOffset,
-                    width: point.size.width, height: point.size.height, opacity: point.opacity,
-                    force: point.force, azimuth: point.azimuth, altitude: point.altitude,
-                    secondaryScale: point.secondaryScale)
-            }
-            let t = stroke.transform
-            return InkStroke(tool: tool, color: InkColor(red: red, green: green, blue: blue, alpha: alpha),
-                points: points, transform: InkTransform(a: t.a, b: t.b, c: t.c, d: t.d, tx: t.tx, ty: t.ty),
-                randomSeed: stroke.randomSeed, creationTime: stroke.path.creationDate.timeIntervalSince1970)
+        guard stroke.requiredContentVersion == .version1 else { throw InkAdapterError.unsupportedContentVersion(stroke.requiredContentVersion.rawValue) }
+        guard stroke.mask == nil else { throw InkAdapterError.unsupportedMask }
+        let tool: InkTool
+        switch stroke.ink.inkType {
+        case .pen: tool = .pen
+        case .marker: tool = .marker
+        default: throw InkAdapterError.unsupportedInk
+        }
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        guard stroke.ink.color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            throw InkAdapterError.unsupportedColor
+        }
+        let points = try stroke.path.map { point -> InkPoint in
+            let ordinary = PKStrokePoint(location: point.location, timeOffset: point.timeOffset,
+                size: point.size, opacity: point.opacity, force: point.force,
+                azimuth: point.azimuth, altitude: point.altitude)
+            if #available(iOS 26, *), point.threshold != ordinary.threshold { throw InkAdapterError.unsupportedPointAttribute("threshold") }
+            if #available(iOS 27, *), point.lateralJitter != ordinary.lateralJitter { throw InkAdapterError.unsupportedPointAttribute("lateralJitter") }
+            return InkPoint(x: point.location.x, y: point.location.y, timeOffset: point.timeOffset,
+                width: point.size.width, height: point.size.height, opacity: point.opacity,
+                force: point.force, azimuth: point.azimuth, altitude: point.altitude,
+                secondaryScale: point.secondaryScale)
+        }
+        let t = stroke.transform
+        return InkStroke(tool: tool, color: InkColor(red: red, green: green, blue: blue, alpha: alpha),
+            points: points, transform: InkTransform(a: t.a, b: t.b, c: t.c, d: t.d, tx: t.tx, ty: t.ty),
+            randomSeed: stroke.randomSeed, creationTime: stroke.path.creationDate.timeIntervalSince1970)
     }
 
     static func decode(_ strokes: [InkStroke]) throws -> PKDrawing {

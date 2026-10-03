@@ -24,3 +24,5 @@ Shared fixtures live in `Packages/MiNoteCore/Tests/MiNoteCoreTests/Fixtures/Port
 - `browser-edited.json`: actual UI output after moving 101 by (12,-8), deleting 103 and drawing a new pen stroke. Its UUID and sampled points differ from the deterministic CLI fixture.
 
 On 2026-10-03, Codex IAB showed those edits and output, but its download event timed out. The browser fixture was saved from the visible read-only output. Native file download in a general browser remains unverified. See `docs/PROGRESS.md` for Swift/iPad reverse-edit evidence and remaining limits.
+
+The gesture controller binds input to its starting document/page and scale. Document replacement, page/zoom changes, mode exit and lost capture cancel it; secondary pointer events cannot cancel the primary stroke. Tests run the actual UI handlers with DOM/canvas boundaries faked. The final browser test reopened `browser-edited.json`, changed zoom 100→200→100%, and confirmed exported text exactly unchanged.

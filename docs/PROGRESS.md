@@ -178,3 +178,15 @@
 - 명령: `node --test Tools/PortableInk/*.test.mjs`; `node Tools/PortableInk/roundtrip.mjs --check`; `swift test --package-path Packages/MiNoteCore`; `xcodebuild -project MiNote.xcodeproj -scheme MiNote -destination 'platform=iOS Simulator,id=<기기 UUID>' -derivedDataPath /private/tmp/minote-m0c-dd<18|26> -resultBundlePath /private/tmp/minote-m0c<18|26>-green.xcresult test`.
 - 기기: 18.6 `7964CDF4-782A-44C2-BC51-1176AF6C67AB`; 26.4 `423D4FF6-C678-45F9-9D3E-CB886EE82462`. 로그: `/private/tmp/minote-m0c-ui-final.log`, `minote-m0c-core-final.log`, `minote-m0c18-green.log`, `minote-m0c26-green.log`.
 - 아직 별도 리뷰/Notion/최종 인계는 미완료다. 실기기와 일반 브라우저 native download는 미검증이다. 다음 작업은 fresh reviewer 한 번이며 중요한 문제는 실제 재현 후 수정한다.
+
+### M0-C 별도 리뷰와 수정 (2026-10-03)
+- fresh `m0c_code_review` 한 번, 범위 `18843b0..40aef65`. Critical 없음, Important 2건. reviewer는 읽기 전용이며 구현/추가 reviewer를 dispatch하지 않았다.
+- 1: raw fingerprint가 다른 획의 재구성 fingerprint와 같을 때 ID와 원본 point data가 서로 바뀌었다. 실제 iPad fixture A/재구성 B로 RED를 확인했다(`minote-m0c-review-ink-red.log`, exit 65). 원본/정규화 후보 전체의 순서를 비교하여 earliest/latest 대응이 같은 경우만 원본 ID/값을 보존한다. 여러 대응/지원하지 않는 재정렬이면 명시적 오류다. 0.0001pt 실제 이동은 숨기지 않는다.
+- 같은 모양 중 첫 획 삭제도 원래 순서로 surviving ID를 확인한다. 완전히 같은 인접 획 한 개만 남아 어느 ID인지 알 수 없을 때는 저장을 차단하고 화면/기존 JSON을 보존하는 세션 테스트를 추가했다. ‘모든 중복에서 ID 보존’으로 주장하지 않는다. 정규화는 이제 전체 후보를 재구성하므로 복잡한 페이지 비용은 M3 측정 대상이다.
+- 2: pointerup이 시작 페이지 대신 현재 페이지에 저장하는 실제 handler 오류. owner/시작 scale을 입력에 연결하고 open/page/zoom/mode-exit/lost-capture 때 active pointer만 취소·release한다. 실제 이전 `app.mjs`로 handler RED 4/0을 확인하고 현 코드 GREEN을 확인했다(`minote-m0c-review-handlers-red.log`, exit 1; `minote-m0c-review-node-green.log`, exit 0). Node test는 DOM/canvas 경계만 대체하고 실제 앱 handler를 실행한다.
+- 집중 iPad GREEN: PortableInkTests 6/0(`minote-m0c-review-ink-green.log`). 이후 모호한 ID 실패 시 디스크 보존 테스트를 추가했다.
+- 리뷰 이후 최종 전체: Node **25/0**, core **26/0**(core 변경 없음), 18.6/26.4 각각 앱 **32/0**, UI **2/0**; 양 명령 exit 0 / TEST SUCCEEDED. 로그 `/private/tmp/minote-m0c-review-node-green.log`, `minote-m0c-core-final.log`, `minote-m0c18-review-final.log`, `minote-m0c26-review-final.log`; 결과 양 `minote-m0c<18|26>-review-final.xcresult`.
+- 실제 browser 파일 chooser로 `browser-edited.json` 재열기 성공. revision 43/4획, 확대 100→200→100 후 출력 텍스트가 fixture와 **완전히 동일**함을 확인했다. 최종 화면 `docs/assets/m0c-portable-ink.jpg`. native download 파일 저장 완료는 계속 미검증이다.
+- reviewer set-aside에 대한 판단: main 직접 작업/기록 보존은 사용자 지시; safe-integer/v2/pen 추가/미지 필드 거부는 도구의 선언된 범위; 근사 texture/marker/곡선과 PDF 배경 제외는 승인된 시험 범위; readonly 출력은 실제 왕복 근거이며 native download는 대기; programmatic undo는 명시적 command/session 검증이며 실제 Pencil 입력 결과가 아니다; 물리 Pencil/큰 문서/production JSON import/다른 플랫폼/부분 삭제·미래 객체는 후속이다.
+- Swift의 v2 unknown-key decoder는 기존 동작이며 이번에 future 객체를 보존한다고 확장 주장하지 않는다. 중복 삭제 ambiguity는 위의 명시적 차단으로 제한을 고쳤다. exotic JS object/중복 JSON key/extreme finite geometry는 지원 fixture 흐름에서 재현된 결함이 아니므로 지원 확대를 하지 않는다. 조밀한 시험 도구 formatting/입력 중 preview는 후속 개선이다. PDF xref 끝 공백은 원본 bytes 계약이라 제거하지 않는다. 남은 checkbox/Notion/인계는 이번 종료 작업으로 해결한다.
+- 다음: 리뷰 수정 코드 커밋 → 완료 기록/Notion 반영 → 다음 M1-A 계획을 인계한다. M1 코드는 이번에 작성하지 않는다.
