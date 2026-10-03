@@ -43,40 +43,40 @@
 
 **Files:** Create core `Library.swift`, `LibraryStore.swift`, tests `LibraryMigrationTests.swift`, `LibraryStoreTests.swift` (모두 `Packages/MiNoteCore` 아래). 기존 `DocumentStore`는 데이터 손실 회귀를 통과하는 범위만 수정한다.
 
-- [ ] `testLegacyMigrationPreservesIDsInkAssetsAndRawBackup` 작성: source fixture를 기존 루트에 두고 load 두 번 후 같은 노트 ID 하나, revision 40, 모든 페이지/획, PDF bytes와 원래 파일/backup 일치를 확인한다.
-- [ ] `testInvalidLegacyOrUnsupportedCatalogBlocksBlankReplacement`와 `testInterruptedCreationExposesUnlinkedNoteForRecovery` 작성. 손상·지원하지 않는 버전·누락 자산 때 원본/catalog를 덮어쓰지 않고, 이미 저장된 문서는 복구 목록에 남아야 한다.
-- [ ] `swift test --package-path Packages/MiNoteCore --filter Library`로 실제 RED를 확인한다.
-- [ ] 위 모델/저장 경로와 `load`, `documentStore(for:)` 구현. 이주는 노트 디렉터리에 검증된 본문·자산을 먼저 복사하고 catalog commit을 마지막에 한다. catalog write 전후 오류를 주입할 internal test initializer로 원본 불변을 확인한다.
-- [ ] core 전체 GREEN과 기존 portable fixture check → PROGRESS → 커밋.
+- [x] `testLegacyMigrationPreservesIDsInkAssetsAndRawBackup` 작성: source fixture를 기존 루트에 두고 load 두 번 후 같은 노트 ID 하나, revision 40, 모든 페이지/획, PDF bytes와 원래 파일/backup 일치를 확인한다.
+- [x] `testInvalidLegacyOrUnsupportedCatalogBlocksBlankReplacement`와 `testInterruptedCreationExposesUnlinkedNoteForRecovery` 작성. 손상·지원하지 않는 버전·누락 자산 때 원본/catalog를 덮어쓰지 않고, 이미 저장된 문서는 복구 목록에 남아야 한다.
+- [x] `swift test --package-path Packages/MiNoteCore --filter Library`로 실제 RED를 확인한다.
+- [x] 위 모델/저장 경로와 `load`, `documentStore(for:)` 구현. 이주는 노트 디렉터리에 검증된 본문·자산을 먼저 복사하고 catalog commit을 마지막에 한다. catalog write 전후 오류를 주입할 internal test initializer로 원본 불변을 확인한다.
+- [x] core 전체 GREEN과 기존 portable fixture check → PROGRESS → 커밋.
 
 ### Task 2: 여러 노트·폴더·휴지통의 안전한 변경
 
 **Files:** Modify core `LibraryStore.swift`; Create `LibraryMutationTests.swift`.
 
-- [ ] `testTwoNotesKeepIndependentPDFAndRevision` 작성: A/B 생성, A 필기 저장 뒤 B blank 유지, A 재열기 후 획/리비전 일치. `testRenameReadsLatestDocumentAndDoesNotDiscardInk`는 rename 직전 완료된 편집도 유지한다.
-- [ ] `testMoveFolderRejectsCyclesAndMissingParent`, `testFolderRenameDoesNotChangeIDsOrMembership`, `testTrashAndRestorePreserveNoteAndFolder`, `testCatalogWriteFailureRetainsLastGoodState`, `testConcurrentMutationIsRejectedBeforeSecondCommit` 작성. 폴더를 없애는 UI는 넣지 않으므로 휴지통 노트의 폴더가 dangling 참조가 되지 않는다.
-- [ ] 관련 RED 확인 → 위 mutation API 최소 구현. 제목/폴더 이름은 trim 후 비어 있으면 거부하며 UUID가 식별자다. 정렬은 modifiedAt 내림차순/UUID 보조 순서로 고정한다.
-- [ ] core 전체 GREEN → 기록 → 커밋.
+- [x] `testTwoNotesKeepIndependentPDFAndRevision` 작성: A/B 생성, A 필기 저장 뒤 B blank 유지, A 재열기 후 획/리비전 일치. `testRenameReadsLatestDocumentAndDoesNotDiscardInk`는 rename 직전 완료된 편집도 유지한다.
+- [x] `testMoveFolderRejectsCyclesAndMissingParent`, `testFolderRenameDoesNotChangeIDsOrMembership`, `testTrashAndRestorePreserveNoteAndFolder`, `testCatalogWriteFailureRetainsLastGoodState`, `testConcurrentMutationIsRejectedBeforeSecondCommit` 작성. 폴더를 없애는 UI는 넣지 않으므로 휴지통 노트의 폴더가 dangling 참조가 되지 않는다.
+- [x] 관련 RED 확인 → 위 mutation API 최소 구현. 제목/폴더 이름은 trim 후 비어 있으면 거부하며 UUID가 식별자다. 정렬은 modifiedAt 내림차순/UUID 보조 순서로 고정한다.
+- [x] core 전체 GREEN → 기록 → 커밋.
 
 ### Task 3: 저장 완료를 보장하는 편집 세션 전환
 
 **Files:** Create app `LibrarySession.swift`, tests `LibrarySessionTests.swift`; Modify `NoteEditorView.swift`, `MiNoteApp.swift`.
 
-- [ ] `testSwitchAfterEditFlushesOnlyOutgoingNote`, `testFailedSaveOrUnsupportedInkBlocksClose`, `testRepeatedOpenHasOneActiveSession`, `testRenameWaitsUntilEditorIsClosed` 작성. 실제 임시 DocumentStore 두 개를 사용한다.
-- [ ] 관련 Xcode RED → `openNote`/`closeNote` 구현. 첫 await 전에 busy 상태를 설정하고 늦은 결과가 현재 선택 ID와 다르면 화면을 교체하지 않는다. 저장 실패 시 동일 그림/노트를 유지하고 재시도한다.
-- [ ] 편집기 주입 구조 변경 후 기존 PDF/Canvas/UI 테스트를 함께 실행해 GREEN → 기록 → 커밋.
+- [x] `testSwitchAfterEditFlushesOnlyOutgoingNote`, `testFailedSaveOrUnsupportedInkBlocksClose`, `testRepeatedOpenHasOneActiveSession`, `testRenameWaitsUntilEditorIsClosed` 작성. 실제 임시 DocumentStore 두 개를 사용한다.
+- [x] 관련 Xcode RED → `openNote`/`closeNote` 구현. 첫 await 전에 busy 상태를 설정하고 늦은 결과가 현재 선택 ID와 다르면 화면을 교체하지 않는다. 저장 실패 시 동일 그림/노트를 유지하고 재시도한다.
+- [x] 편집기 주입 구조 변경 후 기존 PDF/Canvas/UI 테스트를 함께 실행해 GREEN → 기록 → 커밋.
 
 ### Task 4: 라이브러리 화면과 전체 검증
 
 **Files:** Create `LibraryView.swift`, UI tests `LibraryUITests.swift`; Modify 기존 UI 테스트의 편집기 진입 경로 및 Xcode project 파일.
 
-- [ ] UI test `testCreateOrganizeTrashRestoreAndRelaunch` 작성: A/B 노트, 폴더 생성/이동, A 실제 손가락 획 저장, B 열기, A 재열기, 휴지통 이동/복원, 재실행의 제목·폴더·획 확인. 기존 한 노트의 migration UI 경로도 별도 fixture 환경에서 확인한다.
-- [ ] 관련 RED → 라이브러리 목록/툴바/생성·이동·이름 변경·휴지통·오류/재시도 화면 구현. 작업 중 버튼 비활성·접근성 ID를 제공한다. 문서 오류 항목은 목록에서 숨기지 않는다.
-- [ ] `node --test Tools/PortableInk/*.test.mjs`, `node Tools/PortableInk/roundtrip.mjs --check`, `swift test --package-path Packages/MiNoteCore` 및 18.6/26.4 `MiNote` 전체 Xcode tests 모두 GREEN. 실제 Pencil 평가는 계속 대기다.
-- [ ] fresh reviewer 한 번 → 중요 문제 재현/수정/검증 → PROGRESS/Notion/README/AGENTS → 커밋. 실제 결과를 반영해 M1-B 상세 계획을 작성한다. push는 별도 요청 범위다.
+- [x] UI test `testCreateOrganizeTrashRestoreAndRelaunch` 작성: A/B 노트, 폴더 생성/이동, A 실제 손가락 획 저장, B 열기, A 재열기, 휴지통 이동/복원, 재실행의 제목·폴더·획 확인. 기존 한 노트의 migration UI 경로도 별도 fixture 환경에서 확인한다.
+- [x] 관련 RED → 라이브러리 목록/툴바/생성·이동·이름 변경·휴지통·오류/재시도 화면 구현. 작업 중 버튼 비활성·접근성 ID를 제공한다. 문서 오류 항목은 목록에서 숨기지 않는다.
+- [x] `node --test Tools/PortableInk/*.test.mjs`, `node Tools/PortableInk/roundtrip.mjs --check`, `swift test --package-path Packages/MiNoteCore` 및 18.6/26.4 `MiNote` 전체 Xcode tests 모두 GREEN. 실제 Pencil 평가는 계속 대기다.
+- [x] fresh reviewer 한 번 → 중요 문제 재현/수정/검증 → PROGRESS/Notion/README/AGENTS → 커밋. 실제 결과를 반영해 M1-B 상세 계획을 작성한다. push는 별도 요청 범위다.
 
 ## 완료 조건과 자기 점검
 
 여러 노트가 독립적으로 저장되고 기존 노트가 이주되며, 폴더 정리와 휴지통 복원이 실제 재실행 후 유지되어야 한다. 실패한 저장/이주/catalog 때문에 이전 기록이 사라지지 않아야 한다. 현재 페이지/PDF/필기/Undo 기능의 기존 검증도 통과해야 한다.
 
-자기 점검: 라이브러리·노트·폴더·휴지통/안전한 이동은 Task 1~4에 대응한다. 다중 PDF/용지/페이지 관리/검색/`.minote` 백업·임시 export cleanup은 M1-B/C 또는 M2 후속이며 이번 완료로 주장하지 않는다. 이 파일은 다음 실행의 계획이며 아직 코드 구현/검증 결과가 아니다.
+자기 점검: 라이브러리·노트·폴더·휴지통/안전한 이동은 Task 1~4에 대응한다. 다중 PDF/용지/페이지 관리/검색/`.minote` 백업·임시 export cleanup은 M1-B/C 또는 M2 후속이며 이번 완료로 주장하지 않는다. 이 체크리스트는 M1-A 구현/검증/리뷰/기록을 완료한 상태다. 실제 결과와 실패 이력은 docs/PROGRESS.md 및 docs/milestones/2026-10-03-m1-a-local-library.md를 따른다. UI의 fixture-only 이주는 일반 suite와 분리된 전용 시뮬레이터에서 검증했다.

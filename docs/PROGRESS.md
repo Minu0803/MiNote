@@ -1,7 +1,7 @@
 # MiNote 개발 진행 기록
 
 ## 현재 상태
-- 완료 단계: **M0-A**, **M0-B**, **M0-C — 독립 공통 필기 편집·iPad 재편집/저장/재열기 검증**
+- 완료 단계: **M0-A**, **M0-B**, **M0-C**, **M1-A — 여러 노트·폴더·휴지통·안전한 세션 전환**
 - 작업 공간: `/Users/minwookim/Documents/GitHub/MiNote`
 - 브랜치: `main`
 - 시작 기준 커밋: `9695ab6`; 사전 모델·저장소 체크포인트: `dfa943d`
@@ -10,11 +10,13 @@
 - 이전 실행: 2026-10-01 재개 요청에 따라 M0-B 전체를 구현·검증·별도 리뷰·Notion 기록까지 완료했다. 한 번에 한 개발 단위 원칙을 유지한다.
 - M0-B 기준 커밋: `a943a49`; 구현/검증 커밋: `27f634c`, `4babcf6`, `991b481`, `0cd0139`, `26faf40`, `31a766c`.
 - M0-B 종료 당시 코드 커밋: `31a766cbcfa570cf089eebe0ee52b2218dff3bf3`. 최종 인계 문서는 이 기록을 포함하는 마지막 `docs` 커밋에 있다(`git log -1 --oneline`으로 확인). 이번 6개 코드 커밋과 문서 커밋은 **로컬 main에만 있으며 push하지 않았다**.
-- 이번 실행: **2026-10-03 M0-C 완료**. 시작 기준 `18843b0`; 시작 시 main clean, origin/main 추적 ref 일치(이번에는 원격 새 조회 없음). 코드 커밋 `0ef4587`, `f9fe764`, `da0a6f7`, `40aef65`, 최종 리뷰 수정 `28b9889e8b186771f163d6a98d551dabda5c2149`.
-- 이번 변경은 **로컬 main에만 커밋했고 push하지 않았다**. 최종 인계 문서 커밋은 `git log -1 --oneline`으로 확인한다.
-- 진행 단계: **M1-A 로컬 라이브러리**, `docs/superpowers/plans/2026-10-03-m1-a-local-library.md`. 2026-10-03 사용자 계속 요청으로 M1-A를 시작한다. 기준 `fd4def6`, main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음).
-- 다음 작업자가 할 첫 작업: Git 상태 대조 → 이 문서의 M0-C 최종 근거/제한과 M1-A 계획 읽기 → 기존 DocumentStore/NoteEditorView를 확인하고 M1-A Task 1의 기존 노트 migration 실패 테스트부터 작성한다. 완료된 M0 단계를 반복하지 않는다.
-- 최종 검증: Node 25/0, core26/0, 18.6/26.4 각각 app32/0 + UI2/0. 로그/result와 리뷰 판단은 아래 M0-C 최종 절을 따른다.
+- 이전 실행: **2026-10-03 M0-C 완료**. 시작 기준 `18843b0`; 시작 시 main clean, origin/main 추적 ref 일치(이번에는 원격 새 조회 없음). 코드 커밋 `0ef4587`, `f9fe764`, `da0a6f7`, `40aef65`, 최종 리뷰 수정 `28b9889e8b186771f163d6a98d551dabda5c2149`.
+- M0-C 종료 당시 변경은 로컬 main에만 커밋했고 push하지 않았다. 현재 원격 상태를 의미하는 문장은 아니다. 최종 인계 문서 커밋은 `git log -1 --oneline`으로 확인한다.
+- 이번 실행: **2026-10-03 M1-A 완료**. 기준 `fd4def6`; 마지막 코드 `d968701`. 시작 시 main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음). 모든 구현은 main에 커밋했고 push하지 않았다.
+- 다음 단계: **M1-B 페이지/다중 PDF**, `docs/superpowers/plans/2026-10-03-m1-b-pages-and-pdfs.md`. 코드 구현은 아직 시작하지 않았다.
+- 다음 작업자가 할 첫 작업: Git 상태 대조 → 이 문서의 M1-A 최종 근거/제한과 M1-B 계획 읽기 → Document/Codec/Store와 PDF validation/EditorSession 대조 → M1-B Task 1 v1/v2→v3 migration RED. 완료된 M0/M1-A를 반복하지 않는다.
+- 마지막 Notion 반영: 2026-10-03T06:02:45.909Z (15:02:45 KST); 재조회/내용 검증 06:04:12 UTC. M1-A 결과와 리뷰 수정/검증/제한/다음 계획을 기존 페이지에 추가했다.
+- 최종 검증: Node 25/0, core44/0, 18.6/26.4 각각 app42/0 + 일반 UI4통과/fixture-only1skip/0실패. 별도 seeded migration UI 양1/0과 원본 bytes 검증 통과. 로그/result와 리뷰 판단은 아래 M1-A 최종 절을 따른다.
 
 ## M0-B 완료 결과와 이전 재개 지점
 - Files에서 PDF를 가져와 페이지별로 필기·확대·현재 페이지 undo/redo하고, 마지막 페이지와 획을 저장·재실행 후 복원한다. 기존 A4를 유지하며 한 PDF만 연결한다.
@@ -207,7 +209,7 @@
 - [x] Task 1: 기존 노트 보존 이주·catalog 읽기/저장
 - [x] Task 2: 독립 노트·폴더·휴지통 변경
 - [x] Task 3: 저장 완료를 보장하는 세션 전환
-- [ ] Task 4: 라이브러리 UI·전체 검증·fresh 리뷰·Notion·인계
+- [x] Task 4: 라이브러리 UI·전체 검증·fresh 리뷰·Notion·인계
 - 시작 기준 `fd4def65ac952a0d5efc1a9ea07d02f2d6630689`. main에서 직접 구현하고 별도 브랜치/worktree/PR/push는 하지 않는다. 기존 M0 결과를 반복하지 않는다.
 - 사용자가 앞서 제시한 제품 설계와 작성된 M1-A 계획에 대해 계속 진행을 요청했다. 직접 구현/단계 말 한 번 리뷰를 유지하며 새 승인 질문은 만들지 않는다.
 - 사전 인터페이스 점검: catalog에는 제목을 중복 저장하지 않는다. LibraryLoadResult가 transient 복구 안내를 포함하고 notes/<UUID>마다 동일 DocumentStore 인스턴스를 사용한다. 저장 실패/미지원 필기 때 close/open을 차단한다. catalog commit은 본문/자산 저장 뒤 수행한다.
@@ -262,3 +264,11 @@
 - 변경된 앱 전체: 18.6/26.4 각각 앱 단위 **42/0**, 일반 UI **4 passed / 1 fixture-only skipped / 0 failures**. 양 xcodebuild exit0 / TEST SUCCEEDED, `/private/tmp/minote-m1a18-review-final.log`, `minote-m1a26-review-final.log` 및 review-final xcresult. 중요한 race와 중복 폴더 실제 UI 수정이 포함된다.
 - 변경되지 않은 core **44/0**, Node **25/0**, fixture check exit0 근거는 직전 전체 logs를 따른다. 별도 seeded migration UI는 양 **1/0, skip0** 및 helper --verify exit0이며 이주 저장 코드에는 리뷰 변경이 없다. 시뮬레이터 결과가 실제 Pencil 지연·손바닥·발열을 보증하지 않는다.
 - 남은 종료 작업: 리뷰 수정 코드 commit → Notion 결과 추가/재조회 → README/AGENTS/다음 계획과 최종 인계 commit. push는 하지 않는다.
+
+### M1-A 최종 인계
+- 모든 Task 1~4를 구현/검증/한 번 리뷰/중요 수정/Notion 기록까지 완료했다. 마지막 코드 commit d968701. 마감 문서 commit은 이 기록을 포함한 HEAD(`git log -1 --oneline`)다. 이번에 직접 push하지 않았다.
+- 마감 Git 상태 조회에서 origin/main 추적 ref가 d44aad5로 바뀌었고 reflog는 update by push다. 이번 agent는 push 명령을 실행하지 않았다. 원격 새 조회는 하지 않았으며, 추적 ref 기준 d968701 이후 커밋은 앞서 있다. ‘모든 코드가 아직 원격에 없다’고 주장하지 않는다.
+- Notion async task task_604b47596ff046a6ac21560489d43515 succeeded. 재조회: 새 M1-A heading 1개, app42/UI4, d968701, M1-B 계획과 기존 M0-C 내용 보존을 확인했다. page_last_edited 2026-10-03T06:02:45.909Z, 검증 06:04:12 UTC. 로컬 동일 결과는 docs/milestones/2026-10-03-m1-a-local-library.md다.
+- 선택적인 파일 선택기 상태 스크린샷은 simctl의 Timeout waiting for screen surfaces(exit60)로 생성하지 못했다. 해당 UI는 XCTest에서 실제 가져오기/출력/공유까지 통과했고 screenshot 실패를 기능 통과 근거로 쓰지 않았다. 전용 이주 기기 두 개만 shutdown했고 자료/기기는 보존했다. 일반 기기는 건드리지 않았다.
+- 다음 첫 작업: git status/HEAD 대조 → AGENTS/PROGRESS/M1-B 계획/기존 모델·PDF 경계 읽기 → SchemaV3Tests의 v1/v2 ID·ink·asset mapping 보존 RED. M1-B 구현은 이번 실행에 포함하지 않았다. Notebook별 한 PDF/흰색 A4, page Undo reset, `.minote`/cleanup/검색/객체/실기기 대기를 유지한다.
+- 계획 자기 점검: M1-B 모델/명령/PDF/session/UI/독립 계약은 Task 1~5; v1/v2 규칙을 migration 전에 검사하고 같은 index 복제/삭제복원/다중PDF실패/주석누적/미래버전·누락 자산은 구체 테스트로 연결했다. PaperRenderer는 Task 3에서 만들고 Task 4가 소비해 의존 순서를 맞췄다. 지원 밖 전체 제품 목표는 후속으로 명시했다.
