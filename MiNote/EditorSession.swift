@@ -163,7 +163,7 @@ final class EditorSession: ObservableObject {
         do {
             let prepared = try await importer.prepare(url: url)
             let imported = try await store.attachPDF(data: prepared.data, asset: prepared.asset,
-                pages: prepared.pages, expectedRevision: base.revision)
+                pages: prepared.pages, afterPageID: base.pages[currentPageIndex].id, expectedRevision: base.revision)
             committed = true
             let assetURL = try await store.assetURL(for: prepared.asset)
             let pdf = try PDFValidation.open(url: assetURL, for: imported)
@@ -193,17 +193,19 @@ final class EditorSession: ObservableObject {
         defer { isProcessing = false }
         operationError = nil
         await flush()
-        guard saveState == .saved, let snapshot = document, let asset = snapshot.pdfAsset else {
+        guard saveState == .saved, let snapshot = document, !snapshot.pdfAssets.isEmpty else {
             operationError = "최신 필기를 먼저 저장해 주세요. 저장을 재시도한 뒤 내보낼 수 있습니다."
             return nil
         }
         do {
-            let source = try await store.assetURL(for: asset)
+            var sources: [UUID: URL] = [:]
+            for sourceAsset in snapshot.pdfAssets { sources[sourceAsset.id] = try await store.assetURL(for: sourceAsset) }
+            let sourceURLs = sources
             let folder = FileManager.default.temporaryDirectory.appendingPathComponent("MiNote-Exports").appendingPathComponent(UUID().uuidString)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             let destination = folder.appendingPathComponent("MiNote.pdf")
             try await Task.detached(priority: .userInitiated) {
-                try PDFExporter.export(snapshot, sourceURL: source, destination: destination)
+                try PDFExporter.export(snapshot, sourceURLs: sourceURLs, destination: destination)
             }.value
             return destination
         } catch {

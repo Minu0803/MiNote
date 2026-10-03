@@ -37,9 +37,12 @@ actor PDFImporter {
         guard data.starts(with: Data("%PDF-".utf8)),
               data.suffix(1024).range(of: Data("%%EOF".utf8)) != nil,
               let document = PDFDocument(data: data) else { throw PDFError.invalidPDF }
-        let pages = try PDFValidation.pages(of: document)
-        return PreparedPDF(data: data,
-            asset: PDFAsset(originalFilename: filename, pageCount: pages.count, byteCount: data.count), pages: pages)
+        var pages = try PDFValidation.pages(of: document)
+        let asset = PDFAsset(originalFilename: filename, pageCount: pages.count, byteCount: data.count)
+        for i in pages.indices {
+            if var source = pages[i].pdfSource { source.assetID = asset.id; pages[i].pdfSource = source }
+        }
+        return PreparedPDF(data: data, asset: asset, pages: pages)
     }
 }
 
@@ -60,17 +63,27 @@ enum PDFValidation {
     }
     static func rect(_ box: CGRect) -> PageRect { PageRect(x: box.minX, y: box.minY, width: box.width, height: box.height) }
 
-    static func open(url: URL, for document: NoteDocument) throws -> PDFDocument {
-        guard let asset = document.pdfAsset, let pdf = PDFDocument(url: url) else { throw PDFError.missingAsset }
-        let pages = try pages(of: pdf).map { page in
-            var page = page
-            if var source = page.pdfSource { source.assetID = asset.id; page.pdfSource = source }
-            return page
-        }
-        guard pages.count == asset.pageCount,
-              document.pages.compactMap(\.pdfSource).sorted(by: { $0.index < $1.index }) == pages.compactMap(\.pdfSource) else {
-            throw PDFError.missingAsset
+    static func open(url: URL, asset: PDFAsset, referencedPages: [NotePage]) throws -> PDFDocument {
+        let size = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+        guard size.isRegularFile == true, size.fileSize == asset.byteCount,
+              let pdf = PDFDocument(url: url) else { throw PDFError.missingAsset }
+        let originals = try pages(of: pdf)
+        guard originals.count == asset.pageCount else { throw PDFError.missingAsset }
+        for model in referencedPages {
+            guard let source = model.pdfSource, source.assetID == asset.id,
+                  originals.indices.contains(source.index), var expected = originals[source.index].pdfSource else {
+                throw PDFError.missingAsset
+            }
+            expected.assetID = asset.id
+            guard source == expected else { throw PDFError.missingAsset }
         }
         return pdf
+    }
+
+    // Temporary Task 1/3 call bridge, removed when EditorSession becomes asset-specific.
+    static func open(url: URL, for document: NoteDocument) throws -> PDFDocument {
+        guard let asset = document.pdfAssets.first else { throw PDFError.missingAsset }
+        return try open(url: url, asset: asset,
+                        referencedPages: document.pages.filter { $0.pdfSource?.assetID == asset.id })
     }
 }

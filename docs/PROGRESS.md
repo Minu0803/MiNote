@@ -291,3 +291,9 @@
 - actor applyPageCommand는 기대 revision 검사부터 원자 저장까지 suspension 없이 처리한다. stale/backup I/O 실패에서 최신 ink/primary가 그대로이며 retry/재열기 순서·용지·책갈피를 확인했다.
 - RED: PageCommand/actor API 부재 컴파일 실패, /private/tmp/minote-m1b-pages-red.log, exit1. GREEN: swift test --package-path Packages/MiNoteCore 전체 **56/0**, minote-m1b-task2-core.log, exit0.
 - 다음: Task 3 다중 PDF·독립 출력 RED → asset별 validation·용지 renderer → 관련 앱/core. 앱 UI/JS/양 OS 최종·리뷰·Notion은 아직 미완료.
+
+### M1-B Task 3 완료
+- Task 2 코드 c21d9ef. attachPDF는 선택한 page 뒤에 새 PDF를 삽입하고 모든 source.assetID/index/원본 pageCount를 검사한다. 같은 filename의 서로 다른 UUID 자산·기존 ink·실패한 2차 첨부/orphan 보존을 검증했다.
+- PDFValidation은 자산별 원본 count/byteCount/geometry와 참조 페이지를 검사하며, 같은 index 반복·부분 index만 남은 노트를 허용한다. PDFExporter sourceURLs는 모든 자산의 누락/출력 경로 중복을 거부하고 PDFPage.copy 후 해당 page ink만 붙인다. 반복 출력에서 주석 누적/다른 복제본 ink가 섞이지 않는 픽셀 검증을 통과했다. PaperRenderer 24pt/0.5pt 용지를 output에 공유한다.
+- RED: 새 afterPageID 및 asset-specific validation/export API 부재(core exit1, app exit65), /private/tmp/minote-m1b-multi-core-red.log, minote-m1b-multi-app-red.log. GREEN: core 전체 **59/0**, minote-m1b-task3-core.log; 18.6 app 전체 **44/0**, minote-m1b-task3-app.log, TEST SUCCEEDED/exit0. 기존 원본 bytes·실패 출력·암호 PDF·4회전 검증 포함.
+- 남은 임시 연결: EditorSession의 첫 자산 load와 단일 가져오기 UI는 Task 4에서 교체한다. exporter는 이미 전체 sourceURLs를 사용한다. 다음 즉시 작업: PageEditorTests 늦은 callback/flush/자산 전환 RED → 구조 변경 세션/페이지 UI/썸네일. JS·26.4·전체 UI·리뷰·Notion은 미완료.

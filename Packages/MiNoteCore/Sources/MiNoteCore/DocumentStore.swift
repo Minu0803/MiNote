@@ -76,17 +76,20 @@ public actor DocumentStore {
 
     /// The asset is durable before the JSON can reference it. Failure leaves the old
     /// primary intact; an unreferenced asset is harmless and can be collected in M1.
-    public func attachPDF(data: Data, asset: PDFAsset, pages: [NotePage], expectedRevision: Int64) throws -> NoteDocument {
+    public func attachPDF(data: Data, asset: PDFAsset, pages: [NotePage], afterPageID: UUID,
+                          expectedRevision: Int64) throws -> NoteDocument {
         guard let prior = try load(), prior.document.revision == expectedRevision else { throw DocumentError.staleRevision }
-        guard prior.document.pdfAsset == nil else { throw DocumentError.documentConflict }
-        guard expectedRevision < Int64.max, data.count == asset.byteCount else { throw DocumentError.invalidDocument("PDF 자산 크기/리비전") }
-        var updated = prior.document
-        updated.pdfAsset = asset
-        updated.pages += pages.map { page in
-            var page = page
-            if var source = page.pdfSource { source.assetID = asset.id; page.pdfSource = source }
-            return page
+        guard let after = prior.document.pages.firstIndex(where: { $0.id == afterPageID }),
+              !prior.document.pdfAssets.contains(where: { $0.id == asset.id }),
+              expectedRevision < Int64.max, data.count == asset.byteCount,
+              pages.count == asset.pageCount,
+              Set(pages.compactMap { $0.pdfSource?.index }) == Set(0..<max(0, asset.pageCount)),
+              pages.allSatisfy({ $0.pdfSource?.assetID == asset.id }) else {
+            throw DocumentError.invalidDocument("PDF 자산/페이지 매핑/리비전")
         }
+        var updated = prior.document
+        updated.pdfAssets.append(asset)
+        updated.pages.insert(contentsOf: pages, at: after + 1)
         updated.lastOpenedPageID = pages.first?.id
         updated.revision += 1
         try DocumentCodec.validate(updated)

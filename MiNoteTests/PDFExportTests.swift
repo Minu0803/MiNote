@@ -18,7 +18,7 @@ import XCTest
         let destination = directory.appendingPathComponent("annotated.pdf")
         let snapshot = document
         try await Task.detached {
-            try PDFExporter.export(snapshot, sourceURL: source, destination: destination)
+            try PDFExporter.export(snapshot, sourceURLs: [prepared.asset.id: source], destination: destination)
         }.value
         XCTAssertEqual(try Data(contentsOf: source), bytes)
         let original = try XCTUnwrap(PDFDocument(data: bytes))
@@ -51,11 +51,11 @@ import XCTest
         try bytes.write(to: source)
         let prepared = try await PDFImporter().prepare(data: bytes, filename: "source.pdf")
         let document = NoteDocument(title: "export", pages: prepared.pages, pdfAsset: prepared.asset)
-        XCTAssertThrowsError(try PDFExporter.export(document, sourceURL: source, destination: source))
+        XCTAssertThrowsError(try PDFExporter.export(document, sourceURLs: [prepared.asset.id: source], destination: source))
         XCTAssertEqual(try Data(contentsOf: source), bytes)
         let destination = directory.appendingPathComponent("target.pdf")
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: false)
-        XCTAssertThrowsError(try PDFExporter.export(document, sourceURL: source, destination: destination))
+        XCTAssertThrowsError(try PDFExporter.export(document, sourceURLs: [prepared.asset.id: source], destination: destination))
         XCTAssertEqual(try Data(contentsOf: source), bytes)
         var isDirectory: ObjCBool = false
         XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path, isDirectory: &isDirectory))

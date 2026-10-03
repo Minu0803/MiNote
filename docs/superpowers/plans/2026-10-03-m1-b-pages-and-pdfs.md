@@ -75,12 +75,12 @@
 
 **Interfaces:** consumes v3 assets/page references and new attachPDF signature; produces PreparedPDF and export sourceURLs mapping/asset-specific validation.
 
-- [ ] `testTwoPDFsWithSameFilenameKeepIndependentAssets`: 같은 파일명/서로 다른 bytes PDF 2개, 각각 UUID path와 index/geometry, 현재 페이지 뒤 삽입, 최초 PDF/기존 ink 불변.
-- [ ] `testFailedSecondImportAndStaleRevisionKeepFirstPDFAndInk`: asset 기록 후 JSON 실패/limit 오류/기대 revision 오류 → 이전 JSON/backup/자산 불변. 새 orphan은 지우지 않고 M1-C에 넘김.
-- [ ] `testExportDuplicatedAndReorderedPDFPagesHasOnlyTheirOwnInk`: 서로 다른 자산 및 같은 source index 복제 페이지를 섞어 재정렬. output page 순서/텍스트/crop/rotation/각 page별 ink pixel 위치 확인, 서로의 주석 중복 없음. 삭제 페이지는 출력 제외, 용지 선도 출력됨.
-- [ ] core/Xcode 관련 RED → 자산 ID 연결, validation, 독립 출력 page, 용지 geometry 구현 → GREEN. 기존 source/destination 보존·잠긴 PDF·4회전 테스트 유지.
-- [ ] 두 번째 PDF가 없다는 이유로 첫 PDF를 택하는 fallback 제거. sourceURLs 누락을 명시적 실패로 처리.
-- [ ] 관련 전체 tests → PROGRESS → 커밋.
+- [x] `testTwoPDFsWithSameFilenameKeepIndependentAssets`: 같은 파일명/서로 다른 bytes PDF 2개, 각각 UUID path와 index/geometry, 현재 페이지 뒤 삽입, 최초 PDF/기존 ink 불변.
+- [x] `testFailedSecondImportAndStaleRevisionKeepFirstPDFAndInk`: asset 기록 후 JSON 실패/limit 오류/기대 revision 오류 → 이전 JSON/backup/자산 불변. 새 orphan은 지우지 않고 M1-C에 넘김.
+- [x] `testExportDuplicatedAndReorderedPDFPagesHasOnlyTheirOwnInk`: 서로 다른 자산 및 같은 source index 복제 페이지를 섞어 재정렬. output page 순서/텍스트/crop/rotation/각 page별 ink pixel 위치 확인, 서로의 주석 중복 없음. 삭제 페이지는 출력 제외, 용지 선도 출력됨.
+- [x] core/Xcode 관련 RED → 자산 ID 연결, validation, 독립 출력 page, 용지 geometry 구현 → GREEN. 기존 source/destination 보존·잠긴 PDF·4회전 테스트 유지.
+- [x] 두 번째 PDF가 없다는 이유로 첫 PDF를 택하는 fallback 제거. sourceURLs 누락을 명시적 실패로 처리.
+- [x] 관련 전체 tests → PROGRESS → 커밋.
 
 ### Task 4: 편집 세션과 페이지 관리 화면
 

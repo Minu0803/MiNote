@@ -5,20 +5,42 @@ import UIKit
 
 enum PDFExporter {
     /// Original PDF remains untouched. The returned PDF is a share/export copy.
-    static func export(_ document: NoteDocument, sourceURL: URL, destination: URL) throws {
-        guard sourceURL.standardizedFileURL.resolvingSymlinksInPath() != destination.standardizedFileURL.resolvingSymlinksInPath() else {
-            throw PDFError.exportFailed
-        }
+    static func export(_ document: NoteDocument, sourceURLs: [UUID: URL], destination: URL) throws {
         try DocumentCodec.validate(document)
-        let source = try PDFValidation.open(url: sourceURL, for: document)
+        let outputPath = destination.standardizedFileURL.resolvingSymlinksInPath()
+        var sourcePaths = Set<URL>()
+        for asset in document.pdfAssets {
+            guard let url = sourceURLs[asset.id] else { throw PDFError.missingAsset }
+            let path = url.standardizedFileURL.resolvingSymlinksInPath()
+            guard path != outputPath, sourcePaths.insert(path).inserted else { throw PDFError.exportFailed }
+            _ = try PDFValidation.open(url: url, asset: asset,
+                referencedPages: (document.pages + document.deletedPages.map(\.page)).filter { $0.pdfSource?.assetID == asset.id })
+        }
         let output = PDFDocument()
+        var cachedID: UUID?
+        var cachedPDF: PDFDocument?
         for (index, model) in document.pages.enumerated() {
             let page: PDFPage
-            if let sourceIndex = model.pdfSource?.index, let sourcePage = source.page(at: sourceIndex) {
-                page = sourcePage
+            if let reference = model.pdfSource {
+                guard let assetID = reference.assetID, let url = sourceURLs[assetID],
+                      let asset = document.pdfAssets.first(where: { $0.id == assetID }) else { throw PDFError.missingAsset }
+                if cachedID != assetID {
+                    cachedPDF = try PDFValidation.open(url: url, asset: asset,
+                        referencedPages: document.pages.filter { $0.pdfSource?.assetID == assetID })
+                    cachedID = assetID
+                }
+                // Copy before adding ink: duplicates must never mutate their shared source page.
+                guard let original = cachedPDF?.page(at: reference.index), let independent = original.copy() as? PDFPage else {
+                    throw PDFError.exportFailed
+                }
+                page = independent
             } else {
-                let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: model.width, height: model.height))
-                let bytes = renderer.pdfData { context in context.beginPage() }
+                let bounds = CGRect(x: 0, y: 0, width: model.width, height: model.height)
+                let renderer = UIGraphicsPDFRenderer(bounds: bounds)
+                let bytes = renderer.pdfData { context in
+                    context.beginPage()
+                    PaperRenderer.draw(model.paper, in: context.cgContext, bounds: bounds)
+                }
                 guard let blank = PDFDocument(data: bytes)?.page(at: 0) else { throw PDFError.exportFailed }
                 page = blank
             }

@@ -15,7 +15,7 @@ import XCTest
         note.pages[0].strokes = [fixtureStroke()]; note.revision += 1
         try await storeA.save(note)
         let bytes = Data("PDF A".utf8), asset = PDFAsset(originalFilename: "A.pdf", pageCount: 1, byteCount: bytes.count)
-        let imported = try await storeA.attachPDF(data: bytes, asset: asset, pages: [pdfFixturePage()], expectedRevision: 1)
+        let imported = try await storeA.attachPDF(data: bytes, asset: asset, pages: [pdfFixturePage(assetID: asset.id)], afterPageID: note.pages[0].id, expectedRevision: 1)
         let reopened = LibraryStore(directory: root); _ = try await reopened.load()
         let restoredStore = try await reopened.documentStore(for: a)
         let restored = try await restoredStore.load(), other = try await storeB.load()

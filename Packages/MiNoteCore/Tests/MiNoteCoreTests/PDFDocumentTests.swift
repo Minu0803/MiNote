@@ -19,7 +19,7 @@ import XCTest
         let bytes = Data("immutable PDF bytes".utf8)
         let asset = PDFAsset(originalFilename: "lesson.pdf", pageCount: 1, byteCount: bytes.count)
         let page = pdfFixturePage(assetID: asset.id)
-        let imported = try await store.attachPDF(data: bytes, asset: asset, pages: [page], expectedRevision: 0)
+        let imported = try await store.attachPDF(data: bytes, asset: asset, pages: [page], afterPageID: original.pages[0].id, expectedRevision: 0)
         XCTAssertEqual(imported.id, original.id)
         XCTAssertEqual(imported.pages[0], original.pages[0])
         XCTAssertEqual(imported.pages[1], page)
@@ -42,10 +42,10 @@ import XCTest
         try FileManager.default.createDirectory(at: backup, withIntermediateDirectories: false)
         let bytes = Data("PDF".utf8)
         let asset = PDFAsset(originalFilename: "test.pdf", pageCount: 1, byteCount: bytes.count)
-        do { _ = try await store.attachPDF(data: bytes, asset: asset, pages: [pdfFixturePage()], expectedRevision: 0); XCTFail("Must fail") } catch {}
+        do { _ = try await store.attachPDF(data: bytes, asset: asset, pages: [pdfFixturePage(assetID: asset.id)], afterPageID: original.pages[0].id, expectedRevision: 0); XCTFail("Must fail") } catch {}
         XCTAssertEqual(try Data(contentsOf: url.appendingPathComponent("document.json")), before)
         try FileManager.default.removeItem(at: backup)
-        let imported = try await store.attachPDF(data: bytes, asset: asset, pages: [pdfFixturePage()], expectedRevision: 0)
+        let imported = try await store.attachPDF(data: bytes, asset: asset, pages: [pdfFixturePage(assetID: asset.id)], afterPageID: original.pages[0].id, expectedRevision: 0)
         XCTAssertEqual(imported.pages.count, 2)
     }
 
@@ -59,7 +59,7 @@ import XCTest
         try await store.save(original)
         let bytes = Data("PDF".utf8)
         do {
-            _ = try await store.attachPDF(data: bytes, asset: PDFAsset(originalFilename: "test.pdf", pageCount: 1, byteCount: bytes.count), pages: [pdfFixturePage()], expectedRevision: 0)
+            _ = try await store.attachPDF(data: bytes, asset: PDFAsset(originalFilename: "test.pdf", pageCount: 1, byteCount: bytes.count), pages: [pdfFixturePage()], afterPageID: original.pages[0].id, expectedRevision: 0)
             XCTFail("Must reject stale import")
         } catch { XCTAssertEqual(error as? DocumentError, .staleRevision) }
         let loaded = try await store.load()
@@ -69,10 +69,11 @@ import XCTest
     func testMissingAssetCannotRecoverToOlderBlankOrOverwriteInk() async throws {
         let url = try directory()
         let store = DocumentStore(directory: url)
-        try await store.save(.blank())
+        let original = NoteDocument.blank()
+        try await store.save(original)
         let bytes = Data("PDF".utf8)
         let asset = PDFAsset(originalFilename: "test.pdf", pageCount: 1, byteCount: bytes.count)
-        let imported = try await store.attachPDF(data: bytes, asset: asset, pages: [pdfFixturePage()], expectedRevision: 0)
+        let imported = try await store.attachPDF(data: bytes, asset: asset, pages: [pdfFixturePage(assetID: asset.id)], afterPageID: original.pages[0].id, expectedRevision: 0)
         let assetURL = try await store.assetURL(for: asset)
         try FileManager.default.removeItem(at: assetURL)
         let before = try Data(contentsOf: url.appendingPathComponent("document.json"))
