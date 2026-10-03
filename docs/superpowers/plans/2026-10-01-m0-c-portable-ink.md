@@ -52,11 +52,11 @@
 
 **Interfaces:** `readDocument(text: string) -> object`, `applyEdit(document: object, command: object) -> object`, `writeDocument(document: object) -> string`. command는 `{kind:"translateStroke", pageID, strokeID, dx, dy}`, `{kind:"deleteStroke", pageID, strokeID}`, `{kind:"appendStroke", pageID, stroke}` 세 종류이며 DOM/PencilKit에 의존하지 않는다. ID는 UUID string, dx/dy는 number, stroke는 schema-v2 InkStroke object다.
 
-- [ ] Node 테스트에 기본 왕복 보존, 선택 ID만 이동/삭제, 새 획 중복 ID 거부, 잘못된 페이지/획 ID 거부, 미래 버전/알 수 없는 도구/필드 편집 차단, 잘못된 수치·singular transform 거부를 작성한다.
-- [ ] `node --test Tools/PortableInk/document.test.mjs`로 미구현 RED를 확인한다.
-- [ ] `document.mjs`에 현재 v2 계약과 시험 범위 검사를 구현한다. 원본 object를 바꾸지 않고 새 object를 반환하며 성공한 편집당 revision을 한 번 증가시킨다. 새 획 ID는 UUID이고 document/page/surviving stroke ID는 유지한다.
-- [ ] 이동은 document pt의 dx/dy를 stroke.transform.tx/ty에 더한다. point/style/seed/creationTime 및 다른 페이지와 PDF metadata는 그대로 둔다. revision 상한 초과는 거부한다.
-- [ ] 동일 입력/manifest로 `roundtrip.mjs`가 기대 JSON을 결정적으로 생성하게 한다. 모든 계약 테스트 통과와 입력 원본 bytes 불변을 확인하고 기록·커밋한다.
+- [x] Node 테스트에 기본 왕복 보존, 선택 ID만 이동/삭제, 새 획 중복 ID 거부, 잘못된 페이지/획 ID 거부, 미래 버전/알 수 없는 도구/필드 편집 차단, 잘못된 수치·singular transform 거부를 작성한다.
+- [x] `node --test Tools/PortableInk/document.test.mjs`로 미구현 RED를 확인한다.
+- [x] `document.mjs`에 현재 v2 계약과 시험 범위 검사를 구현한다. 원본 object를 바꾸지 않고 새 object를 반환하며 성공한 편집당 revision을 한 번 증가시킨다. 새 획 ID는 UUID이고 document/page/surviving stroke ID는 유지한다.
+- [x] 이동은 document pt의 dx/dy를 stroke.transform.tx/ty에 더한다. point/style/seed/creationTime 및 다른 페이지와 PDF metadata는 그대로 둔다. revision 상한 초과는 거부한다.
+- [x] 동일 입력/manifest로 `roundtrip.mjs`가 기대 JSON을 결정적으로 생성하게 한다. 모든 계약 테스트 통과와 입력 원본 bytes 불변을 확인하고 기록·커밋한다.
 
 ### Task 3: 독립 렌더링과 시험 UI
 

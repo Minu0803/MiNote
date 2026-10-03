@@ -1,0 +1,5 @@
+[
+  {"kind":"translateStroke","pageID":"00000000-0000-4000-8000-000000000010","strokeID":"00000000-0000-4000-8000-000000000101","dx":12,"dy":-8},
+  {"kind":"deleteStroke","pageID":"00000000-0000-4000-8000-000000000010","strokeID":"00000000-0000-4000-8000-000000000103"},
+  {"kind":"appendStroke","pageID":"00000000-0000-4000-8000-000000000010","stroke":{"id":"00000000-0000-4000-8000-000000000106","tool":"pen","color":{"red":0.1,"green":0.2,"blue":0.9,"alpha":1},"creationTime":1700000002,"randomSeed":12,"transform":{"a":1,"b":0,"c":0,"d":1,"tx":0,"ty":0},"points":[{"x":200,"y":220,"timeOffset":0,"width":5,"height":5,"opacity":1,"force":1,"azimuth":0,"altitude":1,"secondaryScale":1},{"x":260,"y":250,"timeOffset":0.2,"width":5,"height":5,"opacity":1,"force":1,"azimuth":0,"altitude":1,"secondaryScale":1}]}}
+]

@@ -136,7 +136,7 @@
 
 ## M0-C 실행 체크포인트 — 2026-10-03
 - [x] 1: 실제 PencilKit fixture·필기 계약·공통 리소스
-- [ ] 2: 독립 JSON 검증·ID 편집·결정적 왕복 출력
+- [x] 2: 독립 JSON 검증·ID 편집·결정적 왕복 출력
 - [ ] 3: Canvas 시험 UI·브라우저 다운로드 검증
 - [ ] 4: iPad 역방향 편집·양 OS 전체 검증·리뷰·Notion
 - 시작: 계획·관련 codec/store/PencilKit 테스트·Git 상태를 읽었다. Node v23.11.0은 `/opt/homebrew/bin/node`; 기존 18.6/26.4 iPad simulator를 확인했다. 작업은 사용자 지정 main에서 직접 수행한다.
@@ -150,3 +150,9 @@
 - GREEN: core 전체 **25/0** (`/private/tmp/minote-m0c-fixture-core-green.log`), 18.6 앱 단위 전체 **27/0** (`/private/tmp/minote-m0c-fixture-app-green2.log`), 두 명령 exit 0. 관련 8개 실행은 fixture 회수 전 URL 없음 1실패였으며 이를 전체 통과로 기록하지 않는다.
 - fixture 회수 판단: test 후 simulator가 Shutdown이라 `simctl get_app_container`가 실패했다. 생성 전용 `PortableInkGenerated` 디렉터리만 검색해 JSON/PDF를 회수했다. Xcode 재설치는 app container UUID를 바꾸므로 하드코딩 경로를 쓰지 않는다. 사용자 노트는 읽거나 바꾸지 않았다.
 - 다음: Task 2의 Node 계약/ID 편집 RED를 확인하고 JS 독립 명령을 구현한다. browser/iPad 역방향/26.4/실기기 검증은 아직 완료 아님.
+
+### M0-C Task 2 완료
+- DOM/PencilKit 없는 `Tools/PortableInk/document.mjs`가 v2 문서를 검사하고 ID 기반 이동/삭제/새 pen 추가를 원본 변경 없이 수행한다. 성공한 명령당 revision +1이며 fixture 40→43 결과를 JS가 직접 생성했다.
+- Node RED: 문서 module 없음(`minote-m0c-document-red.log`). GREEN: `node --test Tools/PortableInk/document.test.mjs` **11/0** (`/private/tmp/minote-m0c-document-green.log`). 도구/필드/미래 schema, UUID 대소문자/중복, geometry/style/time/PDF mapping, invalid commands, 원본 불변을 확인했다. `node Tools/PortableInk/roundtrip.mjs --check`도 exit 0.
+- 판단: JS는 safe integer로 정확히 표현되는 revision/정수 metadata만 편집한다. Swift Int64 상한까지 지원하는 척하며 반올림하지 않고 거부한다. 도구의 지원 범위가 iPad보다 좁다는 점을 계약에 명시했다. null secondaryScale/미지 필드를 제거한 JSON 저장도 허용하지 않는다.
+- 다음: renderer 좌표·size/alpha 테스트 RED → Canvas UI → 실제 브라우저 편집/다운로드 검증. iPad의 edited.json 역방향 테스트는 Task 4다.
