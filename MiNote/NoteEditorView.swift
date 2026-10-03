@@ -23,10 +23,10 @@ struct NoteEditorView: View {
         ("주황", Color(red: 0.91, green: 0.43, blue: 0.10), UIColor(red: 0.91, green: 0.43, blue: 0.10, alpha: 1))
     ]
 
-    init() {
-        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        _session = StateObject(wrappedValue: EditorSession(
-            store: DocumentStore(directory: documents.appendingPathComponent("MiNote", isDirectory: true))))
+    private let onClose: () -> Void
+    init(session: EditorSession, onClose: @escaping () -> Void) {
+        _session = StateObject(wrappedValue: session)
+        self.onClose = onClose
     }
 
     var body: some View {
@@ -151,9 +151,14 @@ struct NoteEditorView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
+            Button {
+                if let drawing = canvasReference.canvas?.drawing { session.receiveDrawing(drawing) }
+                onClose()
+            } label: { Label("라이브러리", systemImage: "chevron.left") }
+            .accessibilityIdentifier("closeNote").disabled(session.isProcessing)
             VStack(alignment: .leading, spacing: 3) {
                 Text("MiNote").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(Color(red: 0.14, green: 0.18, blue: 0.25))
-                Text(session.document?.pdfAsset?.originalFilename ?? session.document?.title ?? "나의 첫 노트").lineLimit(1).font(.caption).foregroundStyle(.secondary)
+                Text(session.document?.title ?? "노트").lineLimit(1).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             Label(session.saveStatusLabel, systemImage: saveSymbol)

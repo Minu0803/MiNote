@@ -1,0 +1,130 @@
+import Combine
+import Foundation
+import MiNoteCore
+
+struct LibraryNoteRow: Identifiable {
+    let metadata: LibraryNote
+    let title: String
+    let error: String?
+    var id: UUID { metadata.id }
+}
+
+@MainActor final class LibrarySession: ObservableObject {
+    @Published private(set) var notes: [LibraryNoteRow] = []
+    @Published private(set) var folders: [LibraryFolder] = []
+    @Published private(set) var selectedEditor: EditorSession?
+    @Published private(set) var isBusy = false
+    @Published private(set) var loadError: String?
+    @Published private(set) var recoveryNotice: String?
+    @Published var operationError: String?
+    private let store: LibraryStore
+    private var openedRevision: Int64?
+    private var loaded = false
+
+    init(store: LibraryStore) { self.store = store }
+
+    func load() async {
+        guard !isBusy, selectedEditor == nil else { return }
+        isBusy = true; defer { isBusy = false }
+        do { try await refresh(); loadError = nil; loaded = true }
+        catch { loadError = error.localizedDescription }
+    }
+
+    func openNote(_ id: UUID) async {
+        guard !isBusy, loaded else { return }
+        if selectedEditor?.document?.id == id { return }
+        isBusy = true; defer { isBusy = false }
+        operationError = nil
+        do {
+            guard await closeActive() else { return }
+            guard let row = notes.first(where: { $0.id == id }) else { throw LibraryError.noteMissing(id) }
+            guard row.metadata.trashedAt == nil else { throw LibraryError.noteTrashed }
+            let editor = EditorSession(store: try await store.documentStore(for: id), expectedID: id)
+            await editor.loadIfNeeded()
+            guard let document = editor.document else { throw LibrarySessionError.message(editor.loadError ?? "노트를 열 수 없습니다.") }
+            selectedEditor = editor; openedRevision = document.revision
+        } catch { operationError = error.localizedDescription }
+    }
+
+    @discardableResult func closeNote() async -> Bool {
+        guard !isBusy else { return false }
+        isBusy = true; defer { isBusy = false }
+        operationError = nil
+        return await closeActive()
+    }
+
+    private func closeActive() async -> Bool {
+        guard let editor = selectedEditor else { return true }
+        guard !editor.isProcessing else { operationError = "문서 처리를 마친 뒤 닫을 수 있습니다."; return false }
+        await editor.flush()
+        guard editor.saveState == .saved, let document = editor.document else {
+            operationError = "현재 필기를 저장하지 못했습니다. 재시도한 뒤 노트를 닫아 주세요."
+            return false
+        }
+        do {
+            if document.revision != openedRevision {
+                try await store.markModified(id: document.id, at: Date().timeIntervalSince1970)
+            }
+            // Publish removal only after both document and metadata are durable.
+            try await refresh()
+            selectedEditor = nil; openedRevision = nil
+            return true
+        } catch { operationError = error.localizedDescription; return false }
+    }
+
+    private func refresh() async throws {
+        let result = try await store.load()
+        var rows: [LibraryNoteRow] = []
+        for note in result.catalog.notes {
+            do {
+                let documentStore = try await store.documentStore(for: note.id)
+                guard let loaded = try await documentStore.load() else { throw LibraryError.documentMissing(note.id) }
+                guard loaded.document.id == note.id else { throw LibraryError.conflict }
+                rows.append(LibraryNoteRow(metadata: note, title: loaded.document.title, error: nil))
+            } catch { rows.append(LibraryNoteRow(metadata: note, title: "열 수 없는 노트 (\(note.id.uuidString.prefix(8)))", error: error.localizedDescription)) }
+        }
+        notes = rows.sorted {
+            $0.metadata.modifiedAt == $1.metadata.modifiedAt ? $0.id.uuidString < $1.id.uuidString : $0.metadata.modifiedAt > $1.metadata.modifiedAt
+        }
+        folders = result.catalog.folders
+        if let notice = result.recoveryNotice { recoveryNotice = notice }
+    }
+
+    private func mutate(_ action: () async throws -> Void) async {
+        guard !isBusy, loaded else { return }
+        isBusy = true; defer { isBusy = false }
+        operationError = nil
+        guard await closeActive() else { return }
+        do { try await action(); try await refresh() }
+        catch {
+            operationError = error.localizedDescription
+            // A durable note may exist despite catalog failure; recover it on reload.
+            try? await refresh()
+        }
+    }
+    func createNote(title: String, folderID: UUID?) async {
+        await mutate { _ = try await store.createNote(title: title, folderID: folderID) }
+    }
+    func renameNote(_ id: UUID, title: String) async {
+        await mutate { try await store.renameNote(id: id, title: title) }
+    }
+    func moveNote(_ id: UUID, folderID: UUID?) async {
+        await mutate { try await store.moveNote(id: id, folderID: folderID) }
+    }
+    func trashNote(_ id: UUID) async { await mutate { try await store.trashNote(id: id) } }
+    func restoreNote(_ id: UUID) async { await mutate { try await store.restoreNote(id: id) } }
+    func createFolder(name: String, parentID: UUID?) async {
+        await mutate { _ = try await store.createFolder(name: name, parentID: parentID) }
+    }
+    func renameFolder(_ id: UUID, name: String) async {
+        await mutate { try await store.renameFolder(id: id, name: name) }
+    }
+    func moveFolder(_ id: UUID, parentID: UUID?) async {
+        await mutate { try await store.moveFolder(id: id, parentID: parentID) }
+    }
+}
+
+private enum LibrarySessionError: LocalizedError {
+    case message(String)
+    var errorDescription: String? { if case .message(let text) = self { return text }; return nil }
+}

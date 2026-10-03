@@ -27,14 +27,16 @@ final class EditorSession: ObservableObject {
     }
 
     private let store: DocumentStore
+    private let expectedID: UUID?
     private let saveDelay: Duration
     private var histories: [UUID: [InkStroke]] = [:]
     private var pendingSave: Task<Void, Never>?
     private var loading = false
     private var savedRevision: Int64?
 
-    init(store: DocumentStore, saveDelay: Duration = .milliseconds(350)) {
+    init(store: DocumentStore, expectedID: UUID? = nil, saveDelay: Duration = .milliseconds(350)) {
         self.store = store
+        self.expectedID = expectedID
         self.saveDelay = saveDelay
     }
 
@@ -53,6 +55,9 @@ final class EditorSession: ObservableObject {
         defer { loading = false }
         do {
             let result = try await store.load()
+            if let expectedID {
+                guard result?.document.id == expectedID else { throw LibraryError.documentMissing(expectedID) }
+            }
             let loaded = result?.document ?? .blank()
             let selected = loaded.pages.firstIndex(where: { $0.id == loaded.lastOpenedPageID }) ?? 0
             let restored = try InkAdapter.decode(loaded.pages[selected].strokes)
@@ -143,7 +148,7 @@ final class EditorSession: ObservableObject {
     func importPDF(from url: URL) async {
         guard !isProcessing, let current = document else { return }
         guard current.pdfAsset == nil else {
-            operationError = "현재 노트에는 PDF가 연결되어 있습니다. 여러 노트 관리는 다음 단계에서 추가됩니다."
+            operationError = "현재 노트에는 PDF가 연결되어 있습니다. 다른 PDF는 새 노트로 가져와 주세요."
             return
         }
         isProcessing = true

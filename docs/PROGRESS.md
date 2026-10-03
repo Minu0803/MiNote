@@ -206,7 +206,7 @@
 ## M1-A 실행 체크포인트 (2026-10-03)
 - [x] Task 1: 기존 노트 보존 이주·catalog 읽기/저장
 - [x] Task 2: 독립 노트·폴더·휴지통 변경
-- [ ] Task 3: 저장 완료를 보장하는 세션 전환
+- [x] Task 3: 저장 완료를 보장하는 세션 전환
 - [ ] Task 4: 라이브러리 UI·전체 검증·fresh 리뷰·Notion·인계
 - 시작 기준 `fd4def65ac952a0d5efc1a9ea07d02f2d6630689`. main에서 직접 구현하고 별도 브랜치/worktree/PR/push는 하지 않는다. 기존 M0 결과를 반복하지 않는다.
 - 사용자가 앞서 제시한 제품 설계와 작성된 M1-A 계획에 대해 계속 진행을 요청했다. 직접 구현/단계 말 한 번 리뷰를 유지하며 새 승인 질문은 만들지 않는다.
@@ -223,3 +223,9 @@
 - Task 1 커밋 aa92907. 노트 생성/최신 본문 기준 이름 변경, 폴더 생성/이름 변경/이동, 노트 이동/휴지통/복원을 구현했다. UUID 식별과 folder 관계를 유지하며 순환·누락 parent·빈 이름을 거부한다. 본문 저장 뒤 catalog 실패한 생성은 다음 load에서 회수한다.
 - RED: mutation API 없음 (`/private/tmp/minote-m1a-mutation-red.log`, exit 1). GREEN: `swift test --package-path Packages/MiNoteCore` **44/0**, exit 0 (`/private/tmp/minote-m1a-task2-core.log`). 서로 다른 노트의 필기/PDF/리비전 분리, 최신 필기 후 rename, 폴더/휴지통 원본 불변, write 실패, 동시 mutation busy 차단 및 stale actor commit 거부를 확인했다.
 - 다음 첫 작업: LibrarySessionTests RED. MainActor 세션이 outgoing editor 저장 상태를 확인한 뒤만 교체하며 실패/미지원 필기는 그대로 유지한다. 앱 UI·양 OS·단계 말 리뷰는 미완료.
+
+### M1-A Task 3 완료
+- Task 2 커밋 0ca9545. MainActor LibrarySession은 첫 await 전에 busy를 설정하고 outgoing editor flush/.saved/metadata commit/목록 refresh를 마친 뒤 선택을 교체한다. 실패하면 동일 editor/drawing을 유지한다. referenced ID가 없는 노트를 EditorSession blank fallback으로 새로 만들지 않도록 expectedID를 전달한다. 본문 실패 항목은 목록에 오류로 남는다.
+- RED: LibrarySession 타입 없음 (`/private/tmp/minote-m1a-session-red.log`, exit 65). 18.6 전체 GREEN: 앱 단위 **38/0**, 기존 UI **2/0**, exit 0 / TEST SUCCEEDED (`/private/tmp/minote-m1a-task3-green.log`). outgoing 저장/두 노트 격리/중복 열기/실패·미지원 차단/rename 전 close/catalog 실패 뒤 유지 테스트 6개 포함.
+- 중간 구성 판단: 주입된 NoteEditorView 검증을 위해 앱 root는 이 커밋에서 기존 디렉터리를 사용한다. Task 4에서 LibraryView로 교체하며 최종 설치는 빈 목록·명시적 사용자 생성이다. 새로운 UI 테스트는 아직 미실행/미커밋이다.
+- 다음 첫 작업: Task 4 UI RED → 실제 라이브러리 화면 → 양 OS 전체 검증 → fresh 리뷰/수정 → Notion/다음 계획. 길게 실행하기 전 checkpoint로 본 기록을 남긴다.
