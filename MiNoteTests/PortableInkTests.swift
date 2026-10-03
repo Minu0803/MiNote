@@ -27,6 +27,93 @@ import XCTest
         XCTAssertEqual(document.pages[0].strokes[3].transform.b, 1)
         XCTAssertEqual(document.pages[0].strokes[1].color.alpha, 0.35, accuracy: 0.00001)
     }
+
+    func testSmallActualTransformEditIsNotHiddenByPointNormalization() throws {
+        let original = try fixtureDocument("source").pages[0].strokes[0]
+        let restored = try InkAdapter.decode([original]).strokes[0]
+        var transform = restored.transform
+        transform.tx += 0.0001
+        let changed = PKStroke(ink: restored.ink, path: restored.path, transform: transform, randomSeed: restored.randomSeed)
+        let encoded = try InkAdapter.encode(PKDrawing(strokes: [changed]), preserving: [original])
+        XCTAssertEqual(encoded[0].transform.tx, 5.0001, accuracy: 0.00000001)
+        XCTAssertNotEqual(encoded[0], original)
+    }
+
+    func testJavaScriptAndBrowserResultsCanBeReeditedUndoneSavedAndReopened() async throws {
+        for name in ["edited", "browser-edited"] {
+            let imported = try fixtureDocument(name)
+            for page in imported.pages {
+                XCTAssertEqual(try InkAdapter.encode(InkAdapter.decode(page.strokes), preserving: page.strokes), page.strokes)
+            }
+            let restored = try InkAdapter.decode(imported.pages[0].strokes)
+            let transformed = restored.strokes[0].path[0].location.applying(restored.strokes[0].transform)
+            XCTAssertEqual(transformed.x, 97, accuracy: 0.01)
+            XCTAssertEqual(transformed.y, 98, accuracy: 0.01)
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: directory.appendingPathComponent("assets"), withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let asset = try XCTUnwrap(imported.pdfAsset)
+            let bytes = try Data(contentsOf: fixtureURL("source", extension: "pdf"))
+            let assetURL = directory.appendingPathComponent(asset.relativePath)
+            try bytes.write(to: assetURL)
+            let store = DocumentStore(directory: directory)
+            try await store.save(imported)
+            let session = EditorSession(store: store, saveDelay: .seconds(60))
+            await session.loadIfNeeded()
+            XCTAssertNil(session.loadError)
+            XCTAssertEqual(session.document, imported)
+
+            let canvas = PortableCommandCanvas()
+            canvas.manager.groupsByEvent = false
+            let reference = CanvasReference(); reference.canvas = canvas
+            let coordinator = NoteCanvas.Coordinator(session: session, reference: reference)
+            canvas.drawing = session.drawing
+            // Programmatic drawing assignments do not model a Pencil gesture's
+            // undo registration. Register snapshots explicitly, then exercise the
+            // production CanvasReference and coordinator with a real UndoManager.
+            canvas.onChange = { coordinator.canvasViewDrawingDidChange($0) }
+            let newStroke = sampleStroke(offset: 320)
+            let appended = PKDrawing(strokes: canvas.drawing.strokes + [newStroke])
+            canvas.manager.beginUndoGrouping(); canvas.apply(appended); canvas.manager.endUndoGrouping()
+            let addedID = try XCTUnwrap(session.currentPage?.strokes.last?.id)
+            XCTAssertEqual(session.strokeCount, 5)
+            let removed = PKDrawing(strokes: Array(canvas.drawing.strokes.dropFirst()))
+            canvas.manager.beginUndoGrouping(); canvas.apply(removed); canvas.manager.endUndoGrouping()
+            XCTAssertEqual(session.strokeCount, 4)
+            XCTAssertEqual(canvas.manager.groupingLevel, 0, "Each simulated gesture must be a separate closed undo group")
+            reference.undo(in: session)
+            XCTAssertEqual(session.currentPage?.strokes.map(\.id), imported.pages[0].strokes.map(\.id) + [addedID])
+            reference.redo(in: session)
+            XCTAssertEqual(session.strokeCount, 4)
+            reference.undo(in: session)
+            reference.undo(in: session)
+            XCTAssertEqual(session.currentPage?.strokes, imported.pages[0].strokes)
+            reference.redo(in: session)
+            XCTAssertEqual(session.strokeCount, 5)
+            let final = try XCTUnwrap(session.document)
+            XCTAssertFalse(final.pages[0].strokes.contains { $0.id == PortableFixture.id(103) })
+            XCTAssertEqual(Array(final.pages.dropFirst()), Array(imported.pages.dropFirst()))
+            await session.flush(canvas.drawing)
+            XCTAssertEqual(session.saveState, .saved)
+            let reopened = EditorSession(store: DocumentStore(directory: directory))
+            await reopened.loadIfNeeded()
+            XCTAssertEqual(reopened.document, final)
+            XCTAssertEqual(try InkAdapter.encode(reopened.drawing, preserving: final.pages[0].strokes), final.pages[0].strokes)
+            XCTAssertEqual(try Data(contentsOf: assetURL), bytes)
+        }
+    }
+}
+
+@MainActor private final class PortableCommandCanvas: PKCanvasView {
+    let manager = UndoManager()
+    var onChange: ((PKCanvasView) -> Void)?
+    override var undoManager: UndoManager? { manager }
+    func apply(_ next: PKDrawing) {
+        let previous = drawing
+        manager.registerUndo(withTarget: self) { $0.apply(previous) }
+        drawing = next
+        onChange?(self)
+    }
 }
 
 @MainActor enum PortableFixture {

@@ -164,3 +164,17 @@
 - 제한/판단: Codex IAB의 download 이벤트가 두 번 timeout했고 파일 저장 완료는 확인하지 못했다. anchor를 DOM에 연결하고 readonly JSON 출력 대안을 제공했다. 버튼은 저장 요청만 안내한다. 실제 UI 출력이 Swift로 전달되므로 왕복 데이터 검증을 계속하고, 일반 브라우저의 native 다운로드는 미검증으로 남긴다. 실패를 통과로 기록하지 않는다.
 - 서버: 저장소 루트 `python3 -m http.server 8765 --bind 127.0.0.1`, 실행 중 session 60760. 테스트 종료 시 이 서버만 정리한다.
 - 다음 즉시 작업: 공통 codec의 JS/browser 결과 검증 → 실제 PKDrawing 추가/삭제·Canvas undo/redo·임시 저장소 재열기. 전체 양 OS/별도 리뷰/Notion은 아직 완료 아님.
+
+### M0-C Task 4 검증 진행
+- core 전체 **26/0** (`/private/tmp/minote-m0c-core-final.log`). CLI와 실제 browser fixture의 revision/ID/전체 미수정 속성·PDF metadata를 확인했다.
+- 18.6 첫 전체 실행은 앱 **29개 중 4 assertion 실패**, UI **2/0**였다(`minote-m0c18-final.log`, exit 65). 이를 성공으로 기록하지 않는다.
+- 원인 진단: 시험용 UndoManager가 같은 run-loop의 두 입력을 implicit event group으로 묶어 undo가 둘 다 취소했다. 집중 진단에서 groupingLevel 1을 확인했다(`minote-m0c-undo-diagnose.log`, exit 65). 시험 입력만 groupsByEvent=false로 바꾸어 각 명시적 그룹을 독립시켰다. 실제 앱 undo 동작 변경은 없다.
+- 검증 범위: bundled JS/browser 문서 → 실제 PKDrawing → 실제 CanvasReference/Coordinator와 UndoManager의 명시적 snapshot 등록 → 추가·삭제/undo/redo → 임시 DocumentStore/PDF 자산 → 세션 재열기다. snapshot 등록은 programmatic test 입력이며 Pencil gesture와 구분한다. 실제 gesture UI 검증은 기존 UI 테스트에서 수행한다.
+- 현재 양 OS 전체 실행 중: `minote-m0c18-green.log` / `minote-m0c26-green.log`, 결과가 확정되기 전 완료로 표시하지 않는다. 작은 transform 0.0001pt 변경이 정규화 비교에 숨지 않는 테스트도 포함한다.
+- 코드 체크포인트: Task 1 `0ef4587`, Task 2 `f9fe764`, Task 3 `da0a6f7`; Task 4 미커밋. 다음: 양 실행 exit/result 확인 → 변경 커밋 → fresh reviewer 한 번 → 중요 문제 수정 → Notion/인계.
+
+### M0-C Task 4 리뷰 전 GREEN
+- Node **17/0**, core **26/0**, iPadOS 18.6/26.4 각각 앱 단위 **29/0**, UI **2/0**. 각 전체 명령 exit 0이며 양 Xcode 로그 TEST SUCCEEDED를 확인했다. `git diff --check` 통과.
+- 명령: `node --test Tools/PortableInk/*.test.mjs`; `node Tools/PortableInk/roundtrip.mjs --check`; `swift test --package-path Packages/MiNoteCore`; `xcodebuild -project MiNote.xcodeproj -scheme MiNote -destination 'platform=iOS Simulator,id=<기기 UUID>' -derivedDataPath /private/tmp/minote-m0c-dd<18|26> -resultBundlePath /private/tmp/minote-m0c<18|26>-green.xcresult test`.
+- 기기: 18.6 `7964CDF4-782A-44C2-BC51-1176AF6C67AB`; 26.4 `423D4FF6-C678-45F9-9D3E-CB886EE82462`. 로그: `/private/tmp/minote-m0c-ui-final.log`, `minote-m0c-core-final.log`, `minote-m0c18-green.log`, `minote-m0c26-green.log`.
+- 아직 별도 리뷰/Notion/최종 인계는 미완료다. 실기기와 일반 브라우저 native download는 미검증이다. 다음 작업은 fresh reviewer 한 번이며 중요한 문제는 실제 재현 후 수정한다.
