@@ -14,8 +14,8 @@
 - M0-C 종료 당시 변경은 로컬 main에만 커밋했고 push하지 않았다. 현재 원격 상태를 의미하는 문장은 아니다. 최종 인계 문서 커밋은 `git log -1 --oneline`으로 확인한다.
 - 이전 실행: **2026-10-03 M1-A 완료**. 기준 `fd4def6`; 마지막 코드 `d968701`. 시작 시 main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음). 모든 구현은 main에 커밋했고 push하지 않았다.
 - 이전 단계: **M1-B 완료**. 기준 80d14c2, 마지막 기능 코드 1d67d9a, 테스트/체크포인트 fddbd66. main에서 직접 구현했고 push하지 않았다. 원격은 새 조회하지 않았으며 추적 ref와 현재 원격을 혼동하지 않는다.
-- 현재 단계: **M1-C 편집 백업·복원/파일 정리 진행 중**. 기준19e10af, Task1 archive 구현/검증 완료. 전체 단계/앱 UI/리뷰/Notion은 아직 미완료. 계획 `docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md`.
-- 다음 작업자가 할 첫 작업: Git 상태/HEAD 대조 → M1-C Task2 brief/LibraryStore 읽기 → 빈 library/UUID 충돌/staging 변조/catalog 실패 복원 RED. 완료된 단계를 반복하지 않는다.
+- 현재 단계: **M1-C 편집 백업·복원/파일 정리 진행 중**. 기준19e10af, Task1 archive/Task2 새 노트 복원 구현·검증 완료. 전체 단계/앱 UI/리뷰/Notion은 아직 미완료. 계획 `docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md`.
+- 다음 작업자가 할 첫 작업: Git 상태/HEAD 대조 → M1-C Task3 brief 읽기 → backup 참조/페이지 purge/중단 journal RED. 완료된 단계를 반복하지 않는다.
 - 마지막 Notion 반영: **2026-10-03T11:50:06.629Z (20:50:06 KST)**; 재조회/내용 검증 11:50:59 UTC. M1-B 결과·기술 판단·검증/실패 이력·리뷰·제한·커밋·다음 M1-C 계획을 기존 내용을 보존하며 추가했다. 이전 M1-A 반영 06:02:45.909Z 기록도 아래에 보존한다.
 - 최종 검증: **Node31/0, core60/0**, v2/v3 fixture check exit0, 18.6/26.4 각각 **app53/0 + 일반 UI5통과/fixture-only1skip/0실패**. 별도 seeded migration UI 양1/0/skip0과 원본 bytes 검증 통과. 로그/result와 리뷰 판단은 아래 M1-B 최종 절을 따른다.
 
@@ -379,3 +379,9 @@
 - 최초 API 부재 RED exit1(minote-m1c-archive-red.log). 첫 구현 컴파일 실패는 UInt32? 대 Int 비교였고 명시 UInt32 변환 후 해결. 최종 `swift test --package-path Packages/MiNoteCore` **67/0**, exit0(minote-m1c-task1-core.log). 실제 v3+PDF2개 모든 값/바이트 비교 및 Python zipfile CRC 성공. unsafe ZIP14종·CRC·future·manifest 길이/누락·진행 중 Task 취소·ENOSPC 기존 bytes 보존 확인.
 - `node --test Tools/PortableInk/*.test.mjs` **31/0**, exit0(minote-m1c-task1-node.log). 아카이브 계약 docs/format/backup-v1.md. 이 결과는 archive 범위이며 Files/PDFKit 복원/정리/양 OS 앱은 아직 미실행이다.
 - 다음: Task2 충돌 복원/기존 bytes/실패 orphan 회수 RED → 구현 → core → 기록/커밋. main 직접 작업/no push.
+
+### M1-C Task2 복원 체크포인트
+- commit4649208부터 새 노트 복원 구현. 코어에 없는 LibraryNoteRow 대신 실제 코어 LibraryNote를 반환하고 async actor 경계를 사용한다. 제목에 (복원)을 붙이고 필요할 때만 document UUID를 바꾸며 revision/page/stroke/asset IDs는 보존한다.
+- staging CRC/문서 재검증,64KiB copy와 복사 결과 CRC, 완성 directory만 notes로 이동, 마지막 catalog commit. 취소/ENOSPC/누락/변조/없는 폴더에서는 기존 노트 bytes 불변. catalog 실패 시 완성 orphan만 다음 load에서 한 번 회수.
+- API 부재 RED exit1(minote-m1c-restore-red.log), 관련3/0 GREEN. `swift test --package-path Packages/MiNoteCore` **70/0**, exit0(minote-m1c-task2-core.log). 빈/중복복원·원본 byte·재열기·복사 실패·취소·orphan 검증. 앱 PDFKit 실제 geometry gate/Files 설치 이동은 Task4/5 대기.
+- 다음: Task3 cleanup은 DocumentStore actor 안에서 snapshot 검사와 삭제를 함께 수행해 attach/save와 직렬화한다. Library purge journal은 primary commit을 기준으로 commit 전 복구/후 완결하며 primary+catalog backup에서 제거한 뒤 quarantine을 지운다. 긴 작업 전 체크포인트로 남긴다.

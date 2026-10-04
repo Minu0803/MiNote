@@ -58,9 +58,9 @@
 
 **Interfaces:** consumes ValidatedBackup; produces restoreBackup and new catalog row.
 
-- [ ] `testRestoreIntoEmptyLibraryAndDuplicateIdentity`: 빈 library 복원/다시 복원/원래 UUID 충돌. 페이지·획·자산은 그대로, document UUID만 필요할 때 변경, 원래 노트 bytes와 폴더 불변, 재열기 성공.
-- [ ] `testBadBackupAndFailedCatalogCannotLoseExistingNotes`: future v4/등록 asset 누락·CRC 변조/폴더 없음/취소/staging copy I/O/catalog 쓰기 실패. 원래 primary/backup/자산 불변. 완성 orphan은 다음 load에서 한 번만 회수.
-- [ ] RED → 모든 자산 복사/검증 후 catalog commit, 기존 codec/row 오류 처리 재사용 → GREEN. core 전체 → PROGRESS → 커밋.
+- [x] `testRestoreIntoEmptyLibraryAndDuplicateIdentity`: 빈 library 복원/다시 복원/원래 UUID 충돌. 페이지·획·자산은 그대로, document UUID만 필요할 때 변경, 원래 노트 bytes와 폴더 불변, 재열기 성공.
+- [x] `testBadBackupAndFailedCatalogCannotLoseExistingNotes`: future v4/등록 asset 누락·CRC 변조/폴더 없음/취소/staging copy I/O/catalog 쓰기 실패. 원래 primary/backup/자산 불변. 완성 orphan은 다음 load에서 한 번만 회수.
+- [x] RED → 모든 자산 복사/검증 후 catalog commit, 기존 codec/row 오류 처리 재사용 → GREEN. core 전체 → PROGRESS → 커밋.
 
 ### Task 3: 복구본을 지키는 정리와 영구 제거
 

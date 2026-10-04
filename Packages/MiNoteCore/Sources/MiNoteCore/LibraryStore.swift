@@ -8,6 +8,7 @@ public actor LibraryStore {
     var stores: [UUID: DocumentStore] = [:]
     var locations: [UUID: URL] = [:]
     let catalogWriter: @Sendable (Data, URL) throws -> Void
+    let backupCopier: @Sendable (URL, URL) throws -> Void
     var primaryURL: URL { directory.appendingPathComponent("library.json") }
     var backupURL: URL { directory.appendingPathComponent("library.backup.json") }
     var notesURL: URL { directory.appendingPathComponent("notes", isDirectory: true) }
@@ -15,9 +16,11 @@ public actor LibraryStore {
     public init(directory: URL) {
         self.directory = directory
         self.catalogWriter = { try $0.write(to: $1, options: .atomic) }
+        self.backupCopier = Self.copyBackupFile
     }
-    init(directory: URL, catalogWriter: @escaping @Sendable (Data, URL) throws -> Void) {
-        self.directory = directory; self.catalogWriter = catalogWriter
+    init(directory: URL, catalogWriter: @escaping @Sendable (Data, URL) throws -> Void,
+         backupCopier: @escaping @Sendable (URL, URL) throws -> Void = LibraryStore.copyBackupFile) {
+        self.directory = directory; self.catalogWriter = catalogWriter; self.backupCopier = backupCopier
     }
 
     public func load() async throws -> LibraryLoadResult {
@@ -143,6 +146,56 @@ public actor LibraryStore {
 }
 
 extension LibraryStore {
+    public func restoreBackup(_ backup: ValidatedBackup, folderID: UUID? = nil) async throws -> LibraryNote {
+        var value = try readyCatalog()
+        try checkFolder(folderID, in: value)
+        busy = true; defer { busy = false }
+        try Task.checkCancellation(); try backup.revalidate()
+        var document = backup.document
+        while value.notes.contains(where: { $0.id == document.id }) ||
+              FileManager.default.fileExists(atPath: noteDirectory(document.id).path) { document.id = UUID() }
+        document.title += " (복원)"
+        try DocumentCodec.validate(document)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let owned = directory.appendingPathComponent(".restore-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: owned.appendingPathComponent("assets"), withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: owned) }
+        for asset in document.pdfAssets {
+            try Task.checkCancellation()
+            try backupCopier(backup.stagingDirectory.appendingPathComponent(asset.relativePath), owned.appendingPathComponent(asset.relativePath))
+            let copied = try StoredZIP.fingerprint(name: asset.relativePath, url: owned.appendingPathComponent(asset.relativePath))
+            guard let expected = backup.manifest.entries.first(where: { $0.name == asset.relativePath }),
+                  copied.byteCount == expected.byteCount, copied.crc32 == expected.crc32 else { throw BackupError.changedSource }
+        }
+        try await DocumentStore(directory: owned).save(document)
+        try Task.checkCancellation()
+        try FileManager.default.createDirectory(at: notesURL, withIntermediateDirectories: true)
+        // Only a complete, verified directory becomes visible to orphan recovery.
+        let target = notesURL.appendingPathComponent(document.id.uuidString)
+        try FileManager.default.moveItem(at: owned, to: target)
+        let note = LibraryNote(id: document.id, folderID: folderID, modifiedAt: Date().timeIntervalSince1970)
+        value.notes.append(note); try commit(value)
+        locations[document.id] = target
+        return note
+    }
+
+    static func copyBackupFile(_ source: URL, _ destination: URL) throws {
+        let expected = try StoredZIP.size(source)
+        guard !FileManager.default.fileExists(atPath: destination.path), FileManager.default.createFile(atPath: destination.path, contents: nil) else {
+            throw BackupError.invalidArchive("복원 출력 경로")
+        }
+        let input = try FileHandle(forReadingFrom: source), output = try FileHandle(forWritingTo: destination)
+        defer { try? input.close(); try? output.close() }
+        var count: UInt64 = 0
+        while let chunk = try input.read(upToCount: StoredZIP.chunkSize), !chunk.isEmpty {
+            try Task.checkCancellation(); count += UInt64(chunk.count)
+            guard count <= expected else { throw BackupError.changedSource }
+            try output.write(contentsOf: chunk)
+        }
+        guard count == expected else { throw BackupError.changedSource }
+        try output.synchronize()
+    }
+
     public func createNote(title: String, folderID: UUID? = nil) async throws -> UUID {
         var value = try readyCatalog()
         let title = try nonempty(title)
