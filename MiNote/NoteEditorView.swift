@@ -9,7 +9,9 @@ struct NoteEditorView: View {
     @StateObject private var canvasReference = CanvasReference()
     @AppStorage("fingerDrawingEnabled") private var fingerDrawingEnabled =
         ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil
-    @State private var exportedFile: ExportedPDF?
+    @State private var exportedFile: ExportedFile?
+    @State private var previewLease: UUID?
+    @State private var backupTask: Task<Void, Never>?
     @State private var showsPageManager = false
     @State private var showsPDFImporter = false
     @State private var brush: Brush = .pen
@@ -48,18 +50,10 @@ struct NoteEditorView: View {
         .sheet(isPresented: $showsPageManager) {
             PageManagerView(session: session) { showsPageManager = false }
         }
-        .sheet(item: $exportedFile) { file in
-            VStack(spacing: 16) {
-                Text("필기를 포함한 PDF").font(.headline)
-                Text("필기는 이미지로 고정되고 PDF 양식·주석은 수정할 수 없게 됩니다. 일부 링크는 유지되지 않을 수 있습니다.")
-                    .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                PDFPreview(url: file.url)
-                HStack {
-                    Button("닫기") { exportedFile = nil }.buttonStyle(.bordered)
-                    ShareLink(item: file.url) { Label("공유·파일에 저장", systemImage: "square.and.arrow.up") }
-                        .buttonStyle(.borderedProminent).accessibilityIdentifier("sharePDF")
-                }
-            }.padding(24)
+        .sheet(item: $exportedFile, onDismiss: {
+            if let lease = previewLease { Task { try? await session.exportRegistry.release(lease) } }; previewLease = nil
+        }) { file in
+            ExportPreview(file: file, registry: session.exportRegistry) { exportedFile = nil }
         }
         .alert("문서 작업을 완료하지 못했습니다", isPresented: Binding(
             get: { session.operationError != nil && !showsPageManager }, set: { if !$0 { session.operationError = nil } })) {
@@ -120,7 +114,11 @@ struct NoteEditorView: View {
                 .id(session.canvasGeneration)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(uiColor: .systemGroupedBackground))
-                .overlay { if session.isProcessing { ProgressView("문서 처리 중").padding(24).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16)) } }
+                .overlay {
+                    if session.isProcessing {
+                        BackupProgressView(progress: session.operationProgress, cancel: backupTask == nil ? nil : { backupTask?.cancel() })
+                    }
+                }
             toolbar
         }
         .background(Color(uiColor: .systemGroupedBackground))
@@ -150,10 +148,19 @@ struct NoteEditorView: View {
                 .disabled(session.isProcessing)
             Button {
                 captureDrawing()
-                Task { if let url = await session.exportPDF() { exportedFile = ExportedPDF(url: url) } }
+                Task { if let file = await session.exportPDF() { previewLease = file.lease; exportedFile = file } }
             } label: { Image(systemName: "square.and.arrow.up") }
             .accessibilityLabel("PDF 내보내기").accessibilityIdentifier("exportPDF")
             .disabled(session.isProcessing)
+            Button {
+                guard backupTask == nil else { return }
+                captureDrawing()
+                backupTask = Task {
+                    if let file = await session.exportBackup() { previewLease = file.lease; exportedFile = file }
+                    backupTask = nil
+                }
+            } label: { Image(systemName: "doc.zipper") }
+            .accessibilityLabel("편집 원본 백업").accessibilityIdentifier("exportBackup").disabled(session.isProcessing || backupTask != nil)
         }
         .font(.callout).padding(.horizontal, 26).padding(.vertical, 10).background(.white)
     }

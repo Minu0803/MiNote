@@ -15,7 +15,7 @@
 - 이전 실행: **2026-10-03 M1-A 완료**. 기준 `fd4def6`; 마지막 코드 `d968701`. 시작 시 main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음). 모든 구현은 main에 커밋했고 push하지 않았다.
 - 이전 단계: **M1-B 완료**. 기준 80d14c2, 마지막 기능 코드 1d67d9a, 테스트/체크포인트 fddbd66. main에서 직접 구현했고 push하지 않았다. 원격은 새 조회하지 않았으며 추적 ref와 현재 원격을 혼동하지 않는다.
 - 현재 단계: **M1-C 편집 백업·복원/파일 정리 진행 중**. 기준19e10af, Task1 archive/Task2 복원/Task3 정리·삭제 복구 구현·검증 완료. 전체 단계/앱 UI/리뷰/Notion은 아직 미완료. 계획 `docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md`.
-- 다음 작업자가 할 첫 작업: Git 상태/HEAD 대조 → M1-C Task4 brief/앱 코드 읽기 → Files·PDFKit·export lease·백업 snapshot RED. 완료된 단계를 반복하지 않는다.
+- 다음 작업자가 할 첫 작업: Git 상태/HEAD 대조 → 최신 M1-C 체크포인트/실행 로그 확인 → Task4 전체18 결과 확인 → 새 migration/backup 시뮬레이터의 양 OS 독립 검증 → 한 번 리뷰/Notion. 완료된 단계를 반복하지 않는다.
 - 마지막 Notion 반영: **2026-10-03T11:50:06.629Z (20:50:06 KST)**; 재조회/내용 검증 11:50:59 UTC. M1-B 결과·기술 판단·검증/실패 이력·리뷰·제한·커밋·다음 M1-C 계획을 기존 내용을 보존하며 추가했다. 이전 M1-A 반영 06:02:45.909Z 기록도 아래에 보존한다.
 - 최종 검증: **Node31/0, core60/0**, v2/v3 fixture check exit0, 18.6/26.4 각각 **app53/0 + 일반 UI5통과/fixture-only1skip/0실패**. 별도 seeded migration UI 양1/0/skip0과 원본 bytes 검증 통과. 로그/result와 리뷰 판단은 아래 M1-B 최종 절을 따른다.
 
@@ -392,3 +392,39 @@
 - API 부재 RED(minote-m1c-maintenance-red); 첫 실행5tests/2failure는 /var↔/private/var URL 별칭 비교 문제라 테스트에서 canonical URL 비교로 수정. 별도 stale handle 재생성 RED3failure(minote-m1c-retired-handle-red) 확인 후 삭제 전 DocumentStore.retire를 await하고 이전 참조 save/load를 차단했다. purgeTrashedNote는 이 직렬화를 위해 async로 구체화했다.
 - 최종 `swift test --package-path Packages/MiNoteCore` **77/0**, exit0(minote-m1c-task3-core.log). 7개 write 경계 중단/실제 journal·primary·backup ENOSPC/전후 복구·catalog fallback 재등장 방지·future backup 보존·잘못된 journal 경로·최신 획/이전 backup-only PDF 보존 검증.
 - 다음 Task4 앱 연결/실제 Files 확인/공유 lease. core 구현만 검증했고 양 OS app/UI/리뷰/Notion은 대기. 이전 테스트/scratch는 보존한다.
+
+### M1-C Task4 앱 연결 / UI 검증 시작
+- Files security scope+NSFileCoordinator 아래64KiB private copy→core archive 검사→모든 PDFKit count/geometry/삭제 페이지 순차 검사→Library 새 노트 복원. UTType/Info 문서 등록과 onOpenURL을 연결했다.
+- Editor 백업은 capture/flush/stable snapshot 재확인, 진행률/취소를 제공한다. PDF·백업 출력은 ExportedFile(URL+producer lease)를 반환하고 preview dismiss/별도 UIKit share completion lease로 유지한다. registry는7일 지난 등록/비활성 파일만 정리하며 중단 시 남은 lease는 보수적으로 보존한다.
+- 앱 API 부재 RED xcodebuild exit65(minote-m1c-app-red.log). 최초 앱 전체18.6 **58/0**, exit0(minote-m1c-app-green18.log). 이후 추가한 late archive callback/ENOSPC/취소/활성 editor 보호를 포함한 BackupSessionTests6+registry2 **8/0**, exit0(minote-m1c-app-focused18.log). 전체61개는 아직 재실행 전이다.
+- BackupUITests의 실제 UIKit 파일 저장/원본+중복 복원/편집·Undo·재실행/영구 삭제 취소 및 확인/정리 확인 실행 중(minote-m1c-backup-ui18-first.log/xcresult). 독립 빈 설치의 Transfer.minote 시험은 별도 fixture-only 실행으로 일반 기기에서는 skip한다. 아직 UI 성공으로 표시하지 않는다.
+- 현재 Task4 변경은 미커밋. 다음 첫 작업: UI 출력/AX 실패 확인→원인 수정→관련 GREEN→코드 체크포인트. 이후 양 OS 전체/새 migration+transfer 기기/리뷰/Notion.
+
+- 첫 BackupUI18 exit65:2실패/fixture1skip. 새 테스트가 delete alert 버튼을 표시 직후(0.15초)에 바로 탭해 동작하지 않았고 다음 동작에서 XCTest interruption handler가 취소했다. 로그에서 실제 alert 유지와 자동 취소를 확인했다. 기존 M1-B는 explicit wait를 사용한다. 새 helper에도 alert·button 표시와 dismissal predicate를 기다리도록 수정하며 제품 삭제 행동은 추측 수정하지 않는다. 현재 재검증 전이다.
+
+- alert wait 재실행(backup-ui18-wait)은 삭제/정리 확인 UI1/0, 백업 UI1실패(exit65 전체). 파일 선택 실패의 실제 AX tree는 Files가 아니라 editor였으므로 파일 위치 문제로 단정하지 않는다. PageManager 닫기 직후 root label이 이미 보이는 동안 import 탭을 보낸 경계다. import 버튼 표시 wait를 추가한 집중 Files 검증을 실행 중(backup-ui18-files). 기능/selector를 약화하지 않고 실제 picker가 열려야 다음 assertion으로 진행한다.
+
+- Files 집중 재실행도 실제 picker 없이 editor tree만 남아 exit65. alert는 dismiss됐고 import 버튼 wait1초 후 탭에도 동일하므로 단순 타이밍 가설은 기각한다. 신규 LibraryView의 fileImporter가 editor를 감싼 공통 Group에도 붙어 기존 NoteEditorView의 PDF fileImporter와 중첩된다. backup importer를 라이브러리 화면에만 적용하는 단일 변경으로 이 경계를 검증한다.
+
+- importer scope 수정 뒤 실제 Files PDF A/B 가져오기와 backup generation/공유 시트까지 GREEN 동작. invocation은 Share selector가 Button을 요구한 반면 실제 AX는 actionGroupCell(파일에 저장)이어서 exit65. 확인한 Cell로만 selector를 수정하고 재실행 중(backup-ui18-share-cell). 영구 삭제/정리 취소·확인 집중 UI는 wait invocation에서1/0으로 통과했다. 원본 데이터/시험 실패 로그는 보존했다.
+
+- Share Cell 수정 실행은 SaveToFiles 선택 뒤 filename field 미표시로 실패. 기존 시험 노트를 읽기 전용으로 연 진단에서 동일 코드로 실제 SaveToFiles UI/filename field를 관찰했다(진단1/0은 백업 전체 통과 근거가 아니다). 직전 일시 미표시 원인은 단정하지 않는다. 진단 소스/로그를 scratch에 보존하고 regular suite에서는 제외했다. 실제 확인한 filename field·나의 iPad·MiNote folder를 기다리며 Files 저장/복원을 다시 검증한다.
+
+- save-dialog invocation은 filename 입력→나의 iPad/MiNote folder→저장 버튼까지 실행했다. 이후 미리보기/closeNote는 computed hit point(-1,-1), 즉 뒤쪽 숨은 버튼을 탭해 복원 버튼이 안 보였고 exit65. existence와 실제 hit 가능 상태를 구분해 predicate 기다리도록 수정했다. 저장 완료/시트 종료/복원까지 증명하기 전 전체 성공으로 기록하지 않는다.
+
+### M1-C Task4 Files 검증 재개 체크포인트
+- 직전 `minote-m1c-backup-ui18-hittable.log`는 exit65. 런타임 실패의 소스 line109 및 closeNote 탭 순서가 현재 helper/line115와 달라 이전 테스트 바이너리 실행 정황을 확인했다. 성공으로 기록하지 않는다.
+- 다음: `/private/tmp/minote-m1c-dd18-fresh` 새 DerivedData와 `COMPILATION_CACHE_ENABLE_CACHING=NO`로 Files 전체 흐름을 재검증한다. 실제 Files 파일 저장·동일 라이브러리 중복 복원·재편집/Undo/relaunch까지 통과해야 Task4 완료로 표시한다.
+- 독립 빈 설치 이동·양 OS 새 legacy fixture·전체 검증·최종 별도 리뷰·Notion은 아직 미완료. 이전 실패 로그/시험 데이터는 보존한다.
+- 새 DerivedData/cacheOFF invocation은 최신 helper/현재 line101을 실제 실행했다. 이제 실패 AX에서 저장이 Disabled이고 주황색 tag가 선택된 것을 확인했다. `MiNote` 전역 cell query가 Files 폴더 대신 뒤쪽 UIActivity `shareCell`을 선택한 것이 로그에 명시된다. Files `collectionViews["File View"].cells`로 범위를 제한해 원인을 수정한다. stale 바이너리 정황은 이전 실행에 한정하고 이번 실패의 실제 원인과 구분한다.
+- 최신 core77/0와 Node31/0·v2/v3 --check exit0: minote-m1c-core-final.log, minote-m1c-node-final.log. 앱/독립 이동/리뷰는 여전히 미완료.
+
+### M1-C Task4 실제 Files GREEN / 전체 검증 시작
+- Files 목록으로 selector를 좁힌 집중18 UI1/0, exit0 TEST SUCCEEDED(minote-m1c-backup-ui18-files-scope.log/xcresult). 실제 파일 `Backup-8ED910.minote`: finger ink/PDF A+B/7활성+1삭제/용지·책갈피 → Files 저장 → 원본 노트 유지+중복 새 UUID 복원 → 추가 필기/Undo/Redo/save/relaunch2획. 실제 파일을 빈 설치 이동 시험의 입력으로 사용한다.
+- 새 전체18 실행 minote-m1c18-full.log/xcresult. 새 registry 3번째 테스트와 최근 share UI 수정을 포함한 app 전체/일반 UI 결과는 아직 대기다. 새 독립 migration/backup4기기는 생성만 했고 아직 seed/실행하지 않았다.
+- 실제 Files 출력 원본을 복사해 `/private/tmp/minote-m1c-transfer/Backup-8ED910.minote`로 보존했다. Python zipfile CRC/schema3/7활성1삭제2자산 검사 성공, SHA256 cc42644bded993a5ca69d7899a9da7d1d78755329d3dd1f2885007db680ed361. 원본 path는 ledger/transfer-source.txt에 있다. raw JSON에서 만든 대체 archive가 아니다.
+- 전체18은 app62 중 fixture lookup 7실패. 빌드/실제 설치 test bundle PortableInk에는 파일들이 존재하므로 copy 누락 가설은 기각한다. fixtureURL에 bundle/main/resourceURL diagnostic을 넣어 다음 집중 실행에서 참조 위치를 확인한다. 제품 백업 전체 UI는 그 전체 실행에서도 재차 통과했다.
+- 독립 시험 명령을 ledger/isolated-checks.sh에 보존했다. 새 전용 기기를 boot/install한 뒤 기존 데이터 부재를 확인하는 helper가 seed한다. 실패하면 바로 중단하고 성공/byte verify 뒤에만 shutdown하며 삭제/reseed하지 않는다. 아직 실행 전이다.
+- 첫 전체18 최종 exit65: app62/7실패(PortableInk fixture lookup), UI는 일반7통과/fixture-only2skip/0실패(minote-m1c18-full.log/xcresult). UI 구현은 같은 최종 코드에서 모두 검증됐으나 전체 명령 실패를 성공으로 기록하지 않는다. 다음 집중 fixture diagnostic 로그 확인→원인 수정→전체 app 검증, 독립 시험으로 이어간다.
+- fixture diagnostic은 메시지 추가만으로1/0 통과했고 실패가 재현되지 않았다. 원인은 특정하지 않는다. 이어 전체 app62/0, exit0 TEST SUCCEEDED(minote-m1c18-app-final.log/xcresult). 동일 제품 코드의 앞선 UI 일반7/0+fixture2skip와 구분한 성공 근거이며 첫 전체 명령exit65는 보존한다. 진단을 제품 수정으로 주장하지 않는다.
+- Task4 기능 코드 체크포인트를 커밋한다. 계획의 빈 설치 이동 항목은 Task5의 별도 시험까지 대기한다. M2-A는 계획 초안만 작성했고 구현하지 않았다. 단계 전체/리뷰/Notion/26.4는 아직 미완료.

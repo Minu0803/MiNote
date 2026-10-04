@@ -35,7 +35,7 @@ import XCTest
         XCTAssertTrue(session.isProcessing, "Redo must be tested during the real export")
         reference.redo(in: session)
         XCTAssertEqual(canvas.drawing.strokes.count, 0)
-        _ = await export.value
+        if let file = await export.value { try await session.exportRegistry.discard(file) }
         reference.redo(in: session)
         XCTAssertEqual(canvas.drawing.strokes.count, 1)
     }

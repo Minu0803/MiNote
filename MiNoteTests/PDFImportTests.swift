@@ -93,13 +93,13 @@ import XCTest
         session.receiveDrawing(try InkAdapter.decode([testInk()]))
         let exported = await session.exportPDF()
         XCTAssertNotNil(exported)
-        let pdf = try XCTUnwrap(exported.flatMap { PDFDocument(url: $0) })
+        let pdf = try XCTUnwrap(exported.flatMap { PDFDocument(url: $0.url) })
         XCTAssertEqual(pdf.pageCount, 5)
         XCTAssertEqual(session.strokeCount, 1)
         XCTAssertEqual(session.saveState, .saved)
         XCTAssertFalse(session.isProcessing)
         XCTAssertEqual(try Data(contentsOf: source), bytes)
-        if let exported { try? FileManager.default.removeItem(at: exported.deletingLastPathComponent()) }
+        if let exported { try await session.exportRegistry.discard(exported) }
     }
 
     func testFailedImportLeavesExistingInkEditable() async throws {

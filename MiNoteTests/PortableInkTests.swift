@@ -227,7 +227,9 @@ import XCTest
 }
 
 @MainActor func fixtureURL(_ name: String, extension ext: String = "json") throws -> URL {
-    try XCTUnwrap(Bundle(for: PortableInkTests.self).url(forResource: name, withExtension: ext, subdirectory: "PortableInk"))
+    let bundle = Bundle(for: PortableInkTests.self)
+    return try XCTUnwrap(bundle.url(forResource: name, withExtension: ext, subdirectory: "PortableInk"),
+        "Fixture \(name).\(ext), bundle=\(bundle.bundleURL.path), main=\(Bundle.main.bundleURL.path), resources=\(bundle.resourceURL?.path ?? "nil")")
 }
 
 @MainActor func fixtureDocument(_ name: String) throws -> NoteDocument {

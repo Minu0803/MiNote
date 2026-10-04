@@ -17,17 +17,23 @@ struct LibraryNoteRow: Identifiable {
     @Published private(set) var loadError: String?
     @Published private(set) var recoveryNotice: String?
     @Published var operationError: String?
+    @Published private(set) var operationProgress: BackupProgress?
+    @Published private(set) var maintenanceReport: MaintenanceReport?
+    @Published private(set) var cleanedExports = 0
+    let exportRegistry: ExportFileRegistry
+    private var progressOperationID: UUID?
+    private var catalogRevision: Int64 = 0
     private let store: LibraryStore
     private var openedRevision: Int64?
     private var loaded = false
 
-    init(store: LibraryStore) { self.store = store }
+    init(store: LibraryStore, exportRegistry: ExportFileRegistry = .shared) { self.store = store; self.exportRegistry = exportRegistry }
 
     func load() async {
         guard !isBusy, selectedEditor == nil else { return }
         isBusy = true; defer { isBusy = false }
         do { try await refresh(); loadError = nil; loaded = true }
-        catch { loadError = error.localizedDescription }
+        catch { loadError = error.localizedDescription; loaded = false }
     }
 
     func openNote(_ id: UUID) async {
@@ -39,7 +45,7 @@ struct LibraryNoteRow: Identifiable {
             guard await closeActive() else { return }
             guard let row = notes.first(where: { $0.id == id }) else { throw LibraryError.noteMissing(id) }
             guard row.metadata.trashedAt == nil else { throw LibraryError.noteTrashed }
-            let editor = EditorSession(store: try await store.documentStore(for: id), expectedID: id)
+            let editor = EditorSession(store: try await store.documentStore(for: id), expectedID: id, exportRegistry: exportRegistry, libraryStore: store)
             await editor.loadIfNeeded()
             guard let document = editor.document else { throw LibrarySessionError.message(editor.loadError ?? "노트를 열 수 없습니다.") }
             selectedEditor = editor; openedRevision = document.revision
@@ -93,6 +99,7 @@ struct LibraryNoteRow: Identifiable {
             $0.metadata.modifiedAt == $1.metadata.modifiedAt ? $0.id.uuidString < $1.id.uuidString : $0.metadata.modifiedAt > $1.metadata.modifiedAt
         }
         folders = result.catalog.folders
+        catalogRevision = result.catalog.revision
         if let notice = result.recoveryNotice { recoveryNotice = notice }
     }
 
@@ -105,7 +112,7 @@ struct LibraryNoteRow: Identifiable {
         catch {
             operationError = error.localizedDescription
             // A durable note may exist despite catalog failure; recover it on reload.
-            try? await refresh()
+            do { try await refresh() } catch { loadError = error.localizedDescription; loaded = false }
         }
     }
     func createNote(title: String, folderID: UUID?) async {
@@ -127,6 +134,34 @@ struct LibraryNoteRow: Identifiable {
     }
     func moveFolder(_ id: UUID, parentID: UUID?) async {
         await mutate { try await store.moveFolder(id: id, parentID: parentID) }
+    }
+    func restoreBackup(from url: URL, folderID: UUID?) async {
+        guard !isBusy, loaded else { return }
+        let operation = UUID(); progressOperationID = operation
+        defer { progressOperationID = nil; operationProgress = nil }
+        await mutate {
+            let access = BackupFileAccess()
+            let backup = try await access.prepare(url: url) { [weak self] progress in
+                Task { @MainActor in if self?.progressOperationID == operation { self?.operationProgress = progress } }
+            }
+            do { _ = try await store.restoreBackup(backup, folderID: folderID) }
+            catch { await access.removeStaging(backup); throw error }
+            await access.removeStaging(backup)
+        }
+    }
+    func inspectMaintenance() async {
+        maintenanceReport = nil; cleanedExports = 0
+        await mutate { maintenanceReport = try await store.maintenanceReport() }
+    }
+    func cleanStorage() async {
+        await mutate {
+            maintenanceReport = try await store.cleanUnreferencedFiles()
+            cleanedExports = try await exportRegistry.cleanExpired().count
+        }
+    }
+    func purgeNote(_ id: UUID) async {
+        guard selectedEditor == nil else { operationError = "라이브러리로 돌아간 뒤 휴지통 노트를 영구 삭제해 주세요."; return }
+        await mutate { try await store.purgeTrashedNote(id, expectedCatalogRevision: catalogRevision) }
     }
 }
 

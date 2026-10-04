@@ -1,11 +1,6 @@
 import QuickLook
 import SwiftUI
 
-struct ExportedPDF: Identifiable {
-    let id = UUID()
-    let url: URL
-}
-
 struct PDFPreview: UIViewControllerRepresentable {
     let url: URL
     func makeCoordinator() -> Coordinator { Coordinator(url: url) }

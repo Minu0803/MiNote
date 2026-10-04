@@ -7,6 +7,10 @@ struct LibraryView: View {
     @State private var nameRequest: NameRequest?
     @State private var moveRequest: MoveRequest?
     @State private var name = ""
+    @State private var showsBackupImporter = false
+    @State private var showsMaintenance = false
+    @State private var purging: LibraryNoteRow?
+    @State private var restoreTask: Task<Void, Never>?
 
     var body: some View {
         Group {
@@ -27,8 +31,14 @@ struct LibraryView: View {
         .task { await session.load() }
         .sheet(item: $nameRequest) { request in nameSheet(request) }
         .sheet(item: $moveRequest) { request in moveSheet(request) }
+        .sheet(isPresented: $showsMaintenance) { StorageMaintenanceView(session: session) { showsMaintenance = false } }
+        .alert("노트를 영구 삭제할까요?", isPresented: Binding(get: { purging != nil }, set: { if !$0 { purging = nil } })) {
+            Button("취소", role: .cancel) { purging = nil }
+            Button("영구 삭제", role: .destructive) { if let row = purging { Task { await session.purgeNote(row.id) } }; purging = nil }
+                .accessibilityIdentifier("confirmPurgeNote")
+        } message: { Text("\(purging?.title ?? "노트")의 필기·PDF·삭제 보관 페이지를 제거합니다. 이 작업은 되돌릴 수 없습니다.") }
         .alert("작업을 완료하지 못했습니다", isPresented: Binding(
-            get: { session.operationError != nil }, set: { if !$0 { session.operationError = nil } })) {
+            get: { session.operationError != nil && !showsMaintenance }, set: { if !$0 { session.operationError = nil } })) {
                 Button("확인") { session.operationError = nil }
             } message: { Text(session.operationError ?? "") }
         .preferredColorScheme(.light)
@@ -77,6 +87,14 @@ struct LibraryView: View {
           .navigationTitle(filterTitle)
           .toolbar {
               ToolbarItem(placement: .topBarTrailing) {
+                  Button { showsBackupImporter = true } label: { Image(systemName: "arrow.down.doc") }
+                      .accessibilityLabel("백업에서 새 노트 복원").accessibilityIdentifier("restoreBackup")
+              }
+              ToolbarItem(placement: .topBarTrailing) {
+                  Button { showsMaintenance = true } label: { Image(systemName: "externaldrive") }
+                      .accessibilityLabel("저장 공간 정리").accessibilityIdentifier("storageMaintenance")
+              }
+              ToolbarItem(placement: .topBarTrailing) {
                   Button { requestName(.newFolder) } label: { Label("새 폴더", systemImage: "folder.badge.plus") }
                       .accessibilityIdentifier("newFolder")
               }
@@ -91,7 +109,19 @@ struct LibraryView: View {
           }
         }
         .disabled(session.isBusy)
-        .overlay { if session.isBusy { ProgressView("노트 작업 중").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
+        .overlay {
+            if session.isBusy {
+                BackupProgressView(progress: session.operationProgress, cancel: restoreTask == nil ? nil : { restoreTask?.cancel() })
+            }
+        }
+        .fileImporter(isPresented: $showsBackupImporter, allowedContentTypes: [.minote]) { result in
+            switch result {
+            case .success(let url):
+                let folder = selectedFolder
+                restoreTask = Task { await session.restoreBackup(from: url, folderID: folder); restoreTask = nil }
+            case .failure(let error): session.operationError = error.localizedDescription
+            }
+        }
         .accessibilityIdentifier("libraryView")
     }
 
@@ -110,6 +140,8 @@ struct LibraryView: View {
             if row.metadata.trashedAt != nil {
                 Button("복원") { Task { await session.restoreNote(row.id) } }
                     .buttonStyle(.bordered).accessibilityLabel("복원 \(row.title)")
+                Button("영구 삭제", role: .destructive) { purging = row }
+                    .buttonStyle(.bordered).accessibilityIdentifier("purgeNote-\(row.id)")
             } else {
                 Menu {
                     Button("이름 변경") { requestName(.renameNote(row.id), initial: row.title) }.accessibilityIdentifier("renameNote")

@@ -6,6 +6,7 @@ struct PageManagerView: View {
     let onClose: () -> Void
     @State private var filter = Filter.all
     @State private var deleting: UUID?
+    @State private var purging: UUID?
     private enum Filter: CaseIterable {
         case all, bookmarked, deleted
         var title: String { switch self { case .all: "전체"; case .bookmarked: "책갈피"; case .deleted: "삭제됨" } }
@@ -52,6 +53,8 @@ struct PageManagerView: View {
                                     Spacer()
                                     Button("복원") { run(.restore(deleted.id)) }
                                         .buttonStyle(.bordered).accessibilityIdentifier("restorePage-\(deleted.id)")
+                                    Button("영구 삭제", role: .destructive) { purging = deleted.id }
+                                        .buttonStyle(.bordered).accessibilityIdentifier("purgePage-\(deleted.id)")
                                 }.disabled(session.isProcessing)
                             }
                             if document.deletedPages.isEmpty { Text("삭제한 페이지가 없습니다.").foregroundStyle(.secondary) }
@@ -88,6 +91,11 @@ struct PageManagerView: View {
                     if let id = deleting { run(.delete(id)) }; deleting = nil
                 }.accessibilityIdentifier("confirmDeletePage")
             } message: { Text("필기와 PDF 참조를 보관하며 삭제됨 목록에서 복원할 수 있습니다.") }
+            .alert("보관 페이지를 영구 삭제할까요?", isPresented: Binding(get: { purging != nil }, set: { if !$0 { purging = nil } })) {
+                Button("취소", role: .cancel) { purging = nil }
+                Button("영구 삭제", role: .destructive) { if let id = purging { Task { await session.purgeDeletedPage(id) } }; purging = nil }
+                    .accessibilityIdentifier("confirmPurgePage")
+            } message: { Text("이 페이지의 필기를 삭제 보관 목록에서 제거합니다. 되돌릴 수 없습니다. 이전 정상 복구본에서 사용하는 PDF는 정리하지 않습니다.") }
         }
         .interactiveDismissDisabled(session.isProcessing)
     }

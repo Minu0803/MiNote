@@ -18,6 +18,11 @@ final class EditorSession: ObservableObject {
     @Published private(set) var isProcessing = false
     @Published private(set) var canvasGeneration = UUID()
     @Published var operationError: String?
+    @Published private(set) var operationProgress: BackupProgress?
+    private var progressOperationID: UUID?
+    let exportRegistry: ExportFileRegistry
+    private let backupService: NoteBackup
+    private let libraryStore: LibraryStore?
     private var hasUnserializedDrawing = false
     private let importer = PDFImporter()
     private var pdfCache: [UUID: PDFDocument] = [:]
@@ -46,10 +51,12 @@ final class EditorSession: ObservableObject {
     private var loading = false
     private var savedRevision: Int64?
 
-    init(store: DocumentStore, expectedID: UUID? = nil, saveDelay: Duration = .milliseconds(350)) {
+    init(store: DocumentStore, expectedID: UUID? = nil, saveDelay: Duration = .milliseconds(350),
+         exportRegistry: ExportFileRegistry = .shared, backupService: NoteBackup = NoteBackup(), libraryStore: LibraryStore? = nil) {
         self.store = store
         self.expectedID = expectedID
         self.saveDelay = saveDelay
+        self.exportRegistry = exportRegistry; self.backupService = backupService; self.libraryStore = libraryStore
     }
 
     var strokeCount: Int { drawing.strokes.count }
@@ -194,25 +201,64 @@ final class EditorSession: ObservableObject {
         } catch { operationError = error.localizedDescription }
     }
 
-    func exportPDF() async -> URL? {
+    func exportPDF() async -> ExportedFile? {
         guard !isProcessing, document != nil else { return nil }
         isProcessing = true; defer { finishProcessing() }
         operationError = nil
         guard let snapshot = await flushedBase() else { return nil }
+        var file: ExportedFile?
         do {
             var sources: [UUID: URL] = [:]
             for asset in snapshot.pdfAssets { sources[asset.id] = try await store.assetURL(for: asset) }
             guard stable(snapshot) else { throw DocumentError.staleRevision }
             let sourceURLs = sources
-            let folder = FileManager.default.temporaryDirectory.appendingPathComponent("MiNote-Exports").appendingPathComponent(UUID().uuidString)
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let destination = folder.appendingPathComponent("MiNote.pdf")
+            let allocated = try await exportRegistry.allocate(filename: "MiNote.pdf"); file = allocated
+            let destination = allocated.url
             try await Task.detached(priority: .userInitiated) {
                 try PDFExporter.export(snapshot, sourceURLs: sourceURLs, destination: destination)
             }.value
             guard stable(snapshot) else { throw DocumentError.staleRevision }
-            return destination
-        } catch { operationError = error.localizedDescription; return nil }
+            return allocated
+        } catch {
+            if let file { try? await exportRegistry.discard(file) }
+            operationError = error.localizedDescription; return nil
+        }
+    }
+
+    func exportBackup() async -> ExportedFile? {
+        guard !isProcessing, document != nil else { return nil }
+        isProcessing = true; let operation = UUID(); progressOperationID = operation
+        defer { operationProgress = nil; progressOperationID = nil; finishProcessing() }
+        operationError = nil
+        guard let snapshot = await flushedBase() else { return nil }
+        var file: ExportedFile?
+        do {
+            var sources: [UUID: URL] = [:]
+            for asset in snapshot.pdfAssets { sources[asset.id] = try await store.assetURL(for: asset) }
+            guard stable(snapshot) else { throw DocumentError.staleRevision }
+            let allocated = try await exportRegistry.allocate(filename: "MiNote.minote"); file = allocated
+            try await backupService.export(document: snapshot, assetURLs: sources, destination: allocated.url) { [weak self] progress in
+                Task { @MainActor in if self?.progressOperationID == operation { self?.operationProgress = progress } }
+            }
+            try Task.checkCancellation()
+            guard stable(snapshot) else { throw DocumentError.staleRevision }
+            return allocated
+        } catch {
+            if let file { try? await exportRegistry.discard(file) }
+            operationError = error is CancellationError ? "백업을 취소했습니다. 현재 필기는 유지됩니다." : error.localizedDescription
+            return nil
+        }
+    }
+
+    func purgeDeletedPage(_ id: UUID) async {
+        guard !isProcessing, let libraryStore, document != nil else { return }
+        isProcessing = true; defer { finishProcessing() }; operationError = nil
+        guard let base = await flushedBase() else { return }
+        do {
+            guard stable(base), base.revision < Int64.max - 1 else { throw DocumentError.staleRevision }
+            let updated = try await libraryStore.purgeDeletedPages([id], noteID: base.id, expectedRevision: base.revision)
+            if await acceptCommitted(updated, over: base) { try publish(updated, pdf: pdfDocument) }
+        } catch { operationError = error.localizedDescription }
     }
 
     private func flushedBase() async -> NoteDocument? {
