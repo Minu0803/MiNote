@@ -14,8 +14,8 @@
 - M0-C 종료 당시 변경은 로컬 main에만 커밋했고 push하지 않았다. 현재 원격 상태를 의미하는 문장은 아니다. 최종 인계 문서 커밋은 `git log -1 --oneline`으로 확인한다.
 - 이전 실행: **2026-10-03 M1-A 완료**. 기준 `fd4def6`; 마지막 코드 `d968701`. 시작 시 main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음). 모든 구현은 main에 커밋했고 push하지 않았다.
 - 이전 단계: **M1-B 완료**. 기준 80d14c2, 마지막 기능 코드 1d67d9a, 테스트/체크포인트 fddbd66. main에서 직접 구현했고 push하지 않았다. 원격은 새 조회하지 않았으며 추적 ref와 현재 원격을 혼동하지 않는다.
-- 현재 단계: **M1-C 편집 백업·복원/파일 정리 진행 중**. 기준19e10af, Task1 archive/Task2 복원/Task3 정리·삭제 복구 구현·검증 완료. 전체 단계/앱 UI/리뷰/Notion은 아직 미완료. 계획 `docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md`.
-- 다음 작업자가 할 첫 작업: Git 상태/HEAD 대조 → 최신 M1-C 체크포인트/실행 로그 확인 → Task4 전체18 결과 확인 → 새 migration/backup 시뮬레이터의 양 OS 독립 검증 → 한 번 리뷰/Notion. 완료된 단계를 반복하지 않는다.
+- 현재 단계: **M1-C 편집 백업·복원/파일 정리 진행 중**. 기준19e10af, Task1~4 및 한 번 리뷰/중요 수정 구현·관련 검증 완료(a64b490). 최종 양 OS 전체/26 독립 fixture/Notion·인계는 아직 미완료. 계획 `docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md`.
+- 다음 작업자가 할 첫 작업: Git 상태/HEAD 대조 → 최신 M1-C 체크포인트/실행 로그 확인 → final-platform-checks.sh 실행 로그·현재 session 확인 → 양 OS 전체/26 독립 fixture 검증 마감 → 문서/Notion. 리뷰를 반복하지 않는다. 완료된 단계를 반복하지 않는다.
 - 마지막 Notion 반영: **2026-10-03T11:50:06.629Z (20:50:06 KST)**; 재조회/내용 검증 11:50:59 UTC. M1-B 결과·기술 판단·검증/실패 이력·리뷰·제한·커밋·다음 M1-C 계획을 기존 내용을 보존하며 추가했다. 이전 M1-A 반영 06:02:45.909Z 기록도 아래에 보존한다.
 - 최종 검증: **Node31/0, core60/0**, v2/v3 fixture check exit0, 18.6/26.4 각각 **app53/0 + 일반 UI5통과/fixture-only1skip/0실패**. 별도 seeded migration UI 양1/0/skip0과 원본 bytes 검증 통과. 로그/result와 리뷰 판단은 아래 M1-B 최종 절을 따른다.
 
@@ -440,3 +440,12 @@
 - 리뷰 수정 GREEN: BackupSession8+registry3+LibrarySession7 **18/0**, xcodebuild exit0(minote-m1c-review-green.log/xcresult). Core최종 **78/0**, exit0(minote-m1c-core-review-green2.log). 중간 core1실패 두 번은 제거된 leaf에 대한 /var alias 비교가 계속 실패한 테스트 문제였고, uniqueUUID 이름/실제 제거 및 다른 bytes 보존을 함께 검사하도록 수정했다. 제품 제거 경계는 바꾸지 않았다.
 - 빈설치18 backup 정확한파일선택 UI **1/0/skip0**, exit0(minote-m1c18-backup-exact-file.log/xcresult). helper --verify exit0(minote-m1c18-backup-verify.log): transferredSHA/7활성1삭제/모든page·stroke·assetID/용지/책갈피/두PDFbytes 불변, 새 획/Undo/Redo/save/relaunch 확인. seed를 반복하지 않았고 기존실패 로그를 유지했다. 새 migration18/backup18 두 기기는 shutdown/data보존.
 - 다음: 수정 코드/fixture helper 체크포인트 → Task4 task-done → 최종 양 OS 전체 순차 →26 별도 migration/backup → 기록/Notion. 한 번의 reviewer 이후 Important2는 RED→GREEN으로 수정, Minor2는 결과표시 수정/보수 보호·제한으로 처리했다. 재리뷰/새 agent 없음.
+
+### M1-C Task5 최종 순차 검증 시작점
+- 현재 HEADa64b490. Task4 ledger 시험 종료 뒤 final-platform-checks.sh를 실행한다. 최종 제품 변경 후18/26 전체를 다시 확인하며 26은 새 DerivedData/cacheOFF다. 로그/result minote-m1c18-review-final, minote-m1c26-review-final. 26 성공 뒤 같은 script가 새 migration26/backup26 seed/UI/bytes검증을 실행한다. 최초 등록하는 전용 데이터만 seed하고 이전 데이터를 지우지 않는다.
+- 남은 일: 실제 결과 확인→docs milestone/README/AGENTS/M2-A plan 자기 점검→Notion append/fetch검증→최종main docs commit/clean. stage 완료로 아직 표시하지 않는다.
+- 최종18 현재app64/0, 백업 Files UI는 SaveToFiles 탭 후 filename field 미표시로 실패했다. AX에는 activity sheet가 그대로 남아 있다(minote-m1c18-review-final). 앞서 성공한 실제 Files/독립 이동과 별개로 이 invocation은 실패다. 탭 hit/시트 표시 상태와 실제 화면을 확인하고 시험/제품 원인을 구분한다. 순차 script는18 exit65에서 멈추므로26은 아직 실행 전이다.
+- 공유 실패의 이전 recording/synthesized event를 확인했다. 실제 Save action 탭 좌표417,494.75는 AX row 위치에 맞으나 저장 창은 열리지 않았다. 시스템 action이 이 탭을 처리하지 않은 원인은 특정하지 않는다. 이 항목만 existence 뒤 바로 탭하던 시험이어서 다른 Files 단계와 같은 enabled/hittable predicate를 기다리게 했다. 제품 공유 코드를 추측 변경하거나 성공 조건을 완화하지 않는다. filename field/실제 파일 저장/재편집·relaunch가 모두 필요하다.
+- 이번18 전체에서 통과한 app64와 다른 UI는 제품 수정 없이 그대로 유지한다. 실패한 백업 UI만 새 helper로 집중 재검증하며 최초 전체exit65를 보존한다. 최종 검증표는 여러 명령의 실제 결과를 구분하고 합친 명령 exit0이라고 주장하지 않는다.26은 새 전체 suite를 실행한다.
+- 공유 action enabled/hittable 대기 후 집중18 백업 UI **1/0/skip0**, exit0 TEST SUCCEEDED(minote-m1c-backup-ui18-action-hittable.log/xcresult). 실제 Files 저장/원본 유지+중복 새 노트 복원/추가 획·Undo·Redo/저장/relaunch 모두 확인했다. 앞선 app64/0 및 일반 UI6/0과 이 결과를 구분해18 전체 범위의 성공 근거로 사용한다. 실패 명령exit65/플랫폼 탭 미처리 원인은 그대로 기록한다.
+- 다음 긴 작업:26.4는 새 DerivedData/cacheOFF 전체 app/UI를 실행한다. 성공 뒤 새 migration26/backup26 기기에 처음으로 seed하고 별도 UI/원본 bytes를 검증한다. 제품·기존 기기 데이터는 변경하지 않는다. Notion/단계 종료 문서는 아직 대기다.

@@ -126,7 +126,7 @@ import XCTest
     }
     private func saveToFiles(_ app: XCUIApplication, filename: String) {
         let save = app.cells.matching(NSPredicate(format: "label == 'Save to Files' OR label == '파일에 저장'" )).firstMatch
-        guard save.waitForExistence(timeout: 10) else { XCTFail("Share: \(app.debugDescription)"); return }; save.tap()
+        tapHittable(save, app: app)
         let field = app.textFields.firstMatch
         guard field.waitForExistence(timeout: 20) else { XCTFail("Save dialog: \(app.debugDescription)"); return }
         field.tap(); let length = (field.value as? String)?.count ?? 0
