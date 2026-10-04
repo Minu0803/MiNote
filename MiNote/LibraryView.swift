@@ -10,7 +10,6 @@ struct LibraryView: View {
     @State private var showsBackupImporter = false
     @State private var showsMaintenance = false
     @State private var purging: LibraryNoteRow?
-    @State private var restoreTask: Task<Void, Never>?
 
     var body: some View {
         Group {
@@ -26,6 +25,12 @@ struct LibraryView: View {
                 }
             } else {
                 library
+            }
+        }
+        .overlay {
+            if session.isBusy {
+                BackupProgressView(progress: session.operationProgress,
+                    cancel: session.isRestoringBackup ? { session.cancelBackupRestore() } : nil)
             }
         }
         .task { await session.load() }
@@ -109,16 +114,11 @@ struct LibraryView: View {
           }
         }
         .disabled(session.isBusy)
-        .overlay {
-            if session.isBusy {
-                BackupProgressView(progress: session.operationProgress, cancel: restoreTask == nil ? nil : { restoreTask?.cancel() })
-            }
-        }
         .fileImporter(isPresented: $showsBackupImporter, allowedContentTypes: [.minote]) { result in
             switch result {
             case .success(let url):
                 let folder = selectedFolder
-                restoreTask = Task { await session.restoreBackup(from: url, folderID: folder); restoreTask = nil }
+                session.beginBackupRestore(from: url, folderID: folder)
             case .failure(let error): session.operationError = error.localizedDescription
             }
         }

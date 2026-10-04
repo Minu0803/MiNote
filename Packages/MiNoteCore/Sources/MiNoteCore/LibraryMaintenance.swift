@@ -9,7 +9,10 @@ public struct MaintenanceReport: Sendable {
     }
     public var items: [Item] = []
     public var removedURLs: [URL] = []
-    public var candidates: [Item] { items.filter { $0.protectionReason == nil } }
+    public var candidates: [Item] {
+        let removed = Set(removedURLs)
+        return items.filter { $0.protectionReason == nil && !removed.contains($0.url) }
+    }
     public var protectedItems: [Item] { items.filter { $0.protectionReason != nil } }
     public var candidateBytes: Int64 { candidates.reduce(0) { $0 + $1.byteCount } }
 }
@@ -21,6 +24,15 @@ extension LibraryStore {
         let value = try readyCatalog()
         busy = true; defer { busy = false }
         var report = MaintenanceReport()
+        // A prefix alone is not proof of ownership. Report possible interrupted
+        // restores, but preserve their contents until durable ownership exists.
+        for url in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
+            let name = url.lastPathComponent
+            guard name.hasPrefix(".restore-"), let id = UUID(uuidString: String(name.dropFirst(9))),
+                  name == ".restore-" + id.uuidString else { continue }
+            report.items.append(.init(url: url, byteCount: 0,
+                protectionReason: "중단된 복원으로 남았을 수 있는 파일이 있습니다. 소유권을 확인할 수 없어 보존했습니다."))
+        }
         for note in value.notes {
             try Task.checkCancellation()
             let result = await store(for: note.id).assetMaintenance(expectedID: note.id, clean: clean)

@@ -20,7 +20,7 @@
 - 파일 내보내기/복원은 actor에서 처리하고 bulk PDF I/O 버퍼를 64KiB로 제한한다. 취소는 각 chunk 경계에서 확인한다. 문서 JSON decode 비용은 별도 측정한다.
 - future schema, 누락/변조/중복 자산, 잘못된 경로, I/O 실패는 명시적인 오류다. 빈 노트나 이전 단일 PDF로 대체하지 않는다. 기존 원본과 backup을 덮지 않는다.
 - 영구 제거는 명시적인 사용자 확인 뒤에만 실행한다. 공유/미리보기 중 파일은 정리하지 않는다. 시작 시 무조건 전체 폴더를 지우거나 기간만으로 note/PDF 원본을 지우지 않는다.
-- 실제 Pencil/손바닥/발열/대형 실제 PDF는 M3 확인 대기다. 이 계획은 아직 구현하지 않았다.
+- 실제 Pencil/손바닥/발열/대형 실제 PDF는 M3 확인 대기다. Task1~4 구현과18.6 검증을 완료했으며 Task5의 양 OS 최종 검증·인계가 남아 있다.
 
 ## Review Focus
 
@@ -79,11 +79,11 @@
 
 **Interfaces:** consumes backup/restore/purge/maintenance APIs; produces cancellable UI actions, preview/share leases.
 
-- [ ] `testBackupFlushesLatestDrawingAndBlocksOnLateCallback`: 필기 직후 백업, flush 실패/늦은 지원·미지원 callback. 최신 성공 snapshot만 출력; 실패해도 drawing/session 유지.
-- [ ] `testExportLeaseSurvivesPreviewShareAndCleanup`: QuickLook/공유 lease 두 개 동안 시간 8일 이동에도 보존. 마지막 lease 해제 후만 cleanup. 취소/재실행/registry 손상에서 알려지지 않은 파일을 삭제하지 않음.
-- [ ] `testBackupRestoreViaFilesRemainsEditable`: 실제 finger ink+PDF A/B+복제/삭제 보관+용지/책갈피 → Files 백업 저장 → 독립 빈 설치 복원 → 획 재편집/Undo/저장/재실행. 기존 노트가 있는 설치의 동일 백업 복원도 새 note 확인.
-- [ ] `testPurgeRequiresConfirmationAndProtectsActiveNote`: 취소 불변, trash note/삭제 page만 확인 후 제거, 실패 inline 안내, 저장 공간 정리의 보호 이유/결과 표시. CRC가 정상이어도 PDFKit이 거부하거나 metadata와 geometry가 다른 PDF backup은 catalog 추가 전에 거부.
-- [ ] API 미존재/실제 UI RED → 입력 잠금/진행률/취소/Files/lease/확인 연결 → 앱 전체+관련 UI GREEN → PROGRESS → 커밋.
+- [x] `testBackupFlushesLatestDrawingAndBlocksOnLateCallback`: 필기 직후 백업, flush 실패/늦은 지원·미지원 callback. 최신 성공 snapshot만 출력; 실패해도 drawing/session 유지.
+- [x] `testExportLeaseSurvivesPreviewShareAndCleanup`: QuickLook/공유 lease 두 개 동안 시간 8일 이동에도 보존. 마지막 lease 해제 후만 cleanup. 취소/재실행/registry 손상에서 알려지지 않은 파일을 삭제하지 않음.
+- [x] `testBackupRestoreViaFilesRemainsEditable`: 실제 finger ink+PDF A/B+복제/삭제 보관+용지/책갈피 → Files 백업 저장 → 독립 빈 설치 복원 → 획 재편집/Undo/저장/재실행. 기존 노트가 있는 설치의 동일 백업 복원도 새 note 확인.
+- [x] `testPurgeRequiresConfirmationAndProtectsActiveNote`: 취소 불변, trash note/삭제 page만 확인 후 제거, 실패 inline 안내, 저장 공간 정리의 보호 이유/결과 표시. CRC가 정상이어도 PDFKit이 거부하거나 metadata와 geometry가 다른 PDF backup은 catalog 추가 전에 거부.
+- [x] API 미존재/실제 UI RED → 입력 잠금/진행률/취소/Files/lease/확인 연결 → 앱 전체+관련 UI GREEN → PROGRESS → 커밋.
 
 ### Task 5: 전체 검증·한 번 리뷰·기록
 

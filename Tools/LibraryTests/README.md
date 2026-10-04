@@ -21,3 +21,25 @@ PDF bytes and updated revision. Core tests separately cover v1, corrupt input,
 missing PDF and interrupted catalog writes. No real user's note is replaced.
 
 M1-B verifier는 v2 raw 원본이 루트에 그대로 남고 새 본문만 v3로 정규화됐는지 검사한다. 기존 ID/ink/geometry에 source.assetID와 blank/false 기본값만 추가되며 pdfAssets/deletedPages를 확인한다. 이미 사용한 migration 기기의 MiNote data를 지우거나 reseed하지 않는다. 새 기기를 만든다. M1-A prefix도 helper의 안전 검사에는 계속 허용한다.
+
+## Editable backup transfer check (M1-C)
+
+Run `BackupUITests.testBackupExportViaFilesAndDuplicateRestore` in a regular
+simulator after app tests have created the two PDF fixtures. It actually draws,
+adds paper/bookmarks/retained deleted pages, imports both PDFs, saves through
+UIKit **Save to Files**, restores a duplicate note, edits, undoes/redoes and
+relaunches. Its log prints `MINOTE_BACKUP_FILE=Backup-<suffix>.minote`.
+
+1. Preserve that actual file from the regular simulator's app `Documents`.
+2. Create a **new** simulator named `MiNote M1-C Backup <OS>`, boot and install
+   the built app without launching it.
+3. Run `python3 Tools/LibraryTests/backup_fixture.py <device-UUID> <actual-Backup-file>`.
+4. Run only `MiNoteUITests/BackupUITests/testBackupTransferIntoEmptyInstallation`.
+5. Boot again if Xcode shut it down, then run the same helper with `--verify`.
+
+The helper refuses general-purpose devices and existing library/transfer data.
+It copies the actual archive bytes, not a fabricated JSON fixture. Verification
+checks source/transfer SHA, document/page/stroke/asset IDs, both PDF bytes,
+paper/bookmarks/deleted pages, new editable ink, Undo/Redo and relaunch. Regular
+suites skip this empty-installation-only test. Do not erase or reseed previous
+test devices. M1-C migration devices are also accepted by `legacy_fixture.py`.

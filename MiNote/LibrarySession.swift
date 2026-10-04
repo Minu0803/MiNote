@@ -13,7 +13,9 @@ struct LibraryNoteRow: Identifiable {
     @Published private(set) var notes: [LibraryNoteRow] = []
     @Published private(set) var folders: [LibraryFolder] = []
     @Published private(set) var selectedEditor: EditorSession?
-    @Published private(set) var isBusy = false
+    @Published private(set) var isBusy = false {
+        didSet { if !isBusy { startNextBackupRestore() } }
+    }
     @Published private(set) var loadError: String?
     @Published private(set) var recoveryNotice: String?
     @Published var operationError: String?
@@ -134,6 +136,46 @@ struct LibraryNoteRow: Identifiable {
     }
     func moveFolder(_ id: UUID, parentID: UUID?) async {
         await mutate { try await store.moveFolder(id: id, parentID: parentID) }
+    }
+    private struct BackupRequest { let url: URL; let folderID: UUID?; let scoped: Bool }
+    private var pendingBackups: [BackupRequest] = []
+    private(set) var backupRestoreTask: Task<Void, Never>?
+    @Published private(set) var isRestoringBackup = false
+
+    /// Both Files entry points retain requests while startup or another operation owns the library.
+    func beginBackupRestore(from url: URL, folderID: UUID?) {
+        pendingBackups.append(BackupRequest(url: url, folderID: folderID, scoped: url.startAccessingSecurityScopedResource()))
+        isRestoringBackup = true
+        startNextBackupRestore()
+    }
+    func cancelBackupRestore() {
+        for request in pendingBackups where request.scoped { request.url.stopAccessingSecurityScopedResource() }
+        pendingBackups.removeAll()
+        backupRestoreTask?.cancel()
+        if backupRestoreTask == nil { isRestoringBackup = false }
+    }
+    private func startNextBackupRestore() {
+        guard backupRestoreTask == nil else { return }
+        guard !pendingBackups.isEmpty else { isRestoringBackup = false; return }
+        guard !isBusy else { return }
+        let request = pendingBackups.removeFirst()
+        backupRestoreTask = Task {
+            var requeued = false
+            defer {
+                if request.scoped && !requeued { request.url.stopAccessingSecurityScopedResource() }
+                backupRestoreTask = nil
+                startNextBackupRestore()
+            }
+            do {
+                try Task.checkCancellation()
+                // An operation may start between task creation and its first turn.
+                if isBusy { pendingBackups.insert(request, at: 0); requeued = true; return }
+                if !loaded { await load() }
+                try Task.checkCancellation()
+                guard loaded else { throw LibrarySessionError.message(loadError ?? "라이브러리를 불러온 뒤 다시 복원해 주세요.") }
+                await restoreBackup(from: request.url, folderID: request.folderID)
+            } catch { operationError = error.localizedDescription }
+        }
     }
     func restoreBackup(from url: URL, folderID: UUID?) async {
         guard !isBusy, loaded else { return }

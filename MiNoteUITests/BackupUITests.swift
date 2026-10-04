@@ -45,9 +45,9 @@ import XCTest
         let app = XCUIApplication(); app.launch(); XCTAssertTrue(app.buttons["newNote"].waitForExistence(timeout: 15))
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'note-'"))
         try XCTSkipUnless(rows.count == 0, "Use a new isolated Backup simulator with transferred Transfer.minote.")
-        pick(app, button: "restoreBackup", filename: "Transfer")
+        pick(app, button: "restoreBackup", filename: "Transfer.minote")
         let restored = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'note-' AND label BEGINSWITH 'Backup-' AND label ENDSWITH ' (복원)'" )).firstMatch
-        XCTAssertTrue(restored.waitForExistence(timeout: 30)); XCTAssertEqual(rows.count, 1)
+        XCTAssertTrue(restored.waitForExistence(timeout: 30), app.debugDescription); XCTAssertEqual(rows.count, 1)
         let title = restored.label; restored.tap()
         XCTAssertTrue(wait(app.staticTexts["pageIndicator"], "4 / 7")); XCTAssertTrue(wait(app.staticTexts["strokeCount"], "획 1"))
         app.buttons["previousPage"].tap(); XCTAssertTrue(wait(app.staticTexts["strokeCount"], "획 1"))

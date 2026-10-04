@@ -15,7 +15,7 @@ def simctl(*items):
 
 devices = json.loads(simctl("list", "devices", "available", "-j"))["devices"]
 device = next(d for group in devices.values() for d in group if d["udid"] == args.device)
-if not device["name"].startswith(("MiNote M1-A Migration ", "MiNote M1-B Migration ")):
+if not device["name"].startswith(("MiNote M1-A Migration ", "MiNote M1-B Migration ", "MiNote M1-C Migration ")):
     raise SystemExit("Refusing to seed a general-purpose simulator.")
 container = pathlib.Path(simctl("get_app_container", args.device, "com.minote.foundation", "data"))
 root = container / "Documents" / "MiNote"

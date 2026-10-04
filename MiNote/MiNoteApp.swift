@@ -10,7 +10,7 @@ struct MiNoteApp: App {
             LibraryView(session: library)
                 .onOpenURL { url in
                     if url.pathExtension.lowercased() == "minote" {
-                        Task { await library.load(); await library.restoreBackup(from: url, folderID: nil) }
+                        library.beginBackupRestore(from: url, folderID: nil)
                     }
                 }
         }

@@ -103,6 +103,49 @@ import XCTest
         await library.purgeNote(id)
         XCTAssertEqual(library.selectedEditor?.document?.id, id); XCTAssertEqual(library.notes.count, 1); XCTAssertNotNil(library.operationError)
     }
+    func testExternalOpenWaitsForInitialLibraryLoad() async throws {
+        let root = try directory(), gate = BackupBlockingGate()
+        let archive = root.appendingPathComponent("incoming.minote")
+        let document = NoteDocument(title: "External", pages: [NotePage()])
+        try await NoteBackup().export(document: document, assetURLs: [:], destination: archive)
+        let store = LibraryStore(directory: root.appendingPathComponent("library"), catalogWriter: { data, url in
+            try data.write(to: url, options: .atomic); gate.blockOnce()
+        })
+        let library = LibrarySession(store: store)
+        let loading = Task { await library.load() }
+        let entered = await Task.detached { gate.waitForEntry() }.value
+        XCTAssertTrue(entered); XCTAssertTrue(library.isBusy)
+        library.beginBackupRestore(from: archive, folderID: nil)
+        await Task.yield(); gate.released.signal(); await loading.value
+        await library.backupRestoreTask?.value
+        XCTAssertEqual(library.notes.map(\.title), ["External (복원)"])
+        XCTAssertNil(library.operationError); XCTAssertFalse(library.isRestoringBackup)
+    }
+    func testExternalRestoreCancellationPreservesNotesAndRemovesOwnedStages() async throws {
+        let root = try directory(), gate = BackupBlockingGate(), path = root.appendingPathComponent("library")
+        let initial = LibraryStore(directory: path); _ = try await initial.load()
+        let keep = try await initial.createNote(title: "Keep")
+        let original = try Data(contentsOf: path.appendingPathComponent("notes/\(keep.uuidString)/document.json"))
+        let pdf = try PDFFixture.data(rotations: [0]), asset = PDFAsset(originalFilename: "sample.pdf", pageCount: 1, byteCount: pdf.count)
+        let source = root.appendingPathComponent("source.pdf"); try pdf.write(to: source)
+        let page = NotePage(width: 300, height: 450, pdfSource: PDFPageSource(assetID: asset.id, index: 0,
+            mediaBox: PageRect(x: 10, y: 20, width: 400, height: 600), cropBox: PageRect(x: 40, y: 70, width: 300, height: 450), rotation: 0))
+        let archive = root.appendingPathComponent("incoming.minote")
+        try await NoteBackup().export(document: NoteDocument(title: "Incoming", pages: [page], pdfAssets: [asset]), assetURLs: [asset.id: source], destination: archive)
+        let store = LibraryStore(directory: path, catalogWriter: { try $0.write(to: $1, options: .atomic) }, backupCopier: { src, dst in
+            gate.blockOnce(); try Task.checkCancellation(); try Data(contentsOf: src).write(to: dst)
+        })
+        let library = LibrarySession(store: store); await library.load()
+        library.beginBackupRestore(from: archive, folderID: nil)
+        let entered = await Task.detached { gate.waitForEntry() }.value
+        XCTAssertTrue(entered); XCTAssertTrue(library.isRestoringBackup)
+        let task = library.backupRestoreTask
+        library.cancelBackupRestore(); gate.released.signal(); await task?.value
+        XCTAssertEqual(library.notes.map(\.id), [keep]); XCTAssertNotNil(library.operationError)
+        XCTAssertFalse(library.isRestoringBackup)
+        XCTAssertEqual(try Data(contentsOf: path.appendingPathComponent("notes/\(keep.uuidString)/document.json")), original)
+        XCTAssertFalse(try FileManager.default.contentsOfDirectory(atPath: path.path).contains { $0.hasPrefix(".restore-") })
+    }
     private func directory() throws -> URL {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -118,4 +161,15 @@ private final class BackupReadGate: @unchecked Sendable {
     private let lock = NSLock(); private var armed = false
     func arm() { lock.lock(); defer { lock.unlock() }; armed = true }
     func fire() -> Bool { lock.lock(); defer { lock.unlock() }; if armed { armed = false; return true }; return false }
+}
+
+private final class BackupBlockingGate: @unchecked Sendable {
+    let entered = DispatchSemaphore(value: 0), released = DispatchSemaphore(value: 0)
+    private let lock = NSLock()
+    private var used = false
+    func waitForEntry() -> Bool { entered.wait(timeout: .now() + 5) == .success }
+    func blockOnce() {
+        lock.lock(); let block = !used; used = true; lock.unlock()
+        if block { entered.signal(); _ = released.wait(timeout: .now() + 8) }
+    }
 }

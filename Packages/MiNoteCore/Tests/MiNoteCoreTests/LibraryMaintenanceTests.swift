@@ -16,7 +16,11 @@ import XCTest
         let legacy = root.appendingPathComponent("document.json"); try Data("keep legacy".utf8).write(to: legacy)
         let report = try await library.maintenanceReport()
         XCTAssertEqual(report.candidates.map { $0.url.resolvingSymlinksInPath() }, [orphan.resolvingSymlinksInPath()])
-        _ = try await library.cleanUnreferencedFiles()
+        let cleaned = try await library.cleanUnreferencedFiles()
+        XCTAssertTrue(cleaned.candidates.isEmpty); XCTAssertEqual(cleaned.candidateBytes, 0)
+        // The removed leaf no longer resolves /var's filesystem alias reliably.
+        // Its unique UUID name and the actual byte-preservation checks identify it.
+        XCTAssertEqual(cleaned.removedURLs.map(\.lastPathComponent), [orphan.lastPathComponent])
         XCTAssertFalse(FileManager.default.fileExists(atPath: orphan.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: unknown.path)); XCTAssertTrue(FileManager.default.fileExists(atPath: legacy.path))
         let assetURL = directory.appendingPathComponent(asset.relativePath)
@@ -49,5 +53,17 @@ import XCTest
             XCTAssertTrue(result.candidates.isEmpty); XCTAssertFalse(result.protectedItems.isEmpty)
             XCTAssertTrue(FileManager.default.fileExists(atPath: orphan.path))
         }
+    }
+    func testPossibleInterruptedRestoreIsReportedAndPreserved() async throws {
+        let root = try LibraryTestSupport.directory(self), library = LibraryStore(directory: root)
+        _ = try await library.load()
+        let stage = root.appendingPathComponent(".restore-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: stage, withIntermediateDirectories: true)
+        let retained = stage.appendingPathComponent("keep.bin"), raw = Data("partial restore".utf8)
+        try raw.write(to: retained)
+        let report = try await library.cleanUnreferencedFiles()
+        XCTAssertTrue(report.candidates.isEmpty); XCTAssertTrue(report.removedURLs.isEmpty)
+        XCTAssertTrue(report.protectedItems.contains { $0.url.resolvingSymlinksInPath() == stage.resolvingSymlinksInPath() && $0.protectionReason != nil })
+        XCTAssertEqual(try Data(contentsOf: retained), raw)
     }
 }
