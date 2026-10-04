@@ -22,20 +22,33 @@ enum InkAdapterError: Error, LocalizedError {
 enum InkAdapter {
     private static let contentID = UUID(uuid: (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
 
-    static func encode(_ drawing: PKDrawing, preserving known: [InkStroke]) throws -> [InkStroke] {
+    private struct Candidate {
+        let index: Int
+        let value: InkStroke
+        let isCurrent: Bool
+        let isRaw: Bool
+    }
+    static func encode(_ drawing: PKDrawing, preserving known: [InkStroke], aliases: [InkStroke] = []) throws -> [InkStroke] {
         let values = try drawing.strokes.map(portableValue)
         guard !known.isEmpty else { return values }
         let reconstructed = try decode(known).strokes.map(portableValue)
-        var candidates: [InkStroke: [Int]] = [:]
+        var candidates: [InkStroke: [Candidate]] = [:]
         for index in known.indices {
             let raw = key(known[index]), restored = key(reconstructed[index])
-            candidates[raw, default: []].append(index)
-            if restored != raw { candidates[restored, default: []].append(index) }
+            candidates[raw, default: []].append(Candidate(index:index,value:known[index],isCurrent:true,isRaw:true))
+            if restored != raw { candidates[restored, default: []].append(Candidate(index:index,value:known[index],isCurrent:true,isRaw:false)) }
+        }
+        let indices=Dictionary(uniqueKeysWithValues:known.indices.map { (known[$0].id,$0) })
+        for variant in aliases {
+            guard let index=indices[variant.id] else { continue }
+            let raw=key(variant), restored=key(try decode([variant]).strokes.map(portableValue)[0])
+            candidates[raw,default:[]].append(Candidate(index:index,value:variant,isCurrent:false,isRaw:true))
+            if restored != raw { candidates[restored,default:[]].append(Candidate(index:index,value:variant,isCurrent:false,isRaw:false)) }
         }
         // Supported PencilKit edits append or erase strokes without reordering
         // surviving strokes. Match the entire ordered sequence, so a raw value
         // cannot steal the provenance of another stroke's reconstruction alias.
-        let options = values.map { candidates[key($0)] ?? [] }
+        let options = values.map { Set((candidates[key($0)] ?? []).map(\.index)).sorted() }
         var earliest = Array<Int?>(repeating: nil, count: values.count)
         var latest = earliest
         var prior = -1
@@ -53,8 +66,14 @@ enum InkAdapter {
             latest[index] = match; following = match
         }
         guard earliest == latest else { throw InkAdapterError.ambiguousIdentity }
-        return values.indices.map { index in
-            earliest[index].map { known[$0] } ?? values[index]
+        return try values.indices.map { index in
+            guard let match=earliest[index] else { return values[index] }
+            let versions=(candidates[key(values[index])] ?? []).filter { $0.index == match }
+            if versions.contains(where: \.isCurrent) { return known[match] }
+            let raw=versions.filter(\.isRaw)
+            let distinct=Set((raw.isEmpty ? versions : raw).map(\.value))
+            guard distinct.count == 1, let value=distinct.first else { throw InkAdapterError.ambiguousIdentity }
+            return value
         }
     }
 

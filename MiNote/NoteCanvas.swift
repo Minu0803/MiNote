@@ -12,12 +12,14 @@ final class CanvasReference: ObservableObject {
     weak var canvas: PKCanvasView?
 
     func undo(in session: EditorSession) {
-        guard !session.isProcessing else { return }
+        guard session.canReplayInkHistory else { return }
+        session.clearInkSelection()
         canvas?.undoManager?.undo()
         refresh()
     }
     func redo(in session: EditorSession) {
-        guard !session.isProcessing else { return }
+        guard session.canReplayInkHistory else { return }
+        session.clearInkSelection()
         canvas?.undoManager?.redo()
         refresh()
     }
@@ -33,7 +35,9 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
     private let scrollView = UIScrollView()
     private let page = UIView()
     private let paper = PDFPaperView()
-    let canvas = PKCanvasView()
+    let canvas = InkCanvasView()
+    let lasso = LassoOverlay()
+    private var priorBounds = CGRect.zero
     private var pageSize = CGSize(width: 595.2756, height: 841.8898)
     private var hasInitialZoom = false
     private var priorFit: CGFloat = 0
@@ -69,6 +73,7 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
         canvas.drawingPolicy = .pencilOnly
         canvas.accessibilityIdentifier = "inkCanvas"
         page.addSubview(canvas)
+        page.addSubview(lasso)
     }
 
     @available(*, unavailable)
@@ -76,6 +81,7 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
 
     func configurePage(size: CGSize, pdfPage: PDFPage?, paperStyle: PaperStyle = .blank) {
         if pageSize != size || !hasInitialZoom {
+            lasso.cancelGesture()
             scrollView.zoomScale = 1
             pageSize = size
             page.frame = CGRect(origin: .zero, size: size)
@@ -94,6 +100,7 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        if bounds != priorBounds { lasso.cancelGesture(); priorBounds=bounds }
         scrollView.frame = bounds
         guard bounds.width > 0, bounds.height > 0 else { return }
         if !hasInitialZoom {
@@ -103,6 +110,7 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
         }
         paper.frame = page.bounds
         canvas.frame = page.bounds
+        lasso.frame = page.bounds
         let fit = max(0.1, min((bounds.width - 40) / pageSize.width, (bounds.height - 40) / pageSize.height))
         scrollView.minimumZoomScale = fit
         scrollView.maximumZoomScale = max(fit * 5, fit + 0.5)
@@ -118,6 +126,8 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
     }
 
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { page }
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { lasso.cancelGesture() }
+    func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) { lasso.cancelGesture() }
     func scrollViewDidZoom(_ scrollView: UIScrollView) { centerPage() }
     func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
         updatePaperResolution()
@@ -156,12 +166,13 @@ struct NoteCanvas: UIViewRepresentable {
     func makeUIView(context: Context) -> PageZoomHost {
         let host = PageZoomHost()
         host.canvas.delegate = context.coordinator
+        context.coordinator.attach(to:host.canvas)
         reference.canvas = host.canvas
         if let page = session.currentPage {
             host.configurePage(size: CGSize(width: page.width, height: page.height), pdfPage: session.currentPDFPage, paperStyle: page.paper)
         }
         host.setFingerDrawing(fingerDrawingEnabled)
-        host.canvas.isUserInteractionEnabled = isEnabled && !session.isProcessing
+        configureInteraction(host,coordinator:context.coordinator)
         configure(host.canvas)
         Task { @MainActor in reference.refresh() }
         return host
@@ -171,48 +182,78 @@ struct NoteCanvas: UIViewRepresentable {
         context.coordinator.session = session
         context.coordinator.reference = reference
         if host.canvas.drawing != session.drawing {
-            context.coordinator.isApplyingSessionDrawing = true
-            host.canvas.drawing = session.drawing
-            context.coordinator.isApplyingSessionDrawing = false
+            context.coordinator.apply(session.drawing,to:host.canvas)
         }
         reference.canvas = host.canvas
         if let page = session.currentPage {
             host.configurePage(size: CGSize(width: page.width, height: page.height), pdfPage: session.currentPDFPage, paperStyle: page.paper)
         }
         host.setFingerDrawing(fingerDrawingEnabled)
-        host.canvas.isUserInteractionEnabled = isEnabled && !session.isProcessing
+        configureInteraction(host,coordinator:context.coordinator)
         configure(host.canvas)
     }
 
     static func dismantleUIView(_ host: PageZoomHost, coordinator: Coordinator) {
         host.canvas.delegate = nil
+        host.lasso.cancelGesture()
         if coordinator.reference.canvas === host.canvas { coordinator.reference.canvas = nil }
     }
 
     private func configure(_ canvas: PKCanvasView) {
         canvas.drawingPolicy = fingerDrawingEnabled ? .anyInput : .pencilOnly
         switch tool {
-        case .pen: canvas.tool = PKInkingTool(.pen, color: color, width: width)
+        case .pen, .lasso: canvas.tool = PKInkingTool(.pen, color: color, width: width)
         case .marker: canvas.tool = PKInkingTool(.marker, color: color, width: width)
         case .eraser: canvas.tool = PKEraserTool(.vector)
         }
+    }
+    private func configureInteraction(_ host: PageZoomHost, coordinator: Coordinator) {
+        host.canvas.isUserInteractionEnabled = isEnabled && !session.isProcessing && tool != .lasso
+        host.lasso.configure(drawing:session.drawing,portable:session.currentPage?.strokes ?? [],selectedIDs:session.selectedStrokeIDs,
+            enabled:isEnabled && tool == .lasso && session.canApplyInkCommand,fingerEnabled:fingerDrawingEnabled,
+            onSelect:{ [weak coordinator] polygon in
+                guard let coordinator, coordinator.isCurrent else { return }
+                if polygon.isEmpty { coordinator.session.clearInkSelection() }
+                else { try coordinator.session.selectInk(polygon:polygon) }
+            },onMove:{ [weak coordinator] dx,dy in
+                guard let coordinator, coordinator.isCurrent else { return }
+                try coordinator.inkUndo?.move(dx:dx,dy:dy)
+            },onError:{ [weak coordinator] error in coordinator?.session.operationError=error.localizedDescription })
     }
 
     final class Coordinator: NSObject, PKCanvasViewDelegate {
         var session: EditorSession
         var reference: CanvasReference
         var isApplyingSessionDrawing = false
+        var inkUndo: InkUndoCoordinator?
         let pageID: UUID?
         let generation: UUID
         init(session: EditorSession, reference: CanvasReference) {
             self.session = session; self.reference = reference; self.pageID = session.currentPage?.id; self.generation = session.canvasGeneration
         }
+        var isCurrent: Bool { pageID == session.currentPage?.id && generation == session.canvasGeneration }
+        func attach(to canvas: PKCanvasView) {
+            inkUndo=InkUndoCoordinator(canvas:canvas,session:session,applyDrawing:{ [weak self, weak canvas] drawing in
+                guard let self, let canvas else { return }; self.apply(drawing,to:canvas)
+            },onChange:{ [weak self] in self?.reference.refresh() })
+        }
+        func apply(_ drawing: PKDrawing, to canvas: PKCanvasView) {
+            let manager=canvas.undoManager, enabled=manager?.isUndoRegistrationEnabled == true
+            if enabled { manager?.disableUndoRegistration() }
+            isApplyingSessionDrawing=true; canvas.drawing=drawing; isApplyingSessionDrawing=false
+            if enabled { manager?.enableUndoRegistration() }
+        }
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
             guard !isApplyingSessionDrawing, pageID == session.currentPage?.id, generation == session.canvasGeneration else { return }
+            let before=session.serializedVisibleInk, oldDrawing=session.drawing
             session.receiveDrawing(canvasView.drawing)
+            inkUndo?.recordNativeChange(before:before,drawing:oldDrawing)
             reference.refresh()
+        }
+        func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) {
+            guard isCurrent else { return }; inkUndo?.beginNativeGesture()
         }
     }
 }
 
-enum Brush: String, CaseIterable { case pen, marker, eraser }
+enum Brush: String, CaseIterable { case pen, marker, eraser, lasso }

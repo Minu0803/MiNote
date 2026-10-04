@@ -17,6 +17,7 @@ final class EditorSession: ObservableObject {
     @Published private(set) var pdfDocument: PDFDocument?
     @Published private(set) var isProcessing = false
     @Published private(set) var canvasGeneration = UUID()
+    @Published private(set) var selectedStrokeIDs = Set<UUID>()
     @Published var operationError: String?
     @Published private(set) var operationProgress: BackupProgress?
     private var progressOperationID: UUID?
@@ -47,6 +48,7 @@ final class EditorSession: ObservableObject {
     private let expectedID: UUID?
     private let saveDelay: Duration
     private var histories: [UUID: [InkStroke]] = [:]
+    private var moveAliases: [UUID: [InkStroke]] = [:]
     private var pendingSave: Task<Void, Never>?
     private var loading = false
     private var savedRevision: Int64?
@@ -115,12 +117,13 @@ final class EditorSession: ObservableObject {
 
     /// Called for PencilKit changes and for explicit save/flush events.
     func receiveDrawing(_ updatedDrawing: PKDrawing) {
+        if updatedDrawing != drawing { clearInkSelection() }
         drawing = updatedDrawing
         guard var current = document else { return }
         do {
             let pageID = current.pages[currentPageIndex].id
             var history = histories[pageID] ?? []
-            let strokes = try InkAdapter.encode(updatedDrawing, preserving: history)
+            let strokes = try InkAdapter.encode(updatedDrawing, preserving: history, aliases:moveAliases[pageID] ?? [])
             let prior = current.pages[currentPageIndex].strokes
             hasUnserializedDrawing = false
             guard strokes != prior else {
@@ -132,8 +135,9 @@ final class EditorSession: ObservableObject {
             guard current.revision < Int64.max else { throw DocumentError.invalidDocument("리비전 한도") }
             current.revision += 1
             document = current
-            for stroke in strokes where !history.contains(where: { $0.id == stroke.id }) {
-                history.append(stroke)
+            for stroke in strokes {
+                if let i=history.firstIndex(where: { $0.id == stroke.id }) { history[i]=stroke }
+                else { history.append(stroke) }
             }
             histories[pageID] = history
             invalidateThumbnails()
@@ -146,6 +150,64 @@ final class EditorSession: ObservableObject {
             pendingSave?.cancel()
             pendingSave = nil
         }
+    }
+
+    var canApplyInkCommand: Bool {
+        guard document != nil, !isProcessing, !hasUnserializedDrawing, loadError == nil else { return false }
+        if case .failed = saveState { return false }
+        return true
+    }
+    var serializedVisibleInk: [InkStroke]? { hasUnserializedDrawing ? nil : currentPage?.strokes }
+    var canReplayInkHistory: Bool {
+        guard document != nil, !isProcessing else { return false }
+        if case .failed = saveState, !hasUnserializedDrawing { return false }
+        return true
+    }
+    func restoreUnserializedInk(_ target: PKDrawing, replacing expected: PKDrawing, portable: [InkStroke]?, pageID: UUID, generation: UUID) throws {
+        guard canReplayInkHistory, currentPage?.id == pageID, canvasGeneration == generation, drawing == expected else { throw DocumentError.staleRevision }
+        receiveDrawing(target)
+        if let portable, serializedVisibleInk != portable { throw InkAdapterError.ambiguousIdentity }
+    }
+    func clearInkSelection() { if !selectedStrokeIDs.isEmpty { selectedStrokeIDs=[] } }
+    func selectInk(polygon: [SelectionPoint]) throws {
+        guard canApplyInkCommand, let page=currentPage else { throw DocumentError.invalidDocument("필기를 저장한 뒤 선택해 주세요.") }
+        selectedStrokeIDs = try InkSelection.selectedIDs(in:drawing,portable:page.strokes,polygon:polygon)
+    }
+    func translateSelectedInk(dx: Double, dy: Double) throws -> InkTransition? {
+        guard canApplyInkCommand, let base=document, let page=currentPage else { throw DocumentError.invalidDocument("현재 필기를 유지했습니다. 저장 후 다시 이동해 주세요.") }
+        let next = try InkCommands.translate(strokeIDs:selectedStrokeIDs,pageID:page.id,dx:dx,dy:dy,expectedRevision:base.revision,in:base)
+        guard next != base else { return nil }
+        let after=next.pages[currentPageIndex].strokes
+        let moved=PKDrawing(strokes:zip(drawing.strokes,after).map { native,saved in
+            var stroke=native
+            let t=saved.transform
+            stroke.transform=CGAffineTransform(a:t.a,b:t.b,c:t.c,d:t.d,tx:t.tx,ty:t.ty)
+            return stroke
+        })
+        let transition=InkTransition(pageID:page.id,generation:canvasGeneration,before:page.strokes,after:after,beforeDrawing:drawing,afterDrawing:moved)
+        try acceptInkCommand(next,before:page.strokes,native:moved)
+        return transition
+    }
+    func restoreInk(_ target: [InkStroke], replacing expected: [InkStroke], pageID: UUID, generation: UUID, native: PKDrawing? = nil) throws {
+        guard canApplyInkCommand, var next=document, currentPage?.id == pageID,
+              canvasGeneration == generation, currentPage?.strokes == expected,
+              next.revision < Int64.max else { throw DocumentError.staleRevision }
+        next.pages[currentPageIndex].strokes=target; next.revision += 1
+        try DocumentCodec.validate(next)
+        try acceptInkCommand(next,before:expected,native:native)
+    }
+    private func acceptInkCommand(_ next: NoteDocument, before: [InkStroke], native supplied: PKDrawing? = nil) throws {
+        let page=next.pages[currentPageIndex]
+        let native=try supplied ?? InkAdapter.decode(page.strokes)
+        guard try InkAdapter.encode(native,preserving:page.strokes) == page.strokes else { throw DocumentError.staleRevision }
+        var aliases=moveAliases[page.id] ?? [], history=histories[page.id] ?? []
+        for stroke in before+page.strokes where !aliases.contains(stroke) { aliases.append(stroke) }
+        for stroke in page.strokes {
+            if let i=history.firstIndex(where: { $0.id == stroke.id }) { history[i]=stroke } else { history.append(stroke) }
+        }
+        moveAliases[page.id]=aliases; histories[page.id]=history
+        document=next; drawing=native; hasUnserializedDrawing=false
+        invalidateThumbnails(); saveState = .saving; scheduleSave()
     }
 
     func selectPage(_ index: Int) async {
@@ -303,6 +365,7 @@ final class EditorSession: ObservableObject {
         let restored = try InkAdapter.decode(updated.pages[selected].strokes)
         document = updated; currentPageIndex = selected; drawing = restored; pdfDocument = pdf
         histories = Dictionary(uniqueKeysWithValues: updated.pages.map { ($0.id, $0.strokes) })
+        moveAliases=[:]; clearInkSelection()
         savedRevision = updated.revision; hasUnserializedDrawing = false; saveState = .saved
         canvasGeneration = UUID(); invalidateThumbnails()
     }

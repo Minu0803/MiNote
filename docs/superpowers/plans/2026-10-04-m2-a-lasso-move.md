@@ -53,11 +53,11 @@
 
 **Interfaces:** consumes Task1 APIs/현재 PKDrawing+portable page; produces selected UUIDs/drag translation/현재 canvas undo 명령.
 
-- [ ] 먼저 실제 PKCanvasView Undo spike RED: native finger 획 입력 → 선택 이동 → native 새 획 → Undo 세 번/Redo 세 번의 순서·위치·ID. programmatic 가짜 UndoManager만으로 통과하지 않는다. drawing 할당이 native Undo를 제거/중복 등록하면 app 명령 적용 방식부터 해결하고 UI 범위를 늘리지 않는다.
-- [ ] RED: 같은 획 이동 전/후/Undo/Redo/erase/pen append/reconstruction에서 안정 UUID, 동일 모양 획의 기존 ambiguousIdentity 안전 오류. pre/post 이력은 두 번째 이동에도 최신 transform을 과거 value로 되돌리지 않는다.
-- [ ] RED: 실제 page→overlay 변환 fit/2배/5배/화면 회전, PDF crop/90·270도에서 dx=30,dy=-15 문서량 동일. 2pt 경로 보간 후 기존 affine transform이 선택 판정에 한 번 적용됨.
-- [ ] RED: 올가미 빈 영역/선택 해제/gesture cancelled/0 drag는 drawing/revision/Undo 불변. Pencil 기본·손가락 전환/두 손가락 pan/zoom, 선택 뒤 pen으로 전환하면 선택만 해제.
-- [ ] 위 app API/overlay/toolbar 구현 → 관련 app tests+실제 finger UI GREEN → PROGRESS → commit. PKLassoTool의 자동 copy/cut/resize UI를 이번 범위에 노출하지 않는다.
+- [x] 먼저 실제 PKCanvasView Undo spike RED: native finger 획 입력 → 선택 이동 → native 새 획 → Undo 세 번/Redo 세 번의 순서·위치·ID. programmatic 가짜 UndoManager만으로 통과하지 않는다. drawing 할당이 native Undo를 제거/중복 등록하면 app 명령 적용 방식부터 해결하고 UI 범위를 늘리지 않는다.
+- [x] RED: 같은 획 이동 전/후/Undo/Redo/erase/pen append/reconstruction에서 안정 UUID, 동일 모양 획의 기존 ambiguousIdentity 안전 오류. pre/post 이력은 두 번째 이동에도 최신 transform을 과거 value로 되돌리지 않는다.
+- [x] RED: 실제 page→overlay 변환 fit/2배/5배/화면 회전, PDF crop/90·270도에서 dx=30,dy=-15 문서량 동일. 2pt 경로 보간 후 기존 affine transform이 선택 판정에 한 번 적용됨.
+- [x] RED: 올가미 빈 영역/선택 해제/gesture cancelled/0 drag는 drawing/revision/Undo 불변. Pencil 기본·손가락 전환/두 손가락 pan/zoom, 선택 뒤 pen으로 전환하면 선택만 해제.
+- [x] 위 app API/overlay/toolbar 구현 → 관련 app tests+실제 finger UI GREEN → PROGRESS → commit. PKLassoTool의 자동 copy/cut/resize UI를 이번 범위에 노출하지 않는다.
 
 ### Task 3: 세션 저장·백업·PDF·경합 검증
 

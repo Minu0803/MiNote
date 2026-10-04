@@ -68,6 +68,7 @@ struct NoteEditorView: View {
             }
         }
         .preferredColorScheme(.light)
+        .onChange(of: brush) { _, value in if value != .lasso { session.clearInkSelection() } }
     }
 
     private var loadState: some View {
@@ -140,6 +141,12 @@ struct NoteEditorView: View {
             .disabled(session.currentPageIndex + 1 >= (session.document?.pages.count ?? 1) || session.isProcessing)
             Text(session.currentPage?.pdfSource == nil ? (session.currentPage?.paper.title ?? "") : "PDF")
                 .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("paperStyle")
+            if brush == .lasso {
+                Text("선택 \(session.selectedStrokeIDs.count)획").font(.caption.monospacedDigit())
+                    .accessibilityIdentifier("selectionCount")
+                Button("선택 해제") { session.clearInkSelection() }
+                    .accessibilityIdentifier("clearSelection").disabled(session.isProcessing || session.selectedStrokeIDs.isEmpty)
+            }
             Spacer()
             Button { captureDrawing(); showsPageManager = true } label: { Image(systemName: "square.grid.2x2") }
                 .accessibilityLabel("페이지 관리").accessibilityIdentifier("pageManager").disabled(session.isProcessing)
@@ -183,10 +190,10 @@ struct NoteEditorView: View {
             Rectangle().fill(Color.primary.opacity(0.1)).frame(width: 1, height: 30)
             Button { canvasReference.undo(in: session) } label: { Image(systemName: "arrow.uturn.backward") }
                 .accessibilityLabel("실행 취소").accessibilityIdentifier("undo")
-                .disabled(!canvasReference.canUndo || session.isProcessing)
+                .disabled(!canvasReference.canUndo || !session.canReplayInkHistory)
             Button { canvasReference.redo(in: session) } label: { Image(systemName: "arrow.uturn.forward") }
                 .accessibilityLabel("다시 실행").accessibilityIdentifier("redo")
-                .disabled(!canvasReference.canRedo || session.isProcessing)
+                .disabled(!canvasReference.canRedo || !session.canReplayInkHistory)
             Text("획 \(session.strokeCount)")
                 .font(.caption.monospacedDigit().weight(.semibold))
                 .padding(.horizontal, 11).padding(.vertical, 8)
@@ -204,11 +211,12 @@ struct NoteEditorView: View {
                 toolButton(.pen, symbol: "pencil.tip.crop.circle", title: "펜")
                 toolButton(.marker, symbol: "highlighter", title: "형광펜")
                 toolButton(.eraser, symbol: "eraser", title: "획 지우개")
+                toolButton(.lasso, symbol: "lasso", title: "올가미")
             }
             Rectangle().fill(Color.primary.opacity(0.1)).frame(width: 1, height: 34)
             HStack(spacing: 10) {
                 ForEach(palette.indices, id: \.self) { index in
-                    Button { colorIndex = index; brush = brush == .eraser ? .pen : brush } label: {
+                    Button { colorIndex = index; if brush == .eraser || brush == .lasso { brush = .pen } } label: {
                         Circle().fill(palette[index].color).frame(width: 22, height: 22)
                             .overlay(Circle().stroke(.white, lineWidth: 2).padding(2))
                             .padding(3)
@@ -240,6 +248,7 @@ struct NoteEditorView: View {
         .padding(.horizontal, 24).padding(.top, 10).padding(.bottom, 14)
         }
         .frame(height: 96)
+        .accessibilityIdentifier("inkToolbar")
         .disabled(session.isProcessing)
     }
 
