@@ -43,3 +43,19 @@ checks source/transfer SHA, document/page/stroke/asset IDs, both PDF bytes,
 paper/bookmarks/deleted pages, new editable ink, Undo/Redo and relaunch. Regular
 suites skip this empty-installation-only test. Do not erase or reseed previous
 test devices. M1-C migration devices are also accepted by `legacy_fixture.py`.
+
+## Actual lasso ink evidence (M2-A)
+
+`python3 Tools/LibraryTests/lasso_evidence.py <device-UUID> <DerivedData> <new-result.xcresult> --all-tests`
+runs the complete scheme sequentially with compilation caching disabled. Omit
+`--all-tests` to run only the two lasso UI flows. Result/log/evidence paths must
+be new: the helper refuses to replace previous evidence.
+
+The UI uses actual native finger gestures and normal product controls. At21
+declared save boundaries, the observer only reads the app container, matches
+the UI-created note via catalog UUID and document title, and retains saved JSON.
+It verifies stable IDs, point data, linear transforms, order, translation,
+native pen/move/pen Undo3/Redo3, moved-stroke erasure, zoom/rotation/relaunch,
+and a90-degree cropped PDF's unchanged registered asset SHA against the original
+fixture. Xcode or observer failure remains a failure. There are no app test
+hooks, data seeding, simulator erasure or app-document writes by this helper.

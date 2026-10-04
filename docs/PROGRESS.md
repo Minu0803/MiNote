@@ -1,7 +1,7 @@
 # MiNote 개발 진행 기록
 
 ## 현재 상태
-- 완료 단계: **M0-A**, **M0-B**, **M0-C**, **M1-A**, **M1-B**, **M1-C — 편집 원본 백업·새 노트 복원·파일 정리·영구 제거/복구**
+- 완료 단계: **M0-A**, **M0-B**, **M0-C**, **M1-A**, **M1-B**, **M1-C**, **M2-A — 올가미 획 전체 선택·평행 이동·통합 Undo/Redo·저장/백업/독립 왕복**
 - 작업 공간: `/Users/minwookim/Documents/GitHub/MiNote`
 - 브랜치: `main`
 - 시작 기준 커밋: `9695ab6`; 사전 모델·저장소 체크포인트: `dfa943d`
@@ -14,10 +14,10 @@
 - M0-C 종료 당시 변경은 로컬 main에만 커밋했고 push하지 않았다. 현재 원격 상태를 의미하는 문장은 아니다. 최종 인계 문서 커밋은 `git log -1 --oneline`으로 확인한다.
 - 이전 실행: **2026-10-03 M1-A 완료**. 기준 `fd4def6`; 마지막 코드 `d968701`. 시작 시 main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음). 모든 구현은 main에 커밋했고 push하지 않았다.
 - 이전 단계: **M1-B 완료**. 기준 80d14c2, 마지막 기능 코드 1d67d9a, 테스트/체크포인트 fddbd66. main에서 직접 구현했고 push하지 않았다. 원격은 새 조회하지 않았으며 추적 ref와 현재 원격을 혼동하지 않는다.
-- 현재 결과: **2026-10-04 M1-C 완료**. 기준19e10af96dcc130593299b966cd3ed3e08a738ba, 시작main clean/추적origin/main보다8커밋 앞섬(원격 새 조회 없음). 구현4649208/ab1bd27/c94a93a/68ba26f, 한 번 리뷰 수정a64b490, 최종 Files 시험30e9f8c. 기본main에서 직접 커밋했으며 이 실행에서는 push 명령을 수행하지 않았다. 종료 확인 시 origin/main 추적ref는c94a93a로 갱신되어 있으므로 전체 변경이 로컬에만 있다고 주장하지 않는다. 실제 원격은 새 조회하지 않았다. 최종 인계 문서 커밋은 이 기록을 포함하는 마지막 docs 커밋(`git log -1 --oneline`)과 Git 상태로 확인한다.
-- 현재 개발 단위: **M2-A 올가미 획 선택·평행 이동 진행**, 계획 `docs/superpowers/plans/2026-10-04-m2-a-lasso-move.md`. 기준29835c2, Task1 core97255f8/Task2 app913dc02 완료. Task3 저장·백업·PDF 픽셀·오류/경합 검증 시작. main 직접/no push, 시작추적ref보다5앞섬(원격미조회). 재개는 ledger/현재로그/Git 대조 후 Task3부터 이어간다. M1-C를 반복하지 않는다. M2-A 전체완료/26/최종리뷰/Notion은 아직아니다.
-- 마지막 Notion 반영: **2026-10-04T04:22:23.119Z (13:22:23 KST)**; 재조회04:22:37 UTC에 기존 내용 전체 prefix 보존·M1-C 제목1회·검증표·제한·다음 계획만·사용자가 승인한 실제 PNG 첨부를 확인했다. 이전 M1-B 2026-10-03T11:50:06.629Z 및 M1-A 반영 기록은 아래에 보존한다.
-- 최신 검증: **Node31/0, core78/0**, v2/v3 check exit0; 양 OS app64/0.26 전체 일반UI7통과/fixture-only2skip/0실패·exit0.18 전체 app64/0+UI6통과·1실패·2skip·exit65이며 실패한 backupUI만 집중1/0/skip0·exit0으로 재검증했다. 명령들을 합친 전체 성공으로 표시하지 않는다. 독립 migration/실제 Files backup 이동은 양 OS 각각UI1/0/skip0와 bytes helper exit0. 상세 로그/실패/리뷰 판단은 아래 M1-C 마감 절과 milestone을 따른다.
+- 이전 M1-C 결과: **2026-10-04 M1-C 완료**. 기준19e10af96dcc130593299b966cd3ed3e08a738ba, 시작main clean/추적origin/main보다8커밋 앞섬(원격 새 조회 없음). 구현4649208/ab1bd27/c94a93a/68ba26f, 한 번 리뷰 수정a64b490, 최종 Files 시험30e9f8c. 기본main에서 직접 커밋했으며 이 실행에서는 push 명령을 수행하지 않았다. 종료 확인 시 origin/main 추적ref는c94a93a로 갱신되어 있으므로 전체 변경이 로컬에만 있다고 주장하지 않는다. 실제 원격은 새 조회하지 않았다. 최종 인계 문서 커밋은 이 기록을 포함하는 마지막 docs 커밋(`git log -1 --oneline`)과 Git 상태로 확인한다.
+- 현재 결과: **2026-10-04 M2-A 완료**. 시작기준29835c2(main clean/추적ref보다5앞섬), core97255f8/app913dc02/영속·왕복f28139d/한번리뷰수정d50a5e3ce43ecd6a33bdf586628ea01e7ff0f569. 마지막제품코드는d50a5e3이며양OS최종전체·observer가통과했고Notion기록/재조회완료. 기본main직접작업/no branch/worktree/PR/push, 원격미조회. 최종인계문서커밋은이기록을포함하는마지막docs커밋과`git log -1 --oneline`/Git상태로확인한다. 다음은 **M2-B 선택 획 삭제·같은페이지복제**, `docs/superpowers/plans/2026-10-04-m2-b-delete-and-duplicate.md` 계획만/미구현. clipboard는M2-B2로분리. 재개는AGENTS→이문서→Git/계획→InkCommands·InkUndoCoordinator·캡처회귀읽기→M2-B Task1 삭제/복제 RED. 완료된M2-A/M1-C를반복하지않는다.
+- 마지막 Notion 반영: **2026-10-04T09:42:10.046Z (18:42:10 KST)**. async succeeded 후18:44 KST재조회:기존본문전체/이전첨부보존(서명query만정규화),M2-A제목1회·양OS검증표·리뷰2수정·실기기대기·다음계획만확인. M2-A새이미지외부전송없음. 이전M1-C13:22:23KST/M1-B/M1-A반영근거는아래기록에보존한다.
+- 최신 검증(M2-A): **core87/0, Node32/0**, v2/v3/lasso check각exit0;리뷰관련18/0. 최종18.6/26.4각 **app83/0 + 일반UI9통과/fixture-only2skip/0실패·xcode/observer exit0**. 기준제품d50a5e3,로그/result `minote-m2a18-review-final`, `minote-m2a26-review-final` (/private/tmp/),JSON각21경계·원본PDF SHA검사. 첫전체18(f28139d)의PDFnavigation실패/exit65와집중진단1/0은보존하며최종성공과분리한다. fixture-only이주/빈설치이동은이번에재수행하지않았고앞선M1-C근거를따른다.
 - 미검증/이월: 실기기 Pencil·손바닥·발열·장시간/큰 실제 문서·전체 접근성·외부 provider/공유 앱별 호환. 강제 중단 restore stage와 export lease의 durable ownership 자동 회수는 후속이며 현재는 보수적으로 보호/보류한다. 일반 ZIP/폴더·Undo·클라우드 백업/동기화/다른 플랫폼은 미구현이다.
 
 ## M0-B 완료 결과와 이전 재개 지점
@@ -60,7 +60,8 @@
 - 원격 push·배포는 승인된 범위에 포함하지 않는다.
 
 ## Notion
-- 마지막 반영: **2026-10-03 11:50:06 UTC (20:50:06 KST)**, `2026-10-03T11:50:06.629Z`. Async update succeeded 뒤 11:50:59 UTC 재조회: M1-B heading 1개, 이전 본문 전체 prefix 보존, Node31/core60/app53/UI5·fddbd66·M1-C 미구현을 확인했다.
+- 최신 M2-A 반영: **2026-10-04T09:42:10.046Z**, succeeded/재조회18:44KST, 기존 본문·첨부 보존·M2-A 섹션1회·검증표·리뷰·제한·M2-B 계획만 확인.
+- 이전 M1-B 반영: **2026-10-03 11:50:06 UTC (20:50:06 KST)**, `2026-10-03T11:50:06.629Z`. Async update succeeded 뒤 11:50:59 UTC 재조회: M1-B heading 1개, 이전 본문 전체 prefix 보존, Node31/core60/app53/UI5·fddbd66·M1-C 미구현을 확인했다.
 - 문서: [MiNote 제품 계획서](https://app.notion.com/p/3e76538f55f68051a2fad6f22562bd3d?pvs=204)
 - 이전 M0-C 반영: **2026-10-03 05:05:01 UTC (14:05:01 KST)**. Notion async update succeeded 후 재조회했다(`page_last_edited_at = 2026-10-03T05:05:01.427Z`). M0-C 실제 왕복·25/26/32+2 테스트·리뷰 2건 수정·제한·코드 커밋·M1-A 계획을 확인했다. 기존 M0-A/B 기록을 유지하고 마지막 문장에 결과 섹션을 추가했다.
 - M0-B 반영: 2026-10-01 12:58:05 UTC (21:58:05 KST), `2026-10-01T12:58:05.280Z`.
@@ -497,3 +498,17 @@
 - 같은RED의18.6 runtime outer pan.allowedTouchTypes는[0,2,3]으로Pencil(2)을허용했다. navigation pan에서Pencil만명시적으로제외해default의존을없앴다(손가락/포인터보존). 기존finger2touch/pencil-only1finger policy와lassoPencil admission시험GREEN. 실제Pencil하드웨어성능을시험했다고주장하지않는다. PDFnavigation은진단첨부/AX기록을추가해집중시험중; 아직26/최종전체/Notion대기.
 - PDFnavigation 집중진단은1/0·exit0(minote-m2a-pdf-navigation-diagnostic):portrait복귀후실제button frame96,109,12,16과정상전환/재실행/출력확인. 이전full18의tap미처리원인은재현되지않았으므로추정원인/수정완료로단정하지않는다. 실패시에만AX+실제screenshot을보존하는진단을유지한다. 리뷰중의캡처수정은독립RED가근거이며이PDF실패의원인으로귀속하지않는다.
 - 리뷰수정체크포인트를main에커밋한뒤수정코드전체18→새DD26순차재검증한다. 다음M2-B는삭제·같은page복제의확실한이력/UUID검증으로작게계획한다. clipboard복사/붙여넣기는외부payload/지연읽기/다른page배치의독립경계가있어M2-B2로분리하며제거하지않는다. 이번에후속코드는구현하지않는다.
+- 수정코드d50a5e3 최종18.6전체 **app83/0 + 일반UI9통과/fixture-only2skip/0실패**, xcodebuild와실제saved JSON21경계/assetSHA observer 모두exit0(minote-m2a18-review-final.log/xcresult/ink-evidence). 첫전체실패와집중진단은그대로보존한다. 다음26.4는새DD/cacheOFF로동일전체+observer순차실행하며기존data삭제/seed없음. core최종87/0(minote-m2a-core-final),Node최종32/0(minote-m2a-node-final),v2/v3/lasso --check각exit0. M2-A Notion/최종인계/task4 gate는여전히대기다.
+- 최종18 실제원본XCTest PNG2장을docs/assets/m2a-selected-moved-ink.png와m2a-restored-rotated-pdf-ink.png에그대로복사/시각검사했다(선택1획·이동·저장완료,90도cropPDF재실행2/2·1획). milestone에caption과참조를추가했다. 외부image업로드는이번에실행하지않는다. Notion텍스트draft는ledger/notion-update.md이며26결과placeholder는최종실제결과후에만채운다.
+- 다음M2-B계획자기점검:4개순차Task/정확한파일·API/다섯ReviewFocus회귀·빈선택/오류/지연캡처/nativeUndo/백업·독립소비자검증을연결했고구현체크표시는없다. 현재26app83/0,실제UI진행중(session81548);코드d50a5e3변경없음. 최종26결과→Notionappend/succeeded/재조회prefix검사→AGENTS/README/plan/PROGRESS완료갱신→task4evidencegate→maindocscommit/clean이남았다.
+- 수정코드d50a5e3 최종26.4전체 **app83/0 + 일반UI9통과/fixture-only2skip/0실패**, xcodebuild와실제saved JSON21경계/원본assetSHA observer 모두exit0(minote-m2a26-review-final.log/xcresult/ink-evidence). 양OSruntime navigation pan은Pencil제외[0,3]이다. 현재제품최종검증게이트를충족했고코드변경없음. 다음은Notion텍스트append/succeeded/재조회·문서마감·task4gate·main최종commit/clean이다.
+
+### M2-A 종료·인계 — 2026-10-04
+
+- 현재페이지올가미전체선택/평행이동·선택해제/preview취소,pen/move/pen과획지우개통합이력,autosave/relaunch/편집원본백업/독립v3왕복까지구현했다. schema3/catalog1/backup1/PDF원본은유지했다.
+- 한fresh read-only review의Important2는actualRED→수정→관련GREEN18/0;systemmanager의blocked action pop과finalcapture stale endpoint를해결했다. runtimePencilnavigation admission도RED→명시제외→양OS[0,3]으로검증했다. 추가reviewer없음. declined실기기/큰실제문서·열/전체접근성은대기,후속객체/cross-page/persistedUndo는범위외다.
+- 최종core87/0/Node32/0/세fixturecheck0,양OS각app83/0·일반UI9통과/fixture-only2skip/0실패,실제저장JSON21경계/원본PDF SHA observer각exit0. 실제화면PNG2장은docs/assets와milestone에보존했다. 원래실패명령/진단·프로그램callback시험·실제fingerUI·실기기대기를분리한다.
+- Notionasync task_a6ad2aed616744cab291f1e821876219 succeeded,09:42:10.046UTC반영후09:44UTC재조회. 기존본문전체prefix/이전PNG보존·새제목1회·검증표·Important수정·다음계획만확인. receipt/최종evidencechecker는ignoredledger에보존한다.
+- 다음M2-B계획은4Task/원본순서와값불변·새UUID복제(20,20)·삭제선택해제·native이력/queuedcapture·ENOSPC/busy·PDFpixel/백업/독립소비자·양OS와한번리뷰다. 외부clipboard/다른page배치는M2-B2로분리해목표를유지한다. M2-B코드는없다. 첫작업은Git상태/계획대조후InkCommands delete/duplicate API없는RED다.
+- main에코드체크포인트4개를커밋했다(97255f8/913dc02/f28139d/d50a5e3). 마지막문서commit으로본기록/AGENTS/README/format/완료plan/다음plan/실제PNG를보존하고clean을확인한다. push/원격fresh조회없음. stage코드/검증완료와최종인계검사를합쳐새시뮬레이터명령이라고표시하지않는다.
+- 최종인계gate `scripts/task-done ...m2-a-lasso-move.md 4 f28139d -- python3 .superpowers/sdd/2026-10-04-m2-a-lasso-move/final-evidence-check.py` exit0. 보존된양OS실제case/21JSON/observerreceipt·core87/Node32·Notionprefix/새제목1회·다음plan미구현·제품코드d50a5e3불변·Gitdiff를검사하고Task4ledger complete를기록했다. 새로운시뮬레이터시험을실행한명령이아니다. 마지막docs/화면commit과clean확인으로마감한다.

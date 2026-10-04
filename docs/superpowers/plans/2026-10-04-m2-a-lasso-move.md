@@ -4,7 +4,7 @@
 
 **Goal:** 빈 용지와 PDF 페이지에서 올가미로 획 전체를 선택·이동하고, 현재 페이지 Undo/Redo와 저장·백업·재열기에서 ID와 위치를 유지한다.
 
-**Architecture:** 선택 영역은 UIKit 캔버스 위의 임시 overlay이며 저장하지 않는다. Foundation 명령이 선택된 UUID의 문서 좌표 변환만 변경한다. 앱이 PencilKit 재구성과 같은 canvas UndoManager에 명령을 연결하고 native 필기와 선택 이동의 순서를 검증한다.
+**Architecture:** 선택 영역은 UIKit 캔버스 위의 임시 overlay이며 저장하지 않는다. Foundation 명령이 선택된 UUID의 문서 좌표 변환만 변경한다. 앱이 원래 native drawing을 유지하며 production canvas가 소유한 실제 UndoManager에 delegate 입력 snapshot과 이동을 함께 등록한다. 명시적 최종 캡처와 시스템 Undo도 같은 이력/eligibility 경계를 사용한다.
 
 **Tech Stack:** Swift 6/Foundation, SwiftUI/UIKit/PencilKit/PDFKit, 외부 의존성 없음, iPadOS 18 이상.
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- 기본 저장소 main에서 직접 작업한다. branch/worktree/PR/push 없음. 이번 문서는 다음 단위의 계획이며 M2-A 구현 결과가 아니다.
+- 기본 저장소 main에서 직접 작업한다. branch/worktree/PR/push 없음. 완료 결과는 `docs/milestones/2026-10-04-m2-a-lasso-move.md`와 PROGRESS를 참조한다.
 - schema v3/catalog v1/backup v1을 유지한다. 코어에 UIKit/PencilKit 타입을 넣지 않는다. PDF 원본·page/stroke/asset IDs와 비선택 획은 불변이다.
 - 이번 범위는 획 전체 선택·평행 이동·선택 해제·이동 취소다. 복사/삭제/크기/회전/부분 선택·텍스트·이미지·검색은 후속 단위다.
 - 기존 펜/형광펜/획 지우개와 Pencil 기본 입력/시뮬레이터 손가락 전환을 유지한다. 올가미 선택 중 두 손가락 pan/zoom을 유지하고 입력 종류 설정을 적용한다.
@@ -71,16 +71,16 @@
 
 ### Task 4: 양 OS 검증·한 번 리뷰·인계
 
-- [ ] core/Node/v2·v3 --check, app 전체와 Lasso UI를 iPadOS 18.6/26.4 순차 실행. 현재 페이지 native pen→move→pen Undo/Redo, zoom·PDF·재실행의 실제 화면을 보존한다. 기존 library/PDF/backup UI도 유지한다.
-- [ ] fresh reviewer 한 번, 위 Review Focus 전부 제공. Important는 실제 RED/수정/GREEN과 관련 최종 시험 후 마감. 실기기 미검증은 따로 기록한다.
-- [ ] AGENTS/PROGRESS/milestone/README/Notion에 구현 결과·판단·검증·제한 추가/재조회; 다음 M2 작은 단위는 실제 결과에 맞춰 계획만 작성. main commit/clean, no push.
+- [x] core/Node/v2·v3 --check, app 전체와 Lasso UI를 iPadOS 18.6/26.4 순차 실행. 현재 페이지 native pen→move→pen Undo/Redo, zoom·PDF·재실행의 실제 화면을 보존한다. 기존 library/PDF/backup UI도 유지한다.
+- [x] fresh reviewer 한 번, 위 Review Focus 전부 제공. Important는 실제 RED/수정/GREEN과 관련 최종 시험 후 마감. 실기기 미검증은 따로 기록한다.
+- [x] AGENTS/PROGRESS/milestone/README/Notion에 구현 결과·판단·검증·제한 추가/재조회; 다음 M2 작은 단위는 실제 결과에 맞춰 계획만 작성. main commit/clean, no push.
 
 ## 다음 M2 단위
 
-순서는 M2-A 결과에 따라 세부 계획을 확정한다: **M2-B 선택 획 삭제·복사/복제 → M2-C 텍스트 상자 → M2-D 이미지 가져오기·편집 → M2-E 제목/폴더 및 PDF 기존 텍스트 검색 → M2-F 혼합 객체·PDF/페이지 독립 왕복과 구버전 안전성**. OCR/손글씨 인식은 후속 고급 기능이다. 이 목록은 구현 완료나 각 단위의 확정 일정이 아니다.
+순서는 M2-A 결과에 따라 세부 계획을 확정한다: **M2-B 선택 획 삭제·같은 페이지 복제 → M2-B2 clipboard 복사·붙여넣기 → M2-C 텍스트 상자 → M2-D 이미지 가져오기·편집 → M2-E 제목/폴더 및 PDF 기존 텍스트 검색 → M2-F 혼합 객체·PDF/페이지 독립 왕복과 구버전 안전성**. OCR/손글씨 인식은 후속 고급 기능이다. 이 목록은 구현 완료나 각 단위의 확정 일정이 아니다.
 
 ## 계획 자기 점검 / 첫 재개 작업
 
 Foundation 명령/좌표 → 실제 native Undo와 ID → 저장/경합 → 전체 리뷰의 의존성을 유지했다. 선택 규칙과 비선택 데이터 보존, 취소/에러 경계를 각각 테스트에 연결했다. 저장 스키마를 바꾸지 않으므로 M1-C 백업을 그대로 이용한다. 구버전 객체 보존 규격은 새 텍스트/이미지 단계에서 별도 설계한다.
 
-첫 작업: AGENTS/PROGRESS/Git 대조 → Task1 actual fixture의 이동·오류 RED. M1-C가 종료되지 않았다면 먼저 남은 검증/리뷰/기록을 마감한다. 이번 파일 작성은 M2-A 구현 착수를 뜻하지 않는다.
+M2-A 완료: core87/0, Node32/0, 양 OS 각각 app83/0·일반UI9통과/fixture-only2skip/0실패와 실제 저장 observer exit0. 한 번 리뷰의 Important2를 RED→GREEN으로 수정했다. Notion18:42:10 KST 반영/재조회에서 기존 본문·첨부와 새 섹션1회·실제 결과·다음 계획만을 확인했다. 다음 시작은 AGENTS/PROGRESS/Git 대조 → `2026-10-04-m2-b-delete-and-duplicate.md` Task1 RED다. clipboard는 M2-B2로 작게 분리했고 후속 코드는 구현하지 않았다.

@@ -48,3 +48,15 @@ DocumentStore actor는 revision 확인부터 JSON 원자 교체까지 suspension
 JS는 v2 입력을 v2로, v3 입력을 v3로 출력한다. v3 active-page 획 이동/삭제/새 pen 추가 때 자산/삭제 페이지/용지/책갈피/미수정 IDs를 유지한다. 미래 schema/알 수 없는 필드/잘못된 관계/unsafe integer는 거부하며 기존 열린 문서를 보존한다. Canvas는 기본 획을 근사하고 용지를 표시하며 PDF 원본 배경은 표시하지 않는다.
 
 실제 PencilKit에서 만든 `multi-source.json`을 기존 manifest `edits.json`으로 처리한 결과가 `multi-edited.json`이다. iPad 테스트는 이 파일을 다시 편집·Undo/Redo·저장·재열기하고 두 자산 및 삭제 페이지를 비교한다. 실기기 Apple Pencil/장시간/발열/큰 실제 PDF 검증은 대기다.
+
+## M2-A 선택·이동과 현재 페이지 이력
+
+`InkCommands.translate(strokeIDs:pageID:dx:dy:expectedRevision:in:)`는 활성 페이지의 정확한 UUID 집합/리비전과 문서 전체를 검증한다. 선택 획의 `transform.tx/ty`에 문서 단위 이동량만 더하며 점·선형 변환·ID·순서·비선택 데이터는 유지한다. 성공한 이동/Undo/Redo는 revision을 한 번 증가시킨다. 빈 선택/0 이동은 무변경이고 비유한 값·합산 overflow·stale/잘못된 ID는 오류다. 유한 페이지 밖 위치는 허용한다.
+
+선택 polygon/UUID 집합/drag ghost는 화면 상태이며 JSON/backup/PDF에 넣지 않는다. 닫힌 even-odd 영역 또는 경계에 보간 중심선이 닿으면 획 전체를 선택한다. affine 변환 후 페이지 단위 최대2pt 간격으로 중심선을 검사하며 굵기 외곽만 닿는 경우는 선택하지 않는다. 선택 내부 drag 종료 한 번만 명령을 적용하고 취소/zoom/회전은 preview를 제거한다. navigation pan은 Pencil 입력을 제외해 필기/올가미와 경쟁하지 않는다.
+
+앱의 `InkCanvasView`가 실제 UndoManager를 소유한다. opaque PencilKit 내부 등록 대신 실제 delegate 입력 snapshot과 이동 명령을 같은 이력에 등록하고, 같은 gesture의 후속 callback은 최종 drawing으로 합친다. 명시적 canvas 캡처도 같은 coordinator를 통과한다. 시스템/toolbar Undo 모두 처리 중·저장 실패·다른 page/generation에서 replay 전에 차단한다. 미지원 필기만 메모리에 남은 경우에는 Undo로 정상 필기를 회복할 수 있다.
+
+원래 native drawing을 유지하며 UUID별 현재 canonical value와 이동 전후 historical aliases를 구분한다. 다른 UUID 사이 provenance가 모호하면 추측하지 않고 오류로 현재 화면/정상 저장본을 보존한다. Undo 이력/aliases는 현재 캔버스 수명에만 존재하며 페이지 전환·복원·재실행 때 초기화한다.
+
+actual app의 `lasso-source.json` revision40에서 PDF 페이지 획을 (30,-15) 이동해 `lasso-moved.json` revision41을 만들었다. 독립 JS가 같은 이동 결과 전체를 비교하고 추가 편집한 `lasso-edited.json` revision44를 iPad가 다시 편집/Undo/Redo/save/reopen한다. schema v3/catalog v1/backup v1은 변경하지 않았다.
