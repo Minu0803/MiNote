@@ -4,6 +4,43 @@ import MiNoteCore
 @testable import MiNote
 
 @MainActor final class InkUndoTests: XCTestCase {
+    func testNativeDelegateUpdatesCoalesceAndRedoUsesLatestCompleteDrawing() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:root) }
+        let session=EditorSession(store:DocumentStore(directory:root),saveDelay:.seconds(60)); await session.loadIfNeeded()
+        let canvas=InkCanvasView(), reference=CanvasReference(); reference.canvas=canvas
+        let coordinator=NoteCanvas.Coordinator(session:session,reference:reference); coordinator.attach(to:canvas)
+        coordinator.canvasViewDidBeginUsingTool(canvas)
+        canvas.drawing=PKDrawing(strokes:[sampleStroke()]); coordinator.canvasViewDrawingDidChange(canvas)
+        // Another callback for the same gesture can deliver final point values.
+        canvas.drawing=PKDrawing(strokes:[sampleStroke(offset:10)]); coordinator.canvasViewDrawingDidChange(canvas)
+        let finalFirst=try XCTUnwrap(session.currentPage?.strokes)
+        coordinator.canvasViewDidBeginUsingTool(canvas)
+        canvas.drawing=PKDrawing(strokes:canvas.drawing.strokes+[sampleStroke(offset:80)])
+        coordinator.canvasViewDrawingDidChange(canvas)
+        let finalBoth=try XCTUnwrap(session.currentPage?.strokes)
+        reference.undo(in:session); XCTAssertEqual(session.currentPage?.strokes,finalFirst)
+        reference.undo(in:session); XCTAssertEqual(session.currentPage?.strokes,[])
+        reference.redo(in:session); XCTAssertEqual(session.currentPage?.strokes,finalFirst)
+        reference.redo(in:session); XCTAssertEqual(session.currentPage?.strokes,finalBoth)
+        XCTAssertFalse(canvas.undoManager?.isUndoRegistrationEnabled ?? true)
+        await session.flush(); XCTAssertEqual(session.saveState,.saved)
+    }
+    func testUnsupportedNativeInputCanBeUndoneWithoutOverwritingSavedInk() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:root) }
+        let store=DocumentStore(directory:root), session=EditorSession(store:store,saveDelay:.seconds(60)); await session.loadIfNeeded()
+        let original=session.document, canvas=InkCanvasView(), reference=CanvasReference(); reference.canvas=canvas
+        let coordinator=NoteCanvas.Coordinator(session:session,reference:reference); coordinator.attach(to:canvas)
+        coordinator.canvasViewDidBeginUsingTool(canvas)
+        canvas.drawing=PKDrawing(strokes:[sampleStroke(ink:.pencil)]); coordinator.canvasViewDrawingDidChange(canvas)
+        XCTAssertNil(session.serializedVisibleInk); XCTAssertEqual(session.strokeCount,1)
+        reference.undo(in:session); XCTAssertEqual(session.strokeCount,0); XCTAssertEqual(session.document,original)
+        XCTAssertEqual(session.saveState,.saved)
+        reference.redo(in:session); XCTAssertEqual(session.strokeCount,1); XCTAssertNil(session.serializedVisibleInk)
+        await session.flush(); let disk=try await store.load(); XCTAssertEqual(disk?.document,original)
+        reference.undo(in:session); XCTAssertEqual(session.strokeCount,0); XCTAssertEqual(session.saveState,.saved)
+    }
     func testMoveUsesRealCanvasUndoAndRetainsGenerationAndExactValues() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let store = DocumentStore(directory:directory)

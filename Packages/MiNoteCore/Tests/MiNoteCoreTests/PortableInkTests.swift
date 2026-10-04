@@ -7,6 +7,14 @@ final class PortableInkTests: XCTestCase {
         let url = try XCTUnwrap(Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "PortableInk"))
         return try DocumentCodec.decode(Data(contentsOf: url))
     }
+    func testActualLassoMoveAndIndependentV3EditPreservePortableValues() throws {
+        let source=try fixture("lasso-source"), moved=try fixture("lasso-moved"), edited=try fixture("lasso-edited")
+        let page=source.pages[1], stroke=page.strokes[0]
+        XCTAssertEqual(try InkCommands.translate(strokeIDs:[stroke.id],pageID:page.id,dx:30,dy:-15,expectedRevision:source.revision,in:source),moved)
+        XCTAssertEqual(edited.revision,44); XCTAssertEqual(Array(edited.pages.dropFirst()),Array(moved.pages.dropFirst()))
+        XCTAssertEqual(edited.pdfAssets,moved.pdfAssets); XCTAssertEqual(edited.deletedPages,moved.deletedPages)
+        XCTAssertEqual(try DocumentCodec.decode(DocumentCodec.encode(edited)),edited)
+    }
 
     func testIndependentJavaScriptAndBrowserEditsPreserveUntouchedData() throws {
         let source = try fixture("source")

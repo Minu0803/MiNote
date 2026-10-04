@@ -68,3 +68,14 @@ test('actual iPad v3 fixture and independent command output preserve metadata',(
   assert.deepEqual(output,recorded);assert.equal(recorded.schemaVersion,3);
   assert.deepEqual(recorded.pdfAssets,original.pdfAssets);assert.deepEqual(recorded.deletedPages,original.deletedPages);
 });
+test('actual iPad lasso move equals independent v3 command and remains editable',()=>{
+  const source=readDocument(readFileSync(new URL('lasso-source.json',fixture),'utf8'));
+  const moved=readDocument(readFileSync(new URL('lasso-moved.json',fixture),'utf8'));
+  const page=source.pages[1], stroke=page.strokes[0];
+  assert.deepEqual(applyEdit(source,{kind:'translateStroke',pageID:page.id,strokeID:stroke.id,dx:30,dy:-15}),moved);
+  const commands=JSON.parse(readFileSync(new URL('edits.json',fixture),'utf8'));
+  const edited=commands.reduce(applyEdit,moved);
+  assert.deepEqual(edited,readDocument(readFileSync(new URL('lasso-edited.json',fixture),'utf8')));
+  assert.deepEqual(edited.pages.slice(1),moved.pages.slice(1));
+  assert.deepEqual(edited.pdfAssets,moved.pdfAssets); assert.deepEqual(edited.deletedPages,moved.deletedPages);
+});

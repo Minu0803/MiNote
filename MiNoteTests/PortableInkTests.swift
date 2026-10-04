@@ -87,6 +87,13 @@ import XCTest
         XCTAssertTrue(fixture.pages[0].isBookmarked)
         try await assertEditableRoundtrip("multi-edited")
     }
+    func testIndependentLassoV3ResultReopensAsEditableInkWithStableMovedID() async throws {
+        let source=try fixtureDocument("lasso-source"), moved=try fixtureDocument("lasso-moved"), edited=try fixtureDocument("lasso-edited")
+        XCTAssertEqual(moved.pages[1].strokes[0].id,source.pages[1].strokes[0].id)
+        XCTAssertEqual(moved.pages[1].strokes[0].transform.tx,35); XCTAssertEqual(moved.pages[1].strokes[0].transform.ty,-9)
+        XCTAssertEqual(edited.pages[1],moved.pages[1]); XCTAssertEqual(edited.revision,44)
+        try await assertEditableRoundtrip("lasso-edited")
+    }
 
     func testGenerateV3PencilKitFixture() throws {
         var document = try PortableFixture.make()
@@ -131,6 +138,7 @@ import XCTest
             await session.loadIfNeeded()
             XCTAssertNil(session.loadError)
             XCTAssertEqual(session.document, imported)
+            if session.currentPage?.id != imported.pages[0].id { await session.selectPage(0) }
 
             let canvas = PortableCommandCanvas()
             canvas.manager.groupsByEvent = false

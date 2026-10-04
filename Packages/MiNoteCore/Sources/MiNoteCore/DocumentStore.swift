@@ -10,6 +10,7 @@ public struct LoadedDocument: Sendable {
 public actor DocumentStore {
     let directory: URL
     private let dataReader: @Sendable (URL) throws -> Data
+    private let atomicWriter: @Sendable (Data,URL) throws -> Void
     private var retired = false
     private var primaryURL: URL { directory.appendingPathComponent("document.json") }
     private var backupURL: URL { directory.appendingPathComponent("document.backup.json") }
@@ -17,11 +18,17 @@ public actor DocumentStore {
     public init(directory: URL) {
         self.directory = directory
         self.dataReader = { try Data(contentsOf: $0) }
+        self.atomicWriter = { try $0.write(to:$1,options:.atomic) }
     }
 
     init(directory: URL, dataReader: @escaping @Sendable (URL) throws -> Data) {
         self.directory = directory
         self.dataReader = dataReader
+        self.atomicWriter = { try $0.write(to:$1,options:.atomic) }
+    }
+
+    init(directory: URL, atomicWriter: @escaping @Sendable (Data,URL) throws -> Void) {
+        self.directory=directory; self.dataReader = { try Data(contentsOf:$0) }; self.atomicWriter=atomicWriter
     }
 
     public func load() throws -> LoadedDocument? {
@@ -64,10 +71,10 @@ public actor DocumentStore {
         if let previous, !previous.recoveredFromBackup {
             // Foundation's .atomic writes a sibling temporary file, then renames it.
             // Finish the backup first; a failure leaves the current primary untouched.
-            try dataReader(primaryURL).write(to: backupURL, options: .atomic)
+            try atomicWriter(dataReader(primaryURL),backupURL)
         }
         // A recovered backup is kept intact, rather than replaced with corrupt data.
-        try data.write(to: primaryURL, options: .atomic)
+        try atomicWriter(data,primaryURL)
     }
 
     func retire() { retired = true }

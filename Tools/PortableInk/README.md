@@ -38,3 +38,11 @@ node Tools/PortableInk/roundtrip.mjs --v3 --check
 ```
 
 `multi-source.json`은 실제 PencilKit에서 만든 다중 자산/삭제 페이지 fixture다. v3 결과를 재생성하려면 `node Tools/PortableInk/roundtrip.mjs --v3`를 실행한다. 기존 v2의 source/edited/browser-edited 원본은 바꾸지 않는다.
+## M2-A exchange fixture
+
+`node Tools/PortableInk/roundtrip.mjs --lasso --check` validates the actual iPad
+session's whole-stroke translation followed by independent JavaScript edits.
+The shared `lasso-source`, `lasso-moved` and `lasso-edited` fixtures retain schema
+v3, PDF assets, deleted pages, paper, bookmarks and IDs. The existing browser
+lab still edits one stroke at a time; this check is format/command verification,
+not a separate shipping platform app.

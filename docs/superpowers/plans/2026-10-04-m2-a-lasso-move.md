@@ -63,11 +63,11 @@
 
 **Interfaces:** consumes Task2의 selected UUIDs/이동 명령/native Undo; produces 저장·재열기·내보내기에서 유지되는 선택 이동.
 
-- [ ] RED: 이동 후 autosave/재열기/`.minote` 새 노트 복원/독립 v3 왕복에서 ID·transform·원본 PDF bytes·용지/책갈피/삭제 페이지 보존. 복원은 Undo history를 포함하지 않는다.
-- [ ] RED: 페이지 전환·구조 변경·export/import 중 이동과 Undo 차단; 이전 generation callback은 다른 페이지를 변경하지 않음. commit 직전 queued 필기는 현재 세션/디스크에 보존하고 중복 이동 없음.
-- [ ] RED: 저장 ENOSPC/미지원 drawing/ID 모호 오류에서 현재 화면과 정상 primary/backup 유지, 선택 command 강행 금지, 재시도 후 최신 정상 snapshot만 backup 허용.
-- [ ] RED: crop/회전 PDF 위 선택 이동을 실제 PDF output pixel로 확인하고 PDF source bytes 불변. 선택 테두리는 PDF/backup에 출력하지 않음.
-- [ ] session/history/저장 연결 → 관련 app/core/Node v3 왕복 GREEN → PROGRESS → commit.
+- [x] RED: 이동 후 autosave/재열기/`.minote` 새 노트 복원/독립 v3 왕복에서 ID·transform·원본 PDF bytes·용지/책갈피/삭제 페이지 보존. 복원은 Undo history를 포함하지 않는다.
+- [x] RED: 페이지 전환·구조 변경·export/import 중 이동과 Undo 차단; 이전 generation callback은 다른 페이지를 변경하지 않음. commit 직전 queued 필기는 현재 세션/디스크에 보존하고 중복 이동 없음.
+- [x] RED: 저장 ENOSPC/미지원 drawing/ID 모호 오류에서 현재 화면과 정상 primary/backup 유지, 선택 command 강행 금지, 재시도 후 최신 정상 snapshot만 backup 허용.
+- [x] RED: crop/회전 PDF 위 선택 이동을 실제 PDF output pixel로 확인하고 PDF source bytes 불변. 선택 테두리는 PDF/backup에 출력하지 않음.
+- [x] session/history/저장 연결 → 관련 app/core/Node v3 왕복 GREEN → PROGRESS → commit.
 
 ### Task 4: 양 OS 검증·한 번 리뷰·인계
 
