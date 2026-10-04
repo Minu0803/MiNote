@@ -2,7 +2,7 @@
 
 iPad-first handwriting notes, built to keep its document format portable across platforms.
 
-## Implemented: local library, pages, writing, multiple PDFs and recovery
+## Implemented: local library, pages, writing, multiple PDFs, editable backups and recovery
 
 The app opens a local library. Create a note, open its A4 page, and write with Pencil or, by choice, a finger. It includes pen and highlighter tools, stroke erasing, color and width controls, undo and redo, zoom, autosave, save retry and restoration after relaunch.
 
@@ -13,6 +13,10 @@ Use **PDF 가져오기** to select a PDF from Files. MiNote keeps the original p
 Use **PDF 내보내기** to save the latest ink, generate a separate PDF, inspect it in QuickLook and open the system share sheet. Export keeps source text and vector page content while flattening handwriting as an image, up to 216 dpi and 4,096 pixels per side. Forms and source annotations are flattened; some links may not survive. The original PDF asset is never replaced. The exported PDF is for distribution; editable strokes remain in MiNote's JSON document.
 
 The page manager adds blank, ruled or grid A4 pages, duplicates and reorders pages, filters bookmarks, and restores deleted pages. The last active page cannot be deleted. Duplicated PDF pages share their immutable source while keeping independent editable ink and IDs. Screen, thumbnails and PDF output use the same paper geometry.
+
+Use **편집 원본 백업** and the system **Save to Files** action to keep an editable `.minote` copy. Restore it from the library with **백업에서 새 노트 복원**, or open it from Files. Restoration adds a new note; an existing document ID gets a new document UUID without changing page, stroke or asset IDs. The archive keeps ink, page order, paper, bookmarks, retained deleted pages and every registered source PDF. Undo history, thumbnails and folder structure are excluded. The app checks archive integrity and PDF geometry before adding the note, and offers progress and cancellation. See [the backup format](docs/format/backup-v1.md).
+
+**저장 공간 정리** shows eligible files and protection reasons before confirmation. It preserves PDF references in both the current document and its valid recovery copy, and skips uncertain or unsupported files. Deleted pages and trashed notes can be permanently removed after confirmation. Interrupted note removal resumes from a journal; an active editor cannot be purged. PDF and backup preview/share consumers hold separate output leases.
 
 The app keeps the pen input layer in PencilKit while the document uses schema-v3 JSON. A completed edit is stored under `Documents/MiNote/notes/<UUID>`; the last known good document is retained for recovery. PDF assets use immutable UUID-based paths. Schema-v1/v2 notes migrate without losing IDs or ink, and their original bytes are retained in the backup. See [the v3 document contract](docs/format/document-v3.md). The Foundation-only `MiNoteCore` package contains note, page, stroke and asset models, validation, the JSON codec and serialized local store.
 
@@ -43,18 +47,19 @@ xcodebuild -project MiNote.xcodeproj -scheme MiNote \
   test CODE_SIGNING_ALLOWED=NO
 ```
 
-The Xcode scheme covers PencilKit conversion, PDF coordinates and raster placement, import/export failures, edit sessions, zoom rendering and a 500-page fixture. UI tests exercise writing, undo/redo, Files import, page navigation, rotation, relaunch, export preview and the share sheet. Run on both iPadOS 18.6 and 26.4. Actual results and logs are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
+The Xcode scheme covers PencilKit conversion, PDF coordinates and raster placement, import/export failures, edit sessions, zoom rendering, backup validation/cancellation, output leases and a 500-page fixture. UI tests exercise writing, undo/redo, Files import and backup save/restore, page navigation, rotation, permanent-removal confirmation, relaunch, export preview and the share sheet. Run on both iPadOS 18.6 and 26.4. Actual results and logs are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
 
-The final M1-B run passed 31 Node tests, 60 core tests and, on each OS, 53 app unit tests and 5 regular UI tests. One fixture-only migration test is skipped in ordinary suites; it passed separately on a seeded isolated simulator for each OS, with raw legacy files verified unchanged. See [migration setup](Tools/LibraryTests/README.md), [the M1-B results](docs/milestones/2026-10-03-m1-b-pages-and-pdfs.md) and [the actual nine-page export preview](docs/assets/m1b-multi-page-export-preview.png).
+M1-C passed 31 Node tests and both v2/v3 fixture checks, 78 core tests and 64 app unit tests on each OS. The 26.4 whole run passed 7 regular UI tests and skipped 2 fixture-only tests. The final 18.6 combined command exited 65 after one Save to Files UI failure; its 64 app tests and 6 other UI tests passed. The failed backup flow passed a focused rerun after waiting for the action to be enabled and hittable. Both fixture-only migration and actual Files backup transfer passed separately on a fresh isolated installation for each OS, with IDs/metadata and original bytes verified. See [fixture setup](Tools/LibraryTests/README.md), [M1-C results](docs/milestones/2026-10-04-m1-c-backup-and-cleanup.md) and [the actual restored-note screen](docs/assets/m1c-restored-backup-ink.png). Failed invocations remain recorded separately.
 
 ## Current limits
 
-- Multiple PDFs per note, up to 1,000 active plus retained deleted pages and 500 MiB of registered PDF assets. Deleted pages retain their data until later permanent-removal support.
+- Multiple PDFs per note, up to 1,000 active plus retained deleted pages and 500 MiB of registered PDF assets. Permanent page removal retains the previous valid recovery copy; its PDF references stay protected until backup rotation.
 - Imports are limited to 100 MB, 500 pages and 2,000 points per page edge. Password-protected, truncated and unsupported files are rejected. These are conservative limits, not a real-device performance guarantee.
 - Stroke identities are matched across the whole surviving order. If identical strokes leave more than one possible ID mapping, saving fails explicitly and retains both visible ink and the prior saved document. Stroke reordering is not supported yet.
-- Undo history starts again when switching pages. Partial erasing, selection, text and images are future work.
+- Undo history starts again when switching pages or restoring a backup. Partial erasing, selection, text and images are future work.
 - Export may normalize the raw PDF MediaBox origin. Visible crop geometry, rotation and ink placement are preserved; the source asset and its stored metadata stay unchanged.
-- Export temporary folders and interrupted-import orphan assets currently remain for later cleanup. Their lifetime management belongs to M1-C.
+- Backups use the stored-only ZIP32 format with a 640 MiB archive limit and 128 MiB document-JSON limit. General compressed ZIP, folder-wide backups and cloud synchronization are not supported.
+- Known unused PDF assets and inactive registered outputs can be cleaned safely. Unknown files, invalid snapshots, interrupted restore staging and output leases left by process interruption remain protected; automatic ownership recovery is future work and disk usage may accumulate.
 - Pencil latency, palm rejection, thermal behavior and large image-heavy PDFs need physical-device testing. The synthetic memory test does not establish those results.
 
 ## Roadmap
@@ -62,10 +67,10 @@ The final M1-B run passed 31 Node tests, 60 core tests and, on each OS, 53 app u
 - **M0-A / M0-B / M0-C implemented:** Blank-page ink, safe local recovery, PDF import/export and independent portable-ink round-trip verification.
 - **M1-A implemented:** Multiple notes, folders, trash/restore and safe switching between edit sessions.
 - **M1-B implemented:** Page management, blank/ruled/grid paper, bookmarks, deleted-page recovery and multiple PDFs per note.
-- **Next M1-C:** Editable `.minote` backup/restore, permanent removal and safe file cleanup.
-- **M1:** Multiple notes, folders, pages and local recovery management.
-- **M2:** Lasso, text, images and search.
+- **M1-C implemented:** Editable `.minote` backup/restore, confirmed permanent removal, journal recovery and safe file cleanup.
+- **Next M2-A:** Whole-stroke lasso selection and translation, native undo/redo, stable IDs and save/backup verification. Plan only; not implemented.
+- **Later M2 units:** Selected-stroke deletion/duplication, text, images, title/folder and existing PDF-text search, then mixed-object portability.
 - **M3:** Performance and real-device Pencil, palm and thermal checks.
 - **Later:** Advanced editing, sync, collaboration and other platforms.
 
-This is a local technical foundation, not the completed iPad product. Sync and other platform apps are not implemented. See [the next M1-C plan](docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md) and [the product roadmap](docs/superpowers/specs/2026-09-26-minote-product-design.md).
+This is a local technical foundation, not the completed iPad product. Sync and other platform apps are not implemented. See [the next M2-A plan](docs/superpowers/plans/2026-10-04-m2-a-lasso-move.md) and [the product roadmap](docs/superpowers/specs/2026-09-26-minote-product-design.md).

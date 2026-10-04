@@ -1,7 +1,7 @@
 # MiNote 개발 진행 기록
 
 ## 현재 상태
-- 완료 단계: **M0-A**, **M0-B**, **M0-C**, **M1-A**, **M1-B — 페이지·용지·책갈피·삭제 복원·다중 PDF**
+- 완료 단계: **M0-A**, **M0-B**, **M0-C**, **M1-A**, **M1-B**, **M1-C — 편집 원본 백업·새 노트 복원·파일 정리·영구 제거/복구**
 - 작업 공간: `/Users/minwookim/Documents/GitHub/MiNote`
 - 브랜치: `main`
 - 시작 기준 커밋: `9695ab6`; 사전 모델·저장소 체크포인트: `dfa943d`
@@ -14,10 +14,11 @@
 - M0-C 종료 당시 변경은 로컬 main에만 커밋했고 push하지 않았다. 현재 원격 상태를 의미하는 문장은 아니다. 최종 인계 문서 커밋은 `git log -1 --oneline`으로 확인한다.
 - 이전 실행: **2026-10-03 M1-A 완료**. 기준 `fd4def6`; 마지막 코드 `d968701`. 시작 시 main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음). 모든 구현은 main에 커밋했고 push하지 않았다.
 - 이전 단계: **M1-B 완료**. 기준 80d14c2, 마지막 기능 코드 1d67d9a, 테스트/체크포인트 fddbd66. main에서 직접 구현했고 push하지 않았다. 원격은 새 조회하지 않았으며 추적 ref와 현재 원격을 혼동하지 않는다.
-- 현재 단계: **M1-C 편집 백업·복원/파일 정리 진행 중**. 기준19e10af, Task1~4 및 한 번 리뷰/중요 수정 구현·관련 검증 완료(a64b490). 최종 양 OS 전체/26 독립 fixture/Notion·인계는 아직 미완료. 계획 `docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md`.
-- 다음 작업자가 할 첫 작업: Git 상태/HEAD 대조 → 최신 M1-C 체크포인트/실행 로그 확인 → final-platform-checks.sh 실행 로그·현재 session 확인 → 양 OS 전체/26 독립 fixture 검증 마감 → 문서/Notion. 리뷰를 반복하지 않는다. 완료된 단계를 반복하지 않는다.
-- 마지막 Notion 반영: **2026-10-03T11:50:06.629Z (20:50:06 KST)**; 재조회/내용 검증 11:50:59 UTC. M1-B 결과·기술 판단·검증/실패 이력·리뷰·제한·커밋·다음 M1-C 계획을 기존 내용을 보존하며 추가했다. 이전 M1-A 반영 06:02:45.909Z 기록도 아래에 보존한다.
-- 최종 검증: **Node31/0, core60/0**, v2/v3 fixture check exit0, 18.6/26.4 각각 **app53/0 + 일반 UI5통과/fixture-only1skip/0실패**. 별도 seeded migration UI 양1/0/skip0과 원본 bytes 검증 통과. 로그/result와 리뷰 판단은 아래 M1-B 최종 절을 따른다.
+- 현재 결과: **2026-10-04 M1-C 완료**. 기준19e10af96dcc130593299b966cd3ed3e08a738ba, 시작main clean/추적origin/main보다8커밋 앞섬(원격 새 조회 없음). 구현4649208/ab1bd27/c94a93a/68ba26f, 한 번 리뷰 수정a64b490, 최종 Files 시험30e9f8c. 모든 작업은 로컬main에만 있으며 push하지 않았다. 최종 인계 문서 커밋은 이 기록을 포함하는 마지막 docs 커밋(`git log -1 --oneline`)과 Git 상태로 확인한다.
+- 다음 개발 단위: **M2-A 올가미 획 선택·평행 이동**, 계획 `docs/superpowers/plans/2026-10-04-m2-a-lasso-move.md`. 계획만 작성했고 M2 코드는 미구현이다. 다음 첫 작업은 Git/AGENTS/PROGRESS 대조 → core Document/InkTransform/PageCommands와 앱 InkAdapter/NoteCanvas 읽기 → M2-A Task1 이동·선택 판정 실제 RED. 완료된 M1-C 시험/리뷰를 반복하지 않는다.
+- 마지막 Notion 반영: **2026-10-04T04:22:23.119Z (13:22:23 KST)**; 재조회04:22:37 UTC에 기존 내용 전체 prefix 보존·M1-C 제목1회·검증표·제한·다음 계획만·사용자가 승인한 실제 PNG 첨부를 확인했다. 이전 M1-B 2026-10-03T11:50:06.629Z 및 M1-A 반영 기록은 아래에 보존한다.
+- 최신 검증: **Node31/0, core78/0**, v2/v3 check exit0; 양 OS app64/0.26 전체 일반UI7통과/fixture-only2skip/0실패·exit0.18 전체 app64/0+UI6통과·1실패·2skip·exit65이며 실패한 backupUI만 집중1/0/skip0·exit0으로 재검증했다. 명령들을 합친 전체 성공으로 표시하지 않는다. 독립 migration/실제 Files backup 이동은 양 OS 각각UI1/0/skip0와 bytes helper exit0. 상세 로그/실패/리뷰 판단은 아래 M1-C 마감 절과 milestone을 따른다.
+- 미검증/이월: 실기기 Pencil·손바닥·발열·장시간/큰 실제 문서·전체 접근성·외부 provider/공유 앱별 호환. 강제 중단 restore stage와 export lease의 durable ownership 자동 회수는 후속이며 현재는 보수적으로 보호/보류한다. 일반 ZIP/폴더·Undo·클라우드 백업/동기화/다른 플랫폼은 미구현이다.
 
 ## M0-B 완료 결과와 이전 재개 지점
 - Files에서 PDF를 가져와 페이지별로 필기·확대·현재 페이지 undo/redo하고, 마지막 페이지와 획을 저장·재실행 후 복원한다. 기존 A4를 유지하며 한 PDF만 연결한다.
@@ -449,3 +450,21 @@
 - 이번18 전체에서 통과한 app64와 다른 UI는 제품 수정 없이 그대로 유지한다. 실패한 백업 UI만 새 helper로 집중 재검증하며 최초 전체exit65를 보존한다. 최종 검증표는 여러 명령의 실제 결과를 구분하고 합친 명령 exit0이라고 주장하지 않는다.26은 새 전체 suite를 실행한다.
 - 공유 action enabled/hittable 대기 후 집중18 백업 UI **1/0/skip0**, exit0 TEST SUCCEEDED(minote-m1c-backup-ui18-action-hittable.log/xcresult). 실제 Files 저장/원본 유지+중복 새 노트 복원/추가 획·Undo·Redo/저장/relaunch 모두 확인했다. 앞선 app64/0 및 일반 UI6/0과 이 결과를 구분해18 전체 범위의 성공 근거로 사용한다. 실패 명령exit65/플랫폼 탭 미처리 원인은 그대로 기록한다.
 - 다음 긴 작업:26.4는 새 DerivedData/cacheOFF 전체 app/UI를 실행한다. 성공 뒤 새 migration26/backup26 기기에 처음으로 seed하고 별도 UI/원본 bytes를 검증한다. 제품·기존 기기 데이터는 변경하지 않는다. Notion/단계 종료 문서는 아직 대기다.
+- Notion 기록용 실제 screenshot 업로드 URL 준비 뒤 PNG 단일 POST가 auto-review에서 거절됐다(외부 이미지 payload 전송의 별도 승인 없음). POST는 실행되지 않았으며 우회하지 않는다. 선택적 이미지 첨부 승인을 async로 요청했다. 결과 텍스트 기록은 이미 승인된 범위로 계속 진행한다. 로컬 PNG는 커밋a64b490에 보존되어 있고, 이미지 미첨부를 개발 미완료와 혼동하지 않는다.
+- 26.4 최종 전체 **app64/0 + 일반UI7통과/fixture-only2skip/0실패**, xcodebuild exit0 TEST SUCCEEDED(minote-m1c26-review-final.log/xcresult),13:17:58 KST. 실제 Files 백업 저장·중복 복원·영구 삭제/정리 확인·라이브러리·필기/PDF/페이지 manager를 포함한다. 다음은 신규 migration26/backup26 각각 UI1/0/skip0와 원본 bytes 검증. 기존 simulator 데이터 삭제 없이 진행한다.
+- 사용자가 동일 실제 screenshot의 Notion 첨부를 명시 승인했다. 같은 단일 POST를 재시도해 exit0/status uploaded(13:19 KST), file_upload_id3ef6538f-55f6-8132-8920-00b2e96b615e. 첫 거절 때 POST는 미실행이며 우회하지 않았다. 준비용 임시 인증 config는 성공 뒤 삭제했다. 페이지 첨부/내용 재조회는 아직 대기다.
+- 독립26 최종 legacy UI **1/0/skip0**(minote-m1c26-migration.log/xcresult), 실제 Files archive 빈 설치 복원 UI **1/0/skip0**(minote-m1c26-backup.log/xcresult) 모두 exit0. isolated-checks.sh exit0, migration 원본JSON/backup/PDF bytes와 backup 전체ID/metadata/PDFbytes·새획/Undo/Redo/save/relaunch helper 검증0(minote-m1c26-isolated.log). 신규 두 기기 shutdown/data보존. 양 OS 검증 게이트를 모두 충족했으며 Notion append/재조회와 최종 문서 커밋만 남았다.
+
+### M1-C 종료·인계 — 2026-10-04
+
+- 편집 원본 `.minote` Files 저장·기존/빈 설치의 새 노트 복원, 진행률/취소·외부 URL 요청 보관, PDFKit 실제 geometry gate, 확인 후 영구 제거·journal 복구, 정상 backup 보호 정리·preview/share lease를 구현했다. 코드 커밋4649208→ab1bd27→c94a93a→68ba26f→a64b490, 최종 공유 시험30e9f8c. 새 구현 M2 파일은 없다.
+- 최종 actual commands: `swift test --package-path Packages/MiNoteCore` core78/0(exit0, minote-m1c-core-review-green2.log); `node --test Tools/PortableInk/*.test.mjs`31/0 및 roundtrip.mjs의v2/v3 --check(exit0, minote-m1c-node-final.log). iPadOS18 `xcodebuild ... test` app64/0+UI6통과/1실패/2skip(exit65,minote-m1c18-review-final.log/xcresult). failed BackupUITests/testBackupExportViaFilesAndDuplicateRestore만 `-only-testing` 집중1/0/skip0(exit0,minote-m1c-backup-ui18-action-hittable.log/xcresult). 제품 코드 변경 없이 해당 시험 대기 조건만 맞췄다. 최초 failed 명령을 성공으로 재명명하지 않는다.
+- 26 `xcodebuild -project MiNote.xcodeproj -scheme MiNote -destination 'platform=iOS Simulator,id=423D4FF6-C678-45F9-9D3E-CB886EE82462' -derivedDataPath /private/tmp/minote-m1c-dd26-fresh -resultBundlePath /private/tmp/minote-m1c26-review-final.xcresult -parallel-testing-enabled NO -collect-test-diagnostics never CODE_SIGNING_ALLOWED=NO COMPILATION_CACHE_ENABLE_CACHING=NO test`: app64/0+일반UI7/0/fixture2skip·exit0. 양 OS에서 일반UI7개를 모두 성공으로 검증했지만18은 서로 다른 명령의 근거다.
+- fixture-only skip의 별도 검증:18 migration/backup 각1/0/skip0,26도 각1/0/skip0. `zsh .superpowers/sdd/2026-10-03-m1-c-backup-and-cleanup/isolated-checks.sh 26 /private/tmp/minote-m1c-dd26-fresh` exit0.18migration/26migration helper는 원본 JSON/backup/PDFbytes 유지, backup helper는 실제 Files-saved archive SHA·모든ID/삭제페이지/용지/책갈피/두PDFbytes·새획/relaunch를 확인했다. 실제 이동 파일SHA cc42644bded993a5ca69d7899a9da7d1d78755329d3dd1f2885007db680ed361. 로그 /private/tmp/minote-m1c18-migration, minote-m1c18-backup-exact-file, minote-m1c18-isolated, minote-m1c18-backup-verify, minote-m1c26-migration, minote-m1c26-backup, minote-m1c26-isolated. 네 신규 기기는 shutdown/data보존이며 기존/실패 기기는 erase/reseed하지 않았다.
+- 한 번 fresh review: Critical0/Important2/Minor2. 실제 initial-load request 누락/restore cancel owner 없음은 BackupSessionTests/testExternalOpenWaitsForInitialLibraryLoad 및 testExternalRestoreCancellationPreservesNotesAndRemovesOwnedStages RED→GREEN. Core/App 관련 suites·양 OS app64/0까지 확인했다. 재리뷰 없이 정리 표시를 정확하게 수정하고 interrupted staging은 보호/보류·durable ownership 회수 후속으로 남겼다.
+- 결정/영향: 사용자 main/preservation 지시가 branch/worktree/PR/push/scratch 삭제 기본값을 우선한다. Core actor 직렬화/retire에 따라 restore/maintenance/purge를 async와 Foundation LibraryNote로 구체화했다. Stored-only ZIP32은 own-output만 읽으며 generic 압축·암호 archive는 오류다. interrupted export lease·unknown stage는 보수적 보호로 disk 사용이 남을 수 있다. 단일 앱 편집 주체 기준이며 multi-process/sync/외부 파일변조·최대 메모리/실기기/전체 접근성/외부 공유 소비자를 완전 보장하지 않는다. 폴더·Undo·클라우드 백업/새 객체/다른 플랫폼은 미구현이다. 첫fixturelookup/마지막 시스템 share탭 미처리는 원인 미확정/실패로그 보존, 실제 성공 범위만 기록한다.
+- Notion **2026-10-04T04:22:23.119Z(13:22:23KST)** 반영·04:22:37UTC 재조회 검증. 기존35376자 전체prefix 보존, M1-C 제목1회·정확한 검증표·기술/실패/리뷰/제한·커밋·M2계획만·실제PNG첨부를 확인했다. image POST 첫거절은 미실행/명시 승인 요청 뒤 동일 payload 승인받아 수행했고 승인 블록은 해결됐다. 저장소 screenshot docs/assets/m1c-restored-backup-ink.png와 상세결과 docs/milestones/2026-10-04-m1-c-backup-and-cleanup.md.
+- 마감 검사는 보존한 logs의 실제 test case/bytes helper/Notion receipt와 Git diff/문서를 대조하는 final-evidence-check.py다. 새 Swift/Xcode 시험 실행으로 주장하지 않는다. 마지막 docs 커밋은 이 기록을 포함하는 `git log -1 --oneline`으로 확인한다. 작업 공간/main은 그대로, push는 하지 않았다. 미검증은 physical/큰 실제 문서/외부 호환이고 진행 중 제품 코드는 없다.
+- 다음 첫 작업: AGENTS/PROGRESS/Git 대조 → docs/superpowers/plans/2026-10-04-m2-a-lasso-move.md Task1 core 이동·선택 geometry RED. M2-A 첫 결과에 맞춰 다음 선택 삭제/복제·텍스트·이미지·검색·혼합 객체 단위를 조정한다. 이번 실행은 M1-C까지이며 M2-A는 계획만 작성했다.
+- 마감 evidence-check 첫 실행은 plan 소개문에 들어간 checkbox 예시 literal까지 미완료로 오판해 exit1이었다. 실제 Task1~5 checkbox는 모두 완료이고 그 앞의 실제 test/Notion 검사도 통과했다. 실제 줄 시작 checkbox만 검사하도록 parser를 수정했다. 제품 코드는 바꾸지 않았으며 이 실패도 task-5-tests-first.log로 보존한다.
+- 마감 재검증 `scripts/task-done docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md 5 19e10af -- python3 .superpowers/sdd/2026-10-03-m1-c-backup-and-cleanup/final-evidence-check.py` **exit0**. 보존된 양 OS 실제 case·bytes·Notion prefix/첨부·다음 계획만·Git diff 검사를 확인하고 Task5 ledger complete를 기록했다(task-5-tests.log). final docs 변경만 남았으며 이 기록을 포함한 main 문서 커밋으로 마감한다.

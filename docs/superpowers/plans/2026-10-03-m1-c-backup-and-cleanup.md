@@ -20,7 +20,7 @@
 - 파일 내보내기/복원은 actor에서 처리하고 bulk PDF I/O 버퍼를 64KiB로 제한한다. 취소는 각 chunk 경계에서 확인한다. 문서 JSON decode 비용은 별도 측정한다.
 - future schema, 누락/변조/중복 자산, 잘못된 경로, I/O 실패는 명시적인 오류다. 빈 노트나 이전 단일 PDF로 대체하지 않는다. 기존 원본과 backup을 덮지 않는다.
 - 영구 제거는 명시적인 사용자 확인 뒤에만 실행한다. 공유/미리보기 중 파일은 정리하지 않는다. 시작 시 무조건 전체 폴더를 지우거나 기간만으로 note/PDF 원본을 지우지 않는다.
-- 실제 Pencil/손바닥/발열/대형 실제 PDF는 M3 확인 대기다. Task1~4 구현과18.6 검증을 완료했으며 Task5의 양 OS 최종 검증·인계가 남아 있다.
+- 실제 Pencil/손바닥/발열/대형 실제 PDF는 M3 확인 대기다. Task1~5 구현·양 OS 검증·한 번 리뷰/수정·Notion 기록을 완료했다.18 전체 명령exit65와 failed UI 집중exit0은 별도로 기록하며 합친 명령 성공으로 주장하지 않는다.
 
 ## Review Focus
 
@@ -34,8 +34,8 @@
 
 - Create core `StoredZIP.swift`: `.minote` v1은 표준 ZIP32의 **stored(method 0)** entry만 사용한다. `manifest.json`, `document.json`, `assets/<UUID>.pdf`. 자체 출력의 최소 reader/writer이며 deflate/암호/ZIP64/data descriptor는 명시적으로 거부한다. CRC32·local/central header 일치·entry 길이/offset/EOF 경계를 검사한다. 경로는 manifest의 정확한 allowlist만 허용한다. decoder가 임의의 경로로 추출하지 않는다.
 - Create core `NoteBackup.swift`: `BackupManifest: Codable, Sendable`는 archiveVersion=1, documentID, schemaVersion, revision, entries(name, byteCount, crc32)를 가진다. `BackupProgress(completedBytes: Int64,totalBytes: Int64)`와 `ValidatedBackup(document: NoteDocument,stagingDirectory: URL)`를 정의한다. `NoteBackup` actor의 `export(document: NoteDocument, assetURLs: [UUID: URL], destination: URL, progress: @Sendable (BackupProgress) -> Void) async throws`, `validate(source: URL, stagingRoot: URL, progress: @Sendable (BackupProgress) -> Void) async throws -> ValidatedBackup`는 Task cancellation을 전파한다. 완료 archive를 원자 교체하기 전 실패 시 기존 destination 보존.
-- Modify core `LibraryStore.swift`: `restoreBackup(_ backup: ValidatedBackup, folderID: UUID?) throws -> LibraryNoteRow`. staging에서 새 note directory를 완성한 뒤 catalog에 추가한다. catalog 실패 시 완성 디렉터리는 기존 orphan recovery가 회수하며 기존 노트는 불변이다. staging 데이터는 호출자가 defer로 정리한다.
-- Create core `LibraryMaintenance.swift`: `MaintenanceReport`는 후보 URL/종류/예상 bytes/보호 이유를 가진다. `LibraryStore.maintenanceReport() throws -> MaintenanceReport`, `cleanUnreferencedFiles() throws -> MaintenanceReport`, `purgeTrashedNote(_: UUID, expectedCatalogRevision: Int64) throws`, `purgeDeletedPages(_: [UUID], noteID: UUID, expectedRevision: Int64) throws -> NoteDocument`를 제공한다. page purge는 정상 문서 저장 경로를 사용하고 기존 backup은 보존한다.
+- Modify core `LibraryStore.swift`: 실제 인터페이스는 `restoreBackup(_ backup: ValidatedBackup, folderID: UUID?) async throws -> LibraryNote`. 초기 sketch의 LibraryNoteRow는 앱 타입이므로 core LibraryNote를 쓰고, actor 소유 DocumentStore와 직렬화하기 위해 async로 구체화했다. staging에서 새 note directory를 완성한 뒤 catalog에 추가한다. catalog 실패 시 완성 디렉터리는 기존 orphan recovery가 회수하며 기존 노트는 불변이다. staging 데이터는 호출자가 defer로 정리한다.
+- Create core `LibraryMaintenance.swift`: `MaintenanceReport`는 후보 URL/종류/예상 bytes/보호 이유를 가진다. 실제 `LibraryStore.maintenanceReport() async throws -> MaintenanceReport`, `cleanUnreferencedFiles() async throws -> MaintenanceReport`, `purgeTrashedNote(_: UUID, expectedCatalogRevision: Int64) async throws`, `purgeDeletedPages(_: [UUID], noteID: UUID, expectedRevision: Int64) async throws -> NoteDocument`를 제공한다. 초기 synchronous sketch를 per-note actor 직렬화/retire 대기로 구체화했다. page purge는 정상 문서 저장 경로를 사용하고 기존 backup은 보존한다.
 - Create core `PurgeJournal.swift`: permanent note purge의 `prepared → catalogCommitted → finished` 상태와 제거 대상 UUID·원래 catalog revision·임시 quarantine 상대 경로를 기록한다. journal/quarantine은 library 내부 고정 경로만 사용한다. load 시 journal을 먼저 처리한 뒤 orphan recovery를 실행한다.
 - Create app `BackupFileAccess.swift`: security scope와 NSFileCoordinator를 복사/검증 완료까지 유지한다. PDFImporter의 scope 구현을 참고하고, 완성 staging의 모든 PDF를 PDFValidation으로 순차 검증해 원본 count/geometry/삭제 페이지 참조까지 확인한 뒤 복원을 허용한다. actor 경계를 넘어 PDFKit 객체를 전달하지 않는다.
 - Create app `ExportFileRegistry.swift`: actor가 UUID별 export directory/createdAt/active lease를 소유한다. `acquire(_:) -> UUID`, `release(_:)`, `cleanExpired(now:)`는 활성 lease 없는 생성 후 7일 지난 registry 파일만 정리한다. raw note/PDF/unknown directory에는 접근하지 않는다. PDF 및 backup export가 같은 registry를 사용한다.
@@ -89,13 +89,15 @@
 
 **Files:** AGENTS/README/PROGRESS/milestone/Notion, 다음 M2 계획.
 
-- [ ] Node/v2·v3 fixture check, core 전체, MiNote app/UI를 iPadOS 18.6/26.4 모두 실행. fixture-only migration은 별도 seeded 실행/원본 bytes 검증. 백업의 빈 설치 이동을 별도 기기로 실제 실행하며 정상 사용자 데이터 reseed 금지.
-- [ ] fresh 전체 reviewer 한 번에 Review Focus 다섯 항목과 journal/streaming/lease 경합 검증을 제공. 중요한 문제는 RED/수정/GREEN과 최종 관련 suite로 확인. Minor는 근거와 후속 위치를 기록.
-- [ ] 성공·실패·미검증·제한과 코드 커밋/마지막 Notion 시각을 기록. M2를 실행 가능한 작은 단위로 나눠 **첫 편집 단위만** 계획하고, 이번에는 구현하지 않음.
-- [ ] main 커밋·clean 확인. push는 별도 요청. 물리 iPad/외부 앱 공유 소비자별 호환은 실제 실행 여부를 구분한다.
+- [x] Node/v2·v3 fixture check, core 전체, MiNote app/UI를 iPadOS 18.6/26.4 모두 실행. fixture-only migration은 별도 seeded 실행/원본 bytes 검증. 백업의 빈 설치 이동을 별도 기기로 실제 실행하며 정상 사용자 데이터 reseed 금지.
+- [x] fresh 전체 reviewer 한 번에 Review Focus 다섯 항목과 journal/streaming/lease 경합 검증을 제공. 중요한 문제는 RED/수정/GREEN과 최종 관련 suite로 확인. Minor는 근거와 후속 위치를 기록.
+- [x] 성공·실패·미검증·제한과 코드 커밋/마지막 Notion 시각을 기록. M2를 실행 가능한 작은 단위로 나눠 **첫 편집 단위만** 계획하고, 이번에는 구현하지 않음.
+- [x] main 커밋·clean 확인. push는 별도 요청. 물리 iPad/외부 앱 공유 소비자별 호환은 실제 실행 여부를 구분한다.
 
 ## 계획 자기 점검과 다음 실행
 
 archive와 복원, 영구 제거 journal/reference 보호, UI·lease는 각각 독립 검증 가능한 Task 1~4이며 Task 5가 단계 인계다. schema v3/catalog v1을 변경하지 않는다. ZIP은 압축 기능을 추가하지 않고 own backup 읽기로 제한해 상호운용 및 메모리 경계를 명시했다. 복원 이름/ID 규칙, archive 상한, 취소·원자 commit, cleanup 보호 대상과 journal 재개 기준을 테스트에 대응했다.
 
-다음 실행 첫 작업은 Git/PROGRESS 대조 → 현재 codec/backup/library orphan recovery와 PDF export 임시 경로 읽기 → Task 1 실제 multi-source 보존/손상 archive RED다. 이 파일 작성은 M1-C 구현 완료를 의미하지 않는다.
+2026-10-04 종료: core78/0, Node31/0+v2/v3 check, 양 OS app64/0.26 일반 전체UI7/0+fixture2skip·exit0;18 일반 전체UI6통과/1실패/2skip·exit65 뒤 failed backupUI만1/0·exit0 집중 재검증. 두 OS 독립 legacy/실제 Files 백업 이동은 각각1/0/skip0와 bytes검증0. fresh reviewer 한 번의 Important2를 실제 RED→GREEN으로 수정했다. 원인 미확정 transient/처리 보류·실기기 제한은 PROGRESS/milestone에 남겼다.
+
+Notion 반영2026-10-04T04:22:23.119Z, 재조회에서 기존 prefix/제목1회/검증표/승인된 screenshot/다음 계획만을 확인했다. 최종 문서 커밋은 이 기록을 포함하는 Git HEAD를 대조한다. 새로운 첫 작업은 `docs/superpowers/plans/2026-10-04-m2-a-lasso-move.md` Task1 actual RED이며, M2-A는 계획만 작성했고 구현하지 않았다. M1-C를 반복 구현하지 않는다.
