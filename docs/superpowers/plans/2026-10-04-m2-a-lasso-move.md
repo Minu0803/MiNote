@@ -44,10 +44,10 @@
 
 **Interfaces:** consumes NoteDocument/InkStroke/InkTransform/DocumentCodec; produces 위 두 Foundation API와 selection 규칙.
 
-- [ ] RED: transform a=0,b=1,c=-1,d=0,tx=10,ty=20 획을 문서 dx=30,dy=-15 이동하면 tx=40,ty=5이며 제어점/ID/선형 변환은 그대로. 비선택 획/다른 page/PDF/삭제 페이지 전체 불변, revision+1.
-- [ ] RED: 없는 ID/다른 페이지 ID/stale revision/NaN/Infinity/합산 overflow/Int64.max 거부, 입력 value 불변. 빈 선택·0 이동 동일 value. 이동과 역이동의 모든 값/IDs 일치.
-- [ ] RED: polygon 내부/외부/경계/교차 선분/점 획/자기 교차 even-odd, open polygon 자동 닫기, 비유한/부족 꼭짓점 오류. 동일 위치의 두 UUID는 둘 다 선택.
-- [ ] `swift test --package-path Packages/MiNoteCore --filter 'InkCommandTests|SelectionGeometryTests'` 실제 실패 확인 → API 구현 → GREEN, 전체 core → PROGRESS → commit.
+- [x] RED: transform a=0,b=1,c=-1,d=0,tx=10,ty=20 획을 문서 dx=30,dy=-15 이동하면 tx=40,ty=5이며 제어점/ID/선형 변환은 그대로. 비선택 획/다른 page/PDF/삭제 페이지 전체 불변, revision+1.
+- [x] RED: 없는 ID/다른 페이지 ID/stale revision/NaN/Infinity/합산 overflow/Int64.max 거부, 입력 value 불변. 빈 선택·0 이동 동일 value. 이동과 역이동의 모든 값/IDs 일치(의도한 revision 증가 제외).
+- [x] RED: polygon 내부/외부/경계/교차 선분/점 획/자기 교차 even-odd, open polygon 자동 닫기, 비유한/부족 꼭짓점 오류. 동일 위치의 두 UUID 선택은 UUID를 연결하는 Task2 InkSelection 시험에서 확인한다.
+- [x] `swift test --package-path Packages/MiNoteCore --filter 'InkCommandTests|SelectionGeometryTests'` 실제 실패 확인 → API 구현 → GREEN, 전체 core → PROGRESS → commit.
 
 ### Task 2: UIKit 올가미와 native Undo 통합
 

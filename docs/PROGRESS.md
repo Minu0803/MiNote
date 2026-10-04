@@ -15,7 +15,7 @@
 - 이전 실행: **2026-10-03 M1-A 완료**. 기준 `fd4def6`; 마지막 코드 `d968701`. 시작 시 main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음). 모든 구현은 main에 커밋했고 push하지 않았다.
 - 이전 단계: **M1-B 완료**. 기준 80d14c2, 마지막 기능 코드 1d67d9a, 테스트/체크포인트 fddbd66. main에서 직접 구현했고 push하지 않았다. 원격은 새 조회하지 않았으며 추적 ref와 현재 원격을 혼동하지 않는다.
 - 현재 결과: **2026-10-04 M1-C 완료**. 기준19e10af96dcc130593299b966cd3ed3e08a738ba, 시작main clean/추적origin/main보다8커밋 앞섬(원격 새 조회 없음). 구현4649208/ab1bd27/c94a93a/68ba26f, 한 번 리뷰 수정a64b490, 최종 Files 시험30e9f8c. 기본main에서 직접 커밋했으며 이 실행에서는 push 명령을 수행하지 않았다. 종료 확인 시 origin/main 추적ref는c94a93a로 갱신되어 있으므로 전체 변경이 로컬에만 있다고 주장하지 않는다. 실제 원격은 새 조회하지 않았다. 최종 인계 문서 커밋은 이 기록을 포함하는 마지막 docs 커밋(`git log -1 --oneline`)과 Git 상태로 확인한다.
-- 다음 개발 단위: **M2-A 올가미 획 선택·평행 이동**, 계획 `docs/superpowers/plans/2026-10-04-m2-a-lasso-move.md`. 계획만 작성했고 M2 코드는 미구현이다. 다음 첫 작업은 Git/AGENTS/PROGRESS 대조 → core Document/InkTransform/PageCommands와 앱 InkAdapter/NoteCanvas 읽기 → M2-A Task1 이동·선택 판정 실제 RED. 완료된 M1-C 시험/리뷰를 반복하지 않는다.
+- 현재 개발 단위: **M2-A 올가미 획 선택·평행 이동 시작**, 계획 `docs/superpowers/plans/2026-10-04-m2-a-lasso-move.md`. 기준29835c2, 시작main clean/추적origin/main보다5개앞섬(원격미조회). Task1 core 이동/geometry RED부터 진행한다. 다음 재개 시 ledger/현재로그/Git 대조 후 미완료 Task만 이어간다. M1-C 시험/리뷰를 반복하지 않는다.
 - 마지막 Notion 반영: **2026-10-04T04:22:23.119Z (13:22:23 KST)**; 재조회04:22:37 UTC에 기존 내용 전체 prefix 보존·M1-C 제목1회·검증표·제한·다음 계획만·사용자가 승인한 실제 PNG 첨부를 확인했다. 이전 M1-B 2026-10-03T11:50:06.629Z 및 M1-A 반영 기록은 아래에 보존한다.
 - 최신 검증: **Node31/0, core78/0**, v2/v3 check exit0; 양 OS app64/0.26 전체 일반UI7통과/fixture-only2skip/0실패·exit0.18 전체 app64/0+UI6통과·1실패·2skip·exit65이며 실패한 backupUI만 집중1/0/skip0·exit0으로 재검증했다. 명령들을 합친 전체 성공으로 표시하지 않는다. 독립 migration/실제 Files backup 이동은 양 OS 각각UI1/0/skip0와 bytes helper exit0. 상세 로그/실패/리뷰 판단은 아래 M1-C 마감 절과 milestone을 따른다.
 - 미검증/이월: 실기기 Pencil·손바닥·발열·장시간/큰 실제 문서·전체 접근성·외부 provider/공유 앱별 호환. 강제 중단 restore stage와 export lease의 durable ownership 자동 회수는 후속이며 현재는 보수적으로 보호/보류한다. 일반 ZIP/폴더·Undo·클라우드 백업/동기화/다른 플랫폼은 미구현이다.
@@ -469,3 +469,10 @@
 - 마감 evidence-check 첫 실행은 plan 소개문에 들어간 checkbox 예시 literal까지 미완료로 오판해 exit1이었다. 실제 Task1~5 checkbox는 모두 완료이고 그 앞의 실제 test/Notion 검사도 통과했다. 실제 줄 시작 checkbox만 검사하도록 parser를 수정했다. 제품 코드는 바꾸지 않았으며 이 실패도 task-5-tests-first.log로 보존한다.
 - 마감 재검증 `scripts/task-done docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md 5 19e10af -- python3 .superpowers/sdd/2026-10-03-m1-c-backup-and-cleanup/final-evidence-check.py` **exit0**. 보존된 양 OS 실제 case·bytes·Notion prefix/첨부·다음 계획만·Git diff 검사를 확인하고 Task5 ledger complete를 기록했다(task-5-tests.log). final docs 변경만 남았으며 이 기록을 포함한 main 문서 커밋으로 마감한다.
 - 문서 커밋d553eae 뒤 Git status --porcelain은 빈 출력(main clean), diff --check exit0였다. 원격 추적ref는c94a93a이고 reflog에2026-10-04 12:25:23KST `update by push`가 있다. 이 실행의 push 명령은 없으며 갱신 주체를 추정하지 않는다. 당시추적ref보다local4커밋앞섬, 이 추가 기록 커밋 뒤5개가 된다. tracking ref와 fresh 원격 조회를 구분하며 실제 원격 동일 여부는 주장하지 않는다. stage code/검증은 바꾸지 않고 이 관찰만 정정한다.
+
+### M2-A Task1 공통 이동·올가미 판정 — 2026-10-04
+- 시작29835c2, main clean/추적ref보다5앞섬. 승인된 plan을 직접 구현하며 main/no worktree/branch/PR/push, 이전 scratch 보존. ledger .superpowers/sdd/2026-10-04-m2-a-lasso-move/progress.md.
+- InkCommands.translate는 정확한 revision/활성page/선택UUID/finite양을 검증하고 transform.tx/ty만 변경·revision1증가·codec전체검증. 빈선택/0양은 무변경이며 역이동은 revision을 제외한 값/IDs를 복원한다. 부정ID/다른page/삭제page/overflow는 오류다.
+- SelectionGeometry는 닫힌even-odd 영역과 경계/중심선교차를 판정하고 finite/3distinct 꼭짓점을 요구한다. orientation은 vector별scale로 유한 큰 좌표 연산 overflow를 막는다. 동일 위치의 두 획 UUID 선택은 Task2 앱 소비자에서 검증한다.
+- 새 API 없는 실제 RED exit1(minote-m2a-core-red.log). 전체 `swift test --package-path Packages/MiNoteCore` **86/0**, exit0(minote-m2a-core-green.log), 신규8tests. 기존 malformed ZIP test가 출력하는 의도된 Python duplicate-entry warning은 원래 시험 fixture이며 실패가 아니다.
+- 다음 Task2: actual PKCanvasView finger→move→finger Undo3/Redo3 UI를 먼저 RED로 검증하고 native이력/명령/ID를 함께 연결한다. 앱/양OS/UI/저장백업/PDF/리뷰/Notion은 아직 미완료. 작은 Task1 체크포인트를 커밋한다.
