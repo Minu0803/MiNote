@@ -47,10 +47,10 @@
 
 **Interfaces:** consumes DocumentCodec v3 and UUID asset URLs; produces NoteBackup/ValidatedBackup.
 
-- [ ] `testArchiveKeepsV3InkPagesAndEveryPDFByte`: 실제 multi-source fixture+PDF 2개 export/validate, decode 문서 전체 값·모든 bytes 동일, independent Python zipfile로 own output의 entry/CRC 확인.
-- [ ] `testMalformedArchiveNeverEscapesStaging`: `../`, absolute/backslash 경로, 중복 entry, symlink external attribute, unsupported method/encryption/ZIP64, local/central 불일치, 겹치는 offset, truncation/CRC/byteCount 오류를 각각 거부. library/destination sentinel bytes 불변.
-- [ ] `testCancelledOrFailedExportPreservesDestination`: chunk write 중 취소와 주입한 writer I/O 실패. 이전 정상 archive 불변, 미완성 temp만 자신의 범위에서 제거.
-- [ ] `swift test --package-path Packages/MiNoteCore --filter 'StoredZIPTests|NoteBackupTests'` RED → streaming reader/writer와 manifest allowlist → GREEN. 전체 core/Node도 확인하고 PROGRESS·format·커밋.
+- [x] `testArchiveKeepsV3InkPagesAndEveryPDFByte`: 실제 multi-source fixture+PDF 2개 export/validate, decode 문서 전체 값·모든 bytes 동일, independent Python zipfile로 own output의 entry/CRC 확인.
+- [x] `testMalformedArchiveNeverEscapesStaging`: `../`, absolute/backslash 경로, 중복 entry, symlink external attribute, unsupported method/encryption/ZIP64, local/central 불일치, 겹치는 offset, truncation/CRC/byteCount 오류를 각각 거부. library/destination sentinel bytes 불변.
+- [x] `testCancelledOrFailedExportPreservesDestination`: chunk write 중 취소와 주입한 writer I/O 실패. 이전 정상 archive 불변, 미완성 temp만 자신의 범위에서 제거.
+- [x] `swift test --package-path Packages/MiNoteCore --filter 'StoredZIPTests|NoteBackupTests'` RED → streaming reader/writer와 manifest allowlist → GREEN. 전체 core/Node도 확인하고 PROGRESS·format·커밋.
 
 ### Task 2: 기존 노트 보존 복원
 

@@ -13,9 +13,9 @@
 - 이전 실행: **2026-10-03 M0-C 완료**. 시작 기준 `18843b0`; 시작 시 main clean, origin/main 추적 ref 일치(이번에는 원격 새 조회 없음). 코드 커밋 `0ef4587`, `f9fe764`, `da0a6f7`, `40aef65`, 최종 리뷰 수정 `28b9889e8b186771f163d6a98d551dabda5c2149`.
 - M0-C 종료 당시 변경은 로컬 main에만 커밋했고 push하지 않았다. 현재 원격 상태를 의미하는 문장은 아니다. 최종 인계 문서 커밋은 `git log -1 --oneline`으로 확인한다.
 - 이전 실행: **2026-10-03 M1-A 완료**. 기준 `fd4def6`; 마지막 코드 `d968701`. 시작 시 main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음). 모든 구현은 main에 커밋했고 push하지 않았다.
-- 현재 단계: **M1-B 완료**. 기준 80d14c2, 마지막 기능 코드 1d67d9a, 테스트/체크포인트 fddbd66. main에서 직접 구현했고 push하지 않았다. 원격은 새 조회하지 않았으며 추적 ref와 현재 원격을 혼동하지 않는다.
-- 다음 개발 단위: **M1-C 편집 백업·복원/파일 정리**, `docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md`. 계획만 작성했고 구현하지 않았다.
-- 다음 작업자가 할 첫 작업: Git 상태/HEAD 대조 → AGENTS/이 문서/M1-C 계획/문서 v3·library v1 읽기 → 기존 backup/orphan 회수와 PDF 임시 경로 대조 → Task1 실제 multi-source 보존/손상 archive RED. 완료된 M0/M1-A/B를 반복하지 않는다.
+- 이전 단계: **M1-B 완료**. 기준 80d14c2, 마지막 기능 코드 1d67d9a, 테스트/체크포인트 fddbd66. main에서 직접 구현했고 push하지 않았다. 원격은 새 조회하지 않았으며 추적 ref와 현재 원격을 혼동하지 않는다.
+- 현재 단계: **M1-C 편집 백업·복원/파일 정리 진행 중**. 기준19e10af, Task1 archive 구현/검증 완료. 전체 단계/앱 UI/리뷰/Notion은 아직 미완료. 계획 `docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md`.
+- 다음 작업자가 할 첫 작업: Git 상태/HEAD 대조 → M1-C Task2 brief/LibraryStore 읽기 → 빈 library/UUID 충돌/staging 변조/catalog 실패 복원 RED. 완료된 단계를 반복하지 않는다.
 - 마지막 Notion 반영: **2026-10-03T11:50:06.629Z (20:50:06 KST)**; 재조회/내용 검증 11:50:59 UTC. M1-B 결과·기술 판단·검증/실패 이력·리뷰·제한·커밋·다음 M1-C 계획을 기존 내용을 보존하며 추가했다. 이전 M1-A 반영 06:02:45.909Z 기록도 아래에 보존한다.
 - 최종 검증: **Node31/0, core60/0**, v2/v3 fixture check exit0, 18.6/26.4 각각 **app53/0 + 일반 UI5통과/fixture-only1skip/0실패**. 별도 seeded migration UI 양1/0/skip0과 원본 bytes 검증 통과. 로그/result와 리뷰 판단은 아래 M1-B 최종 절을 따른다.
 
@@ -367,3 +367,15 @@
 - Notion task_bc850ab357544ae1bd2db01d44b43246 succeeded. page_last_edited_at 2026-10-03T11:50:06.629Z, 재조회 검증 11:50:59 UTC. 새 heading 한 개와 이전 본문 전체 prefix 보존, 실제 검증 counts/커밋/미구현 M1-C를 확인했다. 같은 결과는 docs/milestones/2026-10-03-m1-b-pages-and-pdfs.md와 실제 9페이지 export screenshot에 있다.
 - 실행 상태: 진행 중 코드 변경 없음. 기존 로그/result/scratch/시뮬레이터 자료는 보존한다. 다음은 AGENTS/PROGRESS와 docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md를 읽고 Task1 archive 보존/손상 RED부터 시작한다. M1-B와 이전 완료 단계는 반복하지 않는다.
 - 남은 제한: `.minote`/영구 제거/파일 정리 미구현, 통합 Undo/사용자 템플릿/객체/검색 후속, physical Pencil/손바닥/발열/대형 실제 PDF/전체 접근성 미검증. 전체 iPad 제품/다른 플랫폼 개발 완료로 주장하지 않는다.
+
+## M1-C 시작 체크포인트 (2026-10-04)
+- 기준19e10af, main clean. origin/main 추적 ref보다8커밋 앞서며 새 원격 조회 없음. main 직접 작업/기존 파일·scratch 보존/no push.
+- Task1 stored-only ZIP/manifest와 실제 v3 fixture 보존 → Task2 새 노트 복원 → Task3 backup 참조와 purge journal → Task4 Files/진행·취소/공유 lease/확인 UI → Task5 양 OS 순차·별도 migration/빈 설치 백업 이동·한 번 리뷰·Notion/인계.
+- 이전 단계는 반복하지 않는다. 먼저 archive의 path/CRC/header/취소/I/O 실패 RED를 확인한다. 이번 단계 구현은 아직 미완료다.
+- 계획 인터페이스 점검: manifest는 자기 자신 제외 document/assets entries이며 ZIP CRC가 manifest를 보호한다. LibraryStore actor 소유 DocumentStore 때문에 restore는 필요 시 async로 구체화하며 await 전 busy/최종 catalog revision 검사를 유지한다. 파일 접근/PDFKit 검증은 앱 경계다.
+
+### M1-C Task1 archive 체크포인트
+- StoredZIP/NoteBackup: stored ZIP32, 64KiB PDF I/O, CRC/header/경계/UUID 경로 검증, 버전1 manifest, 원자 출력 교체/취소/자기 staging 정리. 기존 destination 실패 보존. ValidatedBackup은 사용 전 재검증 가능.
+- 최초 API 부재 RED exit1(minote-m1c-archive-red.log). 첫 구현 컴파일 실패는 UInt32? 대 Int 비교였고 명시 UInt32 변환 후 해결. 최종 `swift test --package-path Packages/MiNoteCore` **67/0**, exit0(minote-m1c-task1-core.log). 실제 v3+PDF2개 모든 값/바이트 비교 및 Python zipfile CRC 성공. unsafe ZIP14종·CRC·future·manifest 길이/누락·진행 중 Task 취소·ENOSPC 기존 bytes 보존 확인.
+- `node --test Tools/PortableInk/*.test.mjs` **31/0**, exit0(minote-m1c-task1-node.log). 아카이브 계약 docs/format/backup-v1.md. 이 결과는 archive 범위이며 Files/PDFKit 복원/정리/양 OS 앱은 아직 미실행이다.
+- 다음: Task2 충돌 복원/기존 bytes/실패 orphan 회수 RED → 구현 → core → 기록/커밋. main 직접 작업/no push.
