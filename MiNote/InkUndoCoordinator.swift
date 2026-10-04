@@ -19,6 +19,11 @@ import PencilKit
     private var nativeEntry: Entry?
     init(canvas: PKCanvasView, session: EditorSession, applyDrawing: @escaping (PKDrawing) -> Void, onChange: @escaping () -> Void) {
         self.canvas=canvas; self.session=session; self.applyDrawing=applyDrawing; self.onChange=onChange
+        let page=session.currentPage?.id, generation=session.canvasGeneration
+        (canvas as? InkCanvasView)?.canReplayInkHistory = { [weak session] in
+            guard let session else { return false }
+            return session.canReplayInkHistory && session.currentPage?.id == page && session.canvasGeneration == generation
+        }
     }
     func beginNativeGesture() { nativeEntry=nil }
     func recordNativeChange(before: [InkStroke]?, drawing: PKDrawing) {

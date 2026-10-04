@@ -61,9 +61,10 @@ struct NoteEditorView: View {
         } message: { Text(session.operationError ?? "") }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .inactive || phase == .background else { return }
+            captureDrawing()
             let lease = BackgroundSaveLease()
             Task {
-                await session.flush(canvasReference.canvas?.drawing)
+                await session.flush()
                 lease.end()
             }
         }
@@ -175,7 +176,7 @@ struct NoteEditorView: View {
     private var header: some View {
         HStack(spacing: 10) {
             Button {
-                if let drawing = canvasReference.canvas?.drawing { session.receiveDrawing(drawing) }
+                captureDrawing()
                 onClose()
             } label: { Label("라이브러리", systemImage: "chevron.left") }
             .accessibilityIdentifier("closeNote").disabled(session.isProcessing)
@@ -253,8 +254,7 @@ struct NoteEditorView: View {
     }
 
     private func captureDrawing() {
-        if let drawing = canvasReference.canvas?.drawing { session.receiveDrawing(drawing) }
-        canvasReference.refresh()
+        canvasReference.captureDrawing(in:session)
     }
 
     private func toolButton(_ value: Brush, symbol: String, title: String) -> some View {

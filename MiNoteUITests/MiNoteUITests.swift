@@ -68,8 +68,14 @@ import XCTest
         XCUIDevice.shared.orientation = .landscapeLeft
         XCTAssertTrue(waitForLabel(app.staticTexts["strokeCount"], expectedCount))
         XCUIDevice.shared.orientation = .portrait
+        print("MINOTE_PAGE_NAV_BEFORE",app.buttons["nextPage"].debugDescription)
         app.buttons["nextPage"].tap()
-        XCTAssertTrue(waitForLabel(app.staticTexts["pageIndicator"], "3 / 5"))
+        let navigated=waitForLabel(app.staticTexts["pageIndicator"], "3 / 5")
+        if !navigated {
+            print("MINOTE_PAGE_NAV_FAILED",app.debugDescription)
+            let failure=XCTAttachment(screenshot:app.screenshot()); failure.name="pdf-navigation-failure"; failure.lifetime = .keepAlways; add(failure)
+        }
+        XCTAssertTrue(navigated)
         XCTAssertTrue(waitForLabel(app.staticTexts["strokeCount"], "획 0"))
         app.buttons["previousPage"].tap()
         XCTAssertTrue(waitForLabel(app.staticTexts["strokeCount"], expectedCount))

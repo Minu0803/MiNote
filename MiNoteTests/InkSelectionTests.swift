@@ -83,6 +83,8 @@ import MiNoteCore
         let scroll=try XCTUnwrap(host.subviews.first as? UIScrollView)
         host.setFingerDrawing(true); XCTAssertEqual(scroll.panGestureRecognizer.minimumNumberOfTouches,2)
         host.setFingerDrawing(false); XCTAssertEqual(scroll.panGestureRecognizer.minimumNumberOfTouches,1)
+        print("MINOTE_NAVIGATION_TOUCH_TYPES",scroll.panGestureRecognizer.allowedTouchTypes)
+        XCTAssertFalse(scroll.panGestureRecognizer.allowedTouchTypes.contains(NSNumber(value:UITouch.TouchType.pencil.rawValue)),"Navigation must leave Pencil input to ink/lasso")
     }
     func testScaledCurveUsesDocumentSpaceSamplingForSmallLasso() throws {
         let points=[CGPoint(x:0,y:0),CGPoint(x:30,y:60),CGPoint(x:60,y:0)].enumerated().map { i,p in

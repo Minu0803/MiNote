@@ -77,13 +77,25 @@ import PDFKit
         XCTAssertEqual(session.drawing,visible); XCTAssertEqual(session.document,expected)
         XCTAssertEqual(try Data(contentsOf:primary),oldPrimary); XCTAssertEqual(try Data(contentsOf:backup),oldBackup)
         XCTAssertThrowsError(try session.translateSelectedInk(dx:10,dy:10))
-        reference.undo(in:session); XCTAssertEqual(session.document,expected); XCTAssertTrue(canvas.undoManager?.canUndo ?? false)
+        canvas.undoManager?.undo() // UIKit/system Undo must obey the same save guard.
+        XCTAssertEqual(session.document,expected); XCTAssertTrue(canvas.undoManager?.canUndo ?? false)
         let failedBackup=await session.exportBackup(); XCTAssertNil(failedBackup)
         fault.disarm(); session.retrySave(); await session.flush(); XCTAssertEqual(session.saveState,.saved)
         let disk=try await store.load(); XCTAssertEqual(disk?.document,expected)
         let exported=await session.exportBackup(), file=try XCTUnwrap(exported), prepared=try await BackupFileAccess().prepare(url:file.url)
         defer { try? FileManager.default.removeItem(at:prepared.stagingDirectory) }
         XCTAssertEqual(prepared.document,expected); try await registry.release(file.lease)
+        canvas.undoManager?.undo()
+        XCTAssertEqual(session.currentPage?.strokes[0].transform.tx,5)
+        fault.arm(); await session.flush()
+        guard case .failed = session.saveState else { return XCTFail("Undo save must fail") }
+        let undone=session.document
+        canvas.undoManager?.redo()
+        XCTAssertEqual(session.document,undone); XCTAssertTrue(canvas.undoManager?.canRedo ?? false)
+        fault.disarm(); session.retrySave(); await session.flush()
+        canvas.undoManager?.redo()
+        XCTAssertEqual(session.currentPage?.strokes,expected.pages[0].strokes)
+        await session.flush(); XCTAssertEqual(session.saveState,.saved)
     }
     func testUnsupportedOrAmbiguousInputAfterMoveKeepsDiskAndRejectsSelectionCommands() async throws {
         for unsupported in [true,false] {
@@ -117,7 +129,7 @@ import PDFKit
         let before=try XCTUnwrap(session.document)
         let job=Task { await session.exportBackup() }, entered=await Task.detached { gate.waitForEntry() }.value
         XCTAssertTrue(entered); XCTAssertTrue(session.isProcessing)
-        XCTAssertThrowsError(try session.translateSelectedInk(dx:10,dy:10)); reference.undo(in:session)
+        XCTAssertThrowsError(try session.translateSelectedInk(dx:10,dy:10)); canvas.undoManager?.undo()
         XCTAssertEqual(session.document,before); XCTAssertTrue(canvas.undoManager?.canUndo ?? false)
         coordinator.canvasViewDidBeginUsingTool(canvas)
         canvas.drawing=PKDrawing(strokes:canvas.drawing.strokes+[sampleStroke(offset:70)])

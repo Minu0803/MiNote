@@ -4,6 +4,33 @@ import MiNoteCore
 @testable import MiNote
 
 @MainActor final class InkUndoTests: XCTestCase {
+    func testCaptureBeforeQueuedDelegateRecordsFinalInkForUndoRedoAndSave() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:root) }
+        let store=DocumentStore(directory:root), session=EditorSession(store:store,saveDelay:.seconds(60))
+        await session.loadIfNeeded()
+        let canvas=InkCanvasView(), reference=CanvasReference(); reference.canvas=canvas
+        let coordinator=NoteCanvas.Coordinator(session:session,reference:reference); coordinator.attach(to:canvas)
+        canvas.delegate=coordinator
+        coordinator.canvasViewDidBeginUsingTool(canvas)
+        coordinator.apply(PKDrawing(strokes:[sampleStroke()]),to:canvas)
+        coordinator.canvasViewDrawingDidChange(canvas)
+        var finalStroke=canvas.drawing.strokes[0]; finalStroke.transform.tx += 10
+        coordinator.apply(PKDrawing(strokes:[finalStroke]),to:canvas)
+        reference.captureDrawing(in:session) // Toolbar/background sees B before its delegate.
+        await session.flush()
+        let final=try XCTUnwrap(session.document), disk=try await store.load()
+        XCTAssertEqual(disk?.document,final)
+        coordinator.canvasViewDrawingDidChange(canvas) // Queued B callback must not create another step.
+        canvas.undoManager?.undo()
+        XCTAssertEqual(session.currentPage?.strokes,[]); XCTAssertNil(session.operationError)
+        XCTAssertFalse(canvas.undoManager?.canUndo ?? true)
+        canvas.undoManager?.redo()
+        XCTAssertEqual(session.currentPage?.strokes,final.pages[0].strokes)
+        await session.flush(); let restored=try await store.load()
+        XCTAssertEqual(restored?.document,session.document)
+        XCTAssertEqual(restored?.document.pages[0].strokes,final.pages[0].strokes)
+    }
     func testNativeDelegateUpdatesCoalesceAndRedoUsesLatestCompleteDrawing() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at:root) }

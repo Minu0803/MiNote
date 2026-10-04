@@ -10,6 +10,14 @@ final class CanvasReference: ObservableObject {
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
     weak var canvas: PKCanvasView?
+    fileprivate weak var captureCoordinator: NoteCanvas.Coordinator?
+
+    func captureDrawing(in session: EditorSession) {
+        if let canvas, let coordinator=captureCoordinator, coordinator.session === session {
+            coordinator.canvasViewDrawingDidChange(canvas)
+        }
+        refresh()
+    }
 
     func undo(in session: EditorSession) {
         guard session.canReplayInkHistory else { return }
@@ -55,6 +63,9 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
         scrollView.accessibilityLabel = "A4 필기 페이지"
         // One-finger contact is reserved for the selected PencilKit tool.
         scrollView.panGestureRecognizer.minimumNumberOfTouches = 2
+        // UIScrollView's platform-dependent defaults include Pencil on 18.6.
+        // Navigation must never compete with Pencil ink or lasso input.
+        scrollView.panGestureRecognizer.allowedTouchTypes.removeAll { $0.intValue == UITouch.TouchType.pencil.rawValue }
         scrollView.addSubview(page)
         addSubview(scrollView)
 
@@ -168,6 +179,7 @@ struct NoteCanvas: UIViewRepresentable {
         host.canvas.delegate = context.coordinator
         context.coordinator.attach(to:host.canvas)
         reference.canvas = host.canvas
+        reference.captureCoordinator = context.coordinator
         if let page = session.currentPage {
             host.configurePage(size: CGSize(width: page.width, height: page.height), pdfPage: session.currentPDFPage, paperStyle: page.paper)
         }
@@ -196,7 +208,10 @@ struct NoteCanvas: UIViewRepresentable {
     static func dismantleUIView(_ host: PageZoomHost, coordinator: Coordinator) {
         host.canvas.delegate = nil
         host.lasso.cancelGesture()
-        if coordinator.reference.canvas === host.canvas { coordinator.reference.canvas = nil }
+        if coordinator.reference.canvas === host.canvas {
+            coordinator.reference.canvas = nil
+            coordinator.reference.captureCoordinator = nil
+        }
     }
 
     private func configure(_ canvas: PKCanvasView) {
@@ -233,6 +248,7 @@ struct NoteCanvas: UIViewRepresentable {
         }
         var isCurrent: Bool { pageID == session.currentPage?.id && generation == session.canvasGeneration }
         func attach(to canvas: PKCanvasView) {
+            reference.captureCoordinator=self
             inkUndo=InkUndoCoordinator(canvas:canvas,session:session,applyDrawing:{ [weak self, weak canvas] drawing in
                 guard let self, let canvas else { return }; self.apply(drawing,to:canvas)
             },onChange:{ [weak self] in self?.reference.refresh() })
