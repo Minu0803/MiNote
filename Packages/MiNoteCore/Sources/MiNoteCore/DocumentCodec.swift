@@ -7,6 +7,7 @@ public enum DocumentError: Error, Equatable, LocalizedError, Sendable {
     case staleRevision
     case documentConflict
     case missingAsset
+    case documentRemoved
 
     public var errorDescription: String? {
         switch self {
@@ -15,6 +16,7 @@ public enum DocumentError: Error, Equatable, LocalizedError, Sendable {
         case .corruptDocument: "문서와 복구본을 읽을 수 없습니다. 원본 파일은 보존됩니다."
         case .staleRevision: "더 최신 내용이 이미 저장되어 있습니다."
         case .missingAsset: "PDF 원본 자산이 없거나 손상되었습니다. 기록은 보존됩니다."
+        case .documentRemoved: "영구 삭제한 노트의 이전 편집 상태입니다. 목록을 다시 불러와 주세요."
         case .documentConflict: "다른 문서 또는 같은 버전의 다른 내용이 저장되어 있습니다."
         }
     }

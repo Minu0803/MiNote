@@ -68,10 +68,10 @@
 
 **Interfaces:** consumes catalog/doc validation; produces maintenance/purge APIs and startup journal recovery.
 
-- [ ] `testOnlyKnownUnreferencedAssetsAreCandidates`: primary+정상 backup의 활성/삭제 페이지와 pdfAssets union을 보호. 알려진 UUID 자산 파일 중 두 정상 snapshot 어디에도 없는 것만 orphan 후보. future/손상/읽기 불가 snapshot이 하나라도 있으면 해당 note cleanup 중단. legacy root/unknown 파일은 건드리지 않음.
-- [ ] `testPagePurgeRetainsBackupAssetsAndLatestInk`: 삭제 목록에 있는 요청 page만 영구 제거, active page/없는 ID/stale revision 거부. 실패 시 문서 불변. previous backup이 참조하는 PDF는 cleanup이 보존하고 backup이 정상적으로 교체된 뒤에만 orphan 가능.
-- [ ] `testNotePurgeResumesAtEveryWriteBoundary`: trash note만 허용. prepared journal·quarantine 이동·catalog primary/backup commit·quarantine 제거 직후 각각 강제 중단/쓰기 실패 재현. commit 전은 원래 note 복구; commit 후는 purge 완료. catalog backup에서 대상 참조도 제거한 다음 디렉터리를 지우고, 완료 전 orphan recovery가 대상 재등록하지 않음. journal 오류는 library 편집 차단과 안내, 추측 삭제 없음.
-- [ ] RED → 정확한 reference union/UUID allowlist/journal recovery 구현 → GREEN. 실제 filesystem byte 검증·core 전체 → PROGRESS → 커밋.
+- [x] `testOnlyKnownUnreferencedAssetsAreCandidates`: primary+정상 backup의 활성/삭제 페이지와 pdfAssets union을 보호. 알려진 UUID 자산 파일 중 두 정상 snapshot 어디에도 없는 것만 orphan 후보. future/손상/읽기 불가 snapshot이 하나라도 있으면 해당 note cleanup 중단. legacy root/unknown 파일은 건드리지 않음.
+- [x] `testPagePurgeRetainsBackupAssetsAndLatestInk`: 삭제 목록에 있는 요청 page만 영구 제거, active page/없는 ID/stale revision 거부. 실패 시 문서 불변. previous backup이 참조하는 PDF는 cleanup이 보존하고 backup이 정상적으로 교체된 뒤에만 orphan 가능.
+- [x] `testNotePurgeResumesAtEveryWriteBoundary`: trash note만 허용. prepared journal·quarantine 이동·catalog primary/backup commit·quarantine 제거 직후 각각 강제 중단/쓰기 실패 재현. commit 전은 원래 note 복구; commit 후는 purge 완료. catalog backup에서 대상 참조도 제거한 다음 디렉터리를 지우고, 완료 전 orphan recovery가 대상 재등록하지 않음. journal 오류는 library 편집 차단과 안내, 추측 삭제 없음.
+- [x] RED → 정확한 reference union/UUID allowlist/journal recovery 구현 → GREEN. 실제 filesystem byte 검증·core 전체 → PROGRESS → 커밋.
 
 ### Task 4: Files 백업·복원·공유·정리 화면
 

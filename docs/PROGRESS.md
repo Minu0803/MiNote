@@ -14,8 +14,8 @@
 - M0-C 종료 당시 변경은 로컬 main에만 커밋했고 push하지 않았다. 현재 원격 상태를 의미하는 문장은 아니다. 최종 인계 문서 커밋은 `git log -1 --oneline`으로 확인한다.
 - 이전 실행: **2026-10-03 M1-A 완료**. 기준 `fd4def6`; 마지막 코드 `d968701`. 시작 시 main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음). 모든 구현은 main에 커밋했고 push하지 않았다.
 - 이전 단계: **M1-B 완료**. 기준 80d14c2, 마지막 기능 코드 1d67d9a, 테스트/체크포인트 fddbd66. main에서 직접 구현했고 push하지 않았다. 원격은 새 조회하지 않았으며 추적 ref와 현재 원격을 혼동하지 않는다.
-- 현재 단계: **M1-C 편집 백업·복원/파일 정리 진행 중**. 기준19e10af, Task1 archive/Task2 새 노트 복원 구현·검증 완료. 전체 단계/앱 UI/리뷰/Notion은 아직 미완료. 계획 `docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md`.
-- 다음 작업자가 할 첫 작업: Git 상태/HEAD 대조 → M1-C Task3 brief 읽기 → backup 참조/페이지 purge/중단 journal RED. 완료된 단계를 반복하지 않는다.
+- 현재 단계: **M1-C 편집 백업·복원/파일 정리 진행 중**. 기준19e10af, Task1 archive/Task2 복원/Task3 정리·삭제 복구 구현·검증 완료. 전체 단계/앱 UI/리뷰/Notion은 아직 미완료. 계획 `docs/superpowers/plans/2026-10-03-m1-c-backup-and-cleanup.md`.
+- 다음 작업자가 할 첫 작업: Git 상태/HEAD 대조 → M1-C Task4 brief/앱 코드 읽기 → Files·PDFKit·export lease·백업 snapshot RED. 완료된 단계를 반복하지 않는다.
 - 마지막 Notion 반영: **2026-10-03T11:50:06.629Z (20:50:06 KST)**; 재조회/내용 검증 11:50:59 UTC. M1-B 결과·기술 판단·검증/실패 이력·리뷰·제한·커밋·다음 M1-C 계획을 기존 내용을 보존하며 추가했다. 이전 M1-A 반영 06:02:45.909Z 기록도 아래에 보존한다.
 - 최종 검증: **Node31/0, core60/0**, v2/v3 fixture check exit0, 18.6/26.4 각각 **app53/0 + 일반 UI5통과/fixture-only1skip/0실패**. 별도 seeded migration UI 양1/0/skip0과 원본 bytes 검증 통과. 로그/result와 리뷰 판단은 아래 M1-B 최종 절을 따른다.
 
@@ -385,3 +385,10 @@
 - staging CRC/문서 재검증,64KiB copy와 복사 결과 CRC, 완성 directory만 notes로 이동, 마지막 catalog commit. 취소/ENOSPC/누락/변조/없는 폴더에서는 기존 노트 bytes 불변. catalog 실패 시 완성 orphan만 다음 load에서 한 번 회수.
 - API 부재 RED exit1(minote-m1c-restore-red.log), 관련3/0 GREEN. `swift test --package-path Packages/MiNoteCore` **70/0**, exit0(minote-m1c-task2-core.log). 빈/중복복원·원본 byte·재열기·복사 실패·취소·orphan 검증. 앱 PDFKit 실제 geometry gate/Files 설치 이동은 Task4/5 대기.
 - 다음: Task3 cleanup은 DocumentStore actor 안에서 snapshot 검사와 삭제를 함께 수행해 attach/save와 직렬화한다. Library purge journal은 primary commit을 기준으로 commit 전 복구/후 완결하며 primary+catalog backup에서 제거한 뒤 quarantine을 지운다. 긴 작업 전 체크포인트로 남긴다.
+
+### M1-C Task3 파일 수명 체크포인트
+- ab1bd27부터 DocumentStore actor 내부 primary+backup 정확한 자산 union 검증/정리, 오류 snapshot 보류, UUID PDF만 후보. unknown/legacy는 유지. 삭제 페이지 purge는 정확한 IDs·revision을 요구하고 현재 잔존 페이지에서 쓰지 않는 해당 자산만 등록 해제하며 previous backup을 보존한다.
+- prepared→catalogCommitted→finished journal과 quarantine. load는 orphan 회수 전에 journal을 처리한다. catalog primary가 commit 기준이며 정상 fallback도 대상 참조를 제거한 뒤 bytes 제거. invalid/future/path/중복 위치는 편집 차단. 실패 중 읽기/편집 캐시를 공개하지 않는다.
+- API 부재 RED(minote-m1c-maintenance-red); 첫 실행5tests/2failure는 /var↔/private/var URL 별칭 비교 문제라 테스트에서 canonical URL 비교로 수정. 별도 stale handle 재생성 RED3failure(minote-m1c-retired-handle-red) 확인 후 삭제 전 DocumentStore.retire를 await하고 이전 참조 save/load를 차단했다. purgeTrashedNote는 이 직렬화를 위해 async로 구체화했다.
+- 최종 `swift test --package-path Packages/MiNoteCore` **77/0**, exit0(minote-m1c-task3-core.log). 7개 write 경계 중단/실제 journal·primary·backup ENOSPC/전후 복구·catalog fallback 재등장 방지·future backup 보존·잘못된 journal 경로·최신 획/이전 backup-only PDF 보존 검증.
+- 다음 Task4 앱 연결/실제 Files 확인/공유 lease. core 구현만 검증했고 양 OS app/UI/리뷰/Notion은 대기. 이전 테스트/scratch는 보존한다.

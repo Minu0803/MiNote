@@ -8,8 +8,9 @@ public struct LoadedDocument: Sendable {
 /// One actor owns the single local document. No suspension occurs between revision
 /// comparison and replacement, so concurrent save requests cannot interleave writes.
 public actor DocumentStore {
-    private let directory: URL
+    let directory: URL
     private let dataReader: @Sendable (URL) throws -> Data
+    private var retired = false
     private var primaryURL: URL { directory.appendingPathComponent("document.json") }
     private var backupURL: URL { directory.appendingPathComponent("document.backup.json") }
 
@@ -24,6 +25,7 @@ public actor DocumentStore {
     }
 
     public func load() throws -> LoadedDocument? {
+        guard !retired else { throw DocumentError.documentRemoved }
         do {
             if let primary = try readIfPresent(primaryURL) {
                 return LoadedDocument(document: primary, recoveredFromBackup: false)
@@ -32,7 +34,7 @@ public actor DocumentStore {
             switch error {
             case .corruptDocument, .invalidDocument:
                 break
-            case .unsupportedSchema, .staleRevision, .documentConflict, .missingAsset:
+            case .unsupportedSchema, .staleRevision, .documentConflict, .missingAsset, .documentRemoved:
                 throw error
             }
             guard let backup = try readIfPresent(backupURL) else { throw error }
@@ -46,6 +48,7 @@ public actor DocumentStore {
     }
 
     public func save(_ document: NoteDocument) throws {
+        guard !retired else { throw DocumentError.documentRemoved }
         let data = try DocumentCodec.encode(document)
         for asset in document.pdfAssets { _ = try assetURL(for: asset) }
         let previous = try load()
@@ -66,6 +69,8 @@ public actor DocumentStore {
         // A recovered backup is kept intact, rather than replaced with corrupt data.
         try data.write(to: primaryURL, options: .atomic)
     }
+
+    func retire() { retired = true }
 
     public func applyPageCommand(_ command: PageCommand, expectedRevision: Int64) throws -> NoteDocument {
         guard let prior = try load(), prior.document.revision == expectedRevision else { throw DocumentError.staleRevision }

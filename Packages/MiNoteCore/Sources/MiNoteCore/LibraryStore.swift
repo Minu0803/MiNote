@@ -9,6 +9,7 @@ public actor LibraryStore {
     var locations: [UUID: URL] = [:]
     let catalogWriter: @Sendable (Data, URL) throws -> Void
     let backupCopier: @Sendable (URL, URL) throws -> Void
+    let purgeCheckpoint: @Sendable (PurgeBoundary) throws -> Void
     var primaryURL: URL { directory.appendingPathComponent("library.json") }
     var backupURL: URL { directory.appendingPathComponent("library.backup.json") }
     var notesURL: URL { directory.appendingPathComponent("notes", isDirectory: true) }
@@ -17,15 +18,20 @@ public actor LibraryStore {
         self.directory = directory
         self.catalogWriter = { try $0.write(to: $1, options: .atomic) }
         self.backupCopier = Self.copyBackupFile
+        self.purgeCheckpoint = { _ in }
     }
     init(directory: URL, catalogWriter: @escaping @Sendable (Data, URL) throws -> Void,
-         backupCopier: @escaping @Sendable (URL, URL) throws -> Void = LibraryStore.copyBackupFile) {
+         backupCopier: @escaping @Sendable (URL, URL) throws -> Void = LibraryStore.copyBackupFile,
+         purgeCheckpoint: @escaping @Sendable (PurgeBoundary) throws -> Void = { _ in }) {
         self.directory = directory; self.catalogWriter = catalogWriter; self.backupCopier = backupCopier
+        self.purgeCheckpoint = purgeCheckpoint
     }
 
     public func load() async throws -> LibraryLoadResult {
         guard !busy else { throw LibraryError.busy }
         busy = true; defer { busy = false }
+        catalog = nil
+        try recoverPurgeIfNeeded()
         let disk = try readCatalog()
         var value = disk?.value ?? LibraryCatalog()
         var notices: [String] = []
@@ -55,6 +61,7 @@ public actor LibraryStore {
     }
 
     public func documentStore(for id: UUID) throws -> DocumentStore {
+        guard !busy else { throw LibraryError.busy }
         guard let catalog else { throw LibraryError.notLoaded }
         guard catalog.notes.contains(where: { $0.id == id }) else { throw LibraryError.noteMissing(id) }
         let url = noteDirectory(id)
@@ -263,7 +270,7 @@ extension LibraryStore {
         let index = try noteIndex(id, in: value)
         value.notes[index].modifiedAt = at; try commit(value)
     }
-    private func readyCatalog() throws -> LibraryCatalog {
+    func readyCatalog() throws -> LibraryCatalog {
         guard !busy else { throw LibraryError.busy }
         guard let catalog else { throw LibraryError.notLoaded }
         return catalog
@@ -273,7 +280,7 @@ extension LibraryStore {
         guard !result.isEmpty else { throw LibraryError.invalidCatalog("이름을 입력해 주세요") }
         return result
     }
-    private func noteIndex(_ id: UUID, in value: LibraryCatalog) throws -> Int {
+    func noteIndex(_ id: UUID, in value: LibraryCatalog) throws -> Int {
         guard let index = value.notes.firstIndex(where: { $0.id == id }) else { throw LibraryError.noteMissing(id) }
         return index
     }

@@ -38,6 +38,7 @@ public struct LibraryLoadResult: Sendable {
 public enum LibraryError: Error, Equatable, Sendable, LocalizedError {
     case unsupportedVersion(Int), corruptCatalog, invalidCatalog(String)
     case notLoaded, busy, conflict, noteMissing(UUID), documentMissing(UUID), folderMissing, noteTrashed
+    case invalidPurgeJournal
     public var errorDescription: String? {
         switch self {
         case .unsupportedVersion(let version): "지원하지 않는 라이브러리 버전입니다 (\(version)). 원본을 보존합니다."
@@ -50,6 +51,7 @@ public enum LibraryError: Error, Equatable, Sendable, LocalizedError {
         case .documentMissing: "노트 파일과 복구본이 없습니다. 빈 노트로 교체하지 않습니다."
         case .folderMissing: "대상 폴더를 찾을 수 없습니다."
         case .noteTrashed: "휴지통에서 복원한 뒤 노트를 열 수 있습니다."
+        case .invalidPurgeJournal: "영구 삭제 복구 기록을 확인할 수 없습니다. 편집을 중단하고 원본을 보존합니다."
         }
     }
 }

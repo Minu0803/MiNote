@@ -71,3 +71,11 @@ so they cannot silently disappear during this check. Disk or serialization failu
 preserves visible ink and offers retry.
 
 See `docs/PROGRESS.md` for actual tests, failure histories and device limitations.
+
+## M1-C 파일 정리와 영구 제거
+
+문서 actor에서 primary와 존재하는 backup을 각각 strict decode하고 모든 등록 PDF의 존재/길이를 검증한다. 두 snapshot의 asset UUID union을 보호하며 정확한 UUID.pdf 일반 파일만 정리한다. 한 snapshot이라도 future/손상/읽기 오류이면 그 노트 전체 정리를 보류한다. legacy root와 unknown은 유지한다. 삭제 보관 페이지 purge는 expectedRevision을 검사하고 정상 save를 사용하므로 이전 backup의 PDF를 바로 지우지 않는다.
+
+노트 영구 삭제는 trash와 expectedCatalogRevision이 필요하다. 이전 DocumentStore를 retire한 뒤 library 내부 purge-journal.json(v1, 원래/commit catalog, UUID/디렉터리 이름, stage)과 quarantine/<UUID>를 사용한다. prepared journal→quarantine 이동→primary catalog commit→fallback catalog 동일 commit→catalogCommitted journal→quarantine 제거→finished journal→journal 제거 순서다. 시작 시 orphan 회수 전에 처리하며 primary가 원래 값이면 commit 전 복구, commit 값이면 fallback에서 참조 제거 후 삭제를 완결한다. 손상·future·다른 catalog·잘못된 경로는 추측 삭제하지 않고 편집을 막는다. journal 상한16MiB는 기록/읽기 양쪽에 동일하다.
+
+7개 durable 경계 중단/실제 ENOSPC·stale store·backup fallback 재등장 방지 테스트를 사용한다. 다중 프로세스/동기화/외부 파일 교체는 이 로컬 단일 actor 계약 범위 밖이다. 실제 영구 제거 UI는 반드시 사용자 확인을 제공한다.
