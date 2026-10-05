@@ -61,6 +61,16 @@
 				<string>application/x-minote</string>
 			</dict>
 		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.minote.ink-selection</string>
+			<key>UTTypeDescription</key>
+			<string>MiNote Selected Ink</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleDocumentTypes</key>
 	<array>

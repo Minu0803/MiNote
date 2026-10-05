@@ -9,6 +9,7 @@ import UIKit
 final class CanvasReference: ObservableObject {
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
+    weak var host: PageZoomHost?
     weak var canvas: PKCanvasView?
     fileprivate weak var captureCoordinator: NoteCanvas.Coordinator?
 
@@ -19,6 +20,38 @@ final class CanvasReference: ObservableObject {
         refresh()
     }
 
+    func copySelectedInk(in session: EditorSession, access: InkClipboardAccess = InkClipboardAccess()) {
+        do {
+            guard let canvas, let c=captureCoordinator, c.session === session, c.isCurrent,
+                  session.canApplyInkCommand else { throw DocumentError.staleRevision }
+            c.capture(canvas,preservingSelection:true)
+            if let data=try session.copySelectedInk() { try access.write(data) }
+        } catch { session.operationError=error.localizedDescription }
+        refresh()
+    }
+    func pasteInk(from providers: [NSItemProvider], in session: EditorSession,
+                  viewportCenter: CGPoint? = nil, access: InkClipboardAccess = InkClipboardAccess()) async {
+        do {
+            guard session.canApplyInkCommand, let canvas, let c=captureCoordinator,
+                  c.session === session, c.reference === self, c.isCurrent,
+                  let undo=c.inkUndo else { throw DocumentError.staleRevision }
+            c.capture(canvas,preservingSelection:true)
+            guard session.canApplyInkCommand, let doc=session.document, let page=session.currentPage,
+                  let center=viewportCenter ?? host?.viewportCenterInPage else { throw DocumentError.staleRevision }
+            let generation=session.canvasGeneration, revision=doc.revision
+            let bytes=try await access.read(from:providers)
+            try Task.checkCancellation()
+            guard self.canvas === canvas, captureCoordinator === c, c.session === session, c.isCurrent,
+                  session.document?.id == doc.id, session.currentPage?.id == page.id,
+                  session.canvasGeneration == generation, session.canApplyInkCommand else { throw DocumentError.staleRevision }
+            // Capture a final native edit even if its queued callback has not run yet, then reject stale paste.
+            c.capture(canvas,preservingSelection:true)
+            guard session.document?.revision == revision, session.canApplyInkCommand else { throw DocumentError.staleRevision }
+            let payload=try InkClipboardCodec.decode(bytes), bounds=try InkClipboardCodec.bounds(of:payload.strokes)
+            try undo.paste(payload,dx:Double(center.x)-bounds.centerX,dy:Double(center.y)-bounds.centerY)
+        } catch { session.operationError=error.localizedDescription }
+        refresh()
+    }
     func deleteSelectedInk(in session: EditorSession) {
         applySelectionCommand(in:session) { try $0.deleteSelection() }
     }
@@ -122,6 +155,10 @@ final class PageZoomHost: UIView, UIScrollViewDelegate {
         setNeedsLayout()
     }
 
+    var viewportCenterInPage: CGPoint {
+        let visible=CGRect(origin:scrollView.contentOffset,size:scrollView.bounds.size)
+        return page.convert(CGPoint(x:visible.midX,y:visible.midY),from:scrollView)
+    }
     func setFingerDrawing(_ enabled: Bool) {
         scrollView.panGestureRecognizer.minimumNumberOfTouches = enabled ? 2 : 1
     }
@@ -195,6 +232,7 @@ struct NoteCanvas: UIViewRepresentable {
         let host = PageZoomHost()
         host.canvas.delegate = context.coordinator
         context.coordinator.attach(to:host.canvas)
+        reference.host = host
         reference.canvas = host.canvas
         reference.captureCoordinator = context.coordinator
         if let page = session.currentPage {
@@ -213,6 +251,7 @@ struct NoteCanvas: UIViewRepresentable {
         if host.canvas.drawing != session.drawing {
             context.coordinator.apply(session.drawing,to:host.canvas)
         }
+        reference.host = host
         reference.canvas = host.canvas
         if let page = session.currentPage {
             host.configurePage(size: CGSize(width: page.width, height: page.height), pdfPage: session.currentPDFPage, paperStyle: page.paper)
@@ -226,6 +265,7 @@ struct NoteCanvas: UIViewRepresentable {
         host.canvas.delegate = nil
         host.lasso.cancelGesture()
         if coordinator.reference.canvas === host.canvas {
+            coordinator.reference.host = nil
             coordinator.reference.canvas = nil
             coordinator.reference.captureCoordinator = nil
         }

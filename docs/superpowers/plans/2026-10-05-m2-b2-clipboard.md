@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-26-minote-product-design.md` 객체 복사·안정 ID·호환성. 선행 M2-B 결과와 `docs/format/document-v3.md`, `docs/format/backup-v1.md`.
 
-**상태:** 2026-10-05 실행 중. Task1 Core97/0 검증 완료, Task2 앱/native clipboard 연결을 시작한다. Task3/4는 대기. 정확한 재개 위치는 PROGRESS를 읽는다.
+**상태:** 2026-10-05 실행 중. Task1 Core97/0와 Task2 app101/0·actualUI1/0·read-only14JSON 검증 완료. Task3/4는 대기. 정확한 재개 위치는 PROGRESS를 읽는다.
 
 ## Global Constraints
 
@@ -56,10 +56,10 @@
 
 **Interfaces:** Task1 payload/paste를 소비, 앱 clipboard access/paste control/session/history/소유 stamp 제공.
 
-- [ ] RED 실제 UI: pen→lasso copy→다른 blank page paste→pen→Undo3/Redo3. read-only saved JSON에서 원본 유지·새 UUID·순서·위치·reopen 확인. system paste control를 사용하고 test-only 앱 seed/가짜 manager로 대체하지 않는다.
-- [ ] RED 프로그램 provider 경계: 반환 전 page/note/generation/revision 변경 및 native A→finalB capture→paste→queuedB; 새 입력/현재 페이지/실제 manager stack 보존. 잘못된/다중 provider와 cancel/오류는 atomic no-op.
-- [ ] RED: 반복 paste·동일 모양·native erase/append·raw system Undo/Redo로 provenance 유지 또는 모호성 저장 중단/화면·양 disk 유지. 빈 copy와 실패 인코딩은 기존 clipboard 보존, copy는 revision/history 무변경.
-- [ ] native 사용자 paste control/한도 read/owner stamp/버튼 구현 → 관련 app와 실제 UI GREEN → 전체 app → PROGRESS/commit. 실패 fixture 요청은 실제권한확인과 구분한다.
+- [x] RED 실제 UI: pen→lasso copy→다른 blank page paste→pen→Undo3/Redo3. read-only saved JSON에서 원본 유지·새 UUID·순서·위치·reopen 확인. system paste control를 사용하고 test-only 앱 seed/가짜 manager로 대체하지 않는다.
+- [x] RED 프로그램 provider 경계: 반환 전 page/note/generation/revision 변경 및 native A→finalB capture→paste→queuedB; 새 입력/현재 페이지/실제 manager stack 보존. 잘못된/다중 provider와 cancel/오류는 atomic no-op.
+- [x] RED: 반복 paste·동일 모양·native erase/append·raw system Undo/Redo로 provenance 유지 또는 모호성 저장 중단/화면·양 disk 유지. 빈 copy와 실패 인코딩은 기존 clipboard 보존, copy는 revision/history 무변경.
+- [x] native 사용자 paste control/한도 read/owner stamp/버튼 구현 → 관련 app와 실제 UI GREEN → 전체 app → PROGRESS/commit. 실패 fixture 요청은 실제권한확인과 구분한다.
 
 ### Task 3: 저장·복구·PDF·공통 payload 왕복
 

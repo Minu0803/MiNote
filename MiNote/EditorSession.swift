@@ -189,6 +189,24 @@ final class EditorSession: ObservableObject {
         try acceptInkCommand(next,before:page.strokes,native:moved)
         return transition
     }
+    func copySelectedInk() throws -> Data? {
+        guard canApplyInkCommand, let page=currentPage else { throw DocumentError.staleRevision }
+        let strokes=page.strokes.filter { selectedStrokeIDs.contains($0.id) }
+        guard !strokes.isEmpty else { return nil }
+        return try InkClipboardCodec.encode(InkClipboardPayload(strokes:strokes))
+    }
+    func pasteInk(_ payload: InkClipboardPayload, dx: Double, dy: Double) throws -> InkTransition? {
+        guard canApplyInkCommand, let base=document, let page=currentPage else { throw DocumentError.staleRevision }
+        // Session accepts only the same validated versioned interchange as providers.
+        _ = try InkClipboardCodec.encode(payload)
+        let next=try InkCommands.paste(strokes:payload.strokes,pageID:page.id,dx:dx,dy:dy,expectedRevision:base.revision,in:base)
+        guard next != base else { return nil }
+        let added=Array(next.pages[currentPageIndex].strokes.dropFirst(page.strokes.count))
+        let native=PKDrawing(strokes:drawing.strokes + (try InkAdapter.decode(added)).strokes)
+        let transition=try acceptSelectionCommand(next,before:page.strokes,native:native)
+        selectedStrokeIDs=Set(added.map(\.id))
+        return transition
+    }
     func deleteSelectedInk() throws -> InkTransition? {
         guard canApplyInkCommand, let base=document, let page=currentPage else { throw DocumentError.invalidDocument("필기를 저장한 뒤 삭제해 주세요.") }
         let next=try InkCommands.delete(strokeIDs:selectedStrokeIDs,pageID:page.id,expectedRevision:base.revision,in:base)

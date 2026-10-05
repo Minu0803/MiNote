@@ -1,7 +1,7 @@
 # MiNote 작업 지침
 
 1. 시작할 때 `docs/PROGRESS.md`, 현재 단계 계획, 관련 코드와 Git 상태를 읽는다.
-2. M0-A, M0-B, M0-C, M1-A 로컬 라이브러리, M1-B 페이지/다중 PDF, M1-C 편집 백업·복원/파일 정리, M2-A 올가미 획 선택·평행 이동, M2-B 선택 획 삭제·같은 페이지 복제는 완료했다. M2-B의 양 OS 검증·한 번의 리뷰 보완·Notion 기록 근거는 PROGRESS와 milestone을 읽는다. 다음 개발 단위는 M2-B2 clipboard 복사/다른 페이지·노트 붙여넣기이며 `docs/superpowers/plans/2026-10-05-m2-b2-clipboard.md`에 계획만 작성했고 미구현이다. 이후 텍스트·이미지·검색·혼합 객체 검증으로 이어간다. 한 번에 한 개발 단위를 완료·검증·기록한다.
+2. M0-A, M0-B, M0-C, M1-A 로컬 라이브러리, M1-B 페이지/다중 PDF, M1-C 편집 백업·복원/파일 정리, M2-A 올가미 획 선택·평행 이동, M2-B 선택 획 삭제·같은 페이지 복제는 완료했다. M2-B의 양 OS 검증·한 번의 리뷰 보완·Notion 기록 근거는 PROGRESS와 milestone을 읽는다. 다음 개발 단위는 M2-B2 clipboard 복사/다른 페이지·노트 붙여넣기이며 `docs/superpowers/plans/2026-10-05-m2-b2-clipboard.md`에 따라 구현 중이다. Task1 Core와 Task2 native clipboard/소유 stamp/실제 UI를 완료했고 다음 Task3/4를 진행한다. 정확한 Git 상태와 재개 위치는 PROGRESS를 읽는다. 이후 텍스트·이미지·검색·혼합 객체 검증으로 이어간다. 한 번에 한 개발 단위를 완료·검증·기록한다.
 3. 사용자는 이후 작업을 `main`에서 직접 진행하길 원한다. 기본 저장소 `/Users/minwookim/Documents/GitHub/MiNote`의 `main`에서 작업한다. 별도 브랜치·worktree·PR을 만들지 않는다. 사용자가 이 선호를 바꾸면 그 지시를 따른다.
 4. 앱은 iPadOS 18 이상. UI/PencilKit 코드는 앱에, 공통 문서·저장은 Foundation만 사용하는 MiNoteCore에 둔다.
 5. 작은 작업마다 관련 테스트를 실행하고 결과·미검증 항목·다음 작업을 PROGRESS에 기록한 후 커밋한다. 긴 작업 전에도 체크포인트를 기록한다.

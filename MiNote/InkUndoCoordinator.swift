@@ -42,6 +42,9 @@ import PencilKit
     func move(dx: Double, dy: Double) throws {
         try perform(action:"획 이동") { try $0.translateSelectedInk(dx:dx,dy:dy) }
     }
+    func paste(_ payload: InkClipboardPayload, dx: Double, dy: Double) throws {
+        try perform(action:"붙여넣기") { try $0.pasteInk(payload,dx:dx,dy:dy) }
+    }
     func deleteSelection() throws {
         try perform(action:"선택 삭제") { try $0.deleteSelectedInk() }
     }

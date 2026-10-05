@@ -127,7 +127,7 @@ struct NoteEditorView: View {
     }
 
     private var documentBar: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 10) {
             Button { captureDrawing(); Task { await session.selectPage(session.currentPageIndex - 1) } } label: {
                 Image(systemName: "chevron.left")
             }
@@ -151,9 +151,15 @@ struct NoteEditorView: View {
                 Button { canvasReference.duplicateSelectedInk(in:session) } label: { Image(systemName:"plus.square.on.square") }
                     .accessibilityLabel("복제").accessibilityIdentifier("duplicateSelectedInk")
                     .disabled(!session.canApplyInkCommand || session.selectedStrokeIDs.isEmpty)
+                Button { canvasReference.copySelectedInk(in:session) } label: { Image(systemName:"doc.on.doc") }
+                    .accessibilityLabel("복사").accessibilityIdentifier("copySelectedInk")
+                    .disabled(!session.canApplyInkCommand || session.selectedStrokeIDs.isEmpty)
                 Button("선택 해제") { session.clearInkSelection() }
                     .accessibilityIdentifier("clearSelection").disabled(session.isProcessing || session.selectedStrokeIDs.isEmpty)
             }
+            InkPasteControl(isEnabled:session.canApplyInkCommand) { providers in
+                Task { await canvasReference.pasteInk(from:providers,in:session) }
+            }.frame(width:36,height:32)
             Spacer()
             Button { captureDrawing(); showsPageManager = true } label: { Image(systemName: "square.grid.2x2") }
                 .accessibilityLabel("페이지 관리").accessibilityIdentifier("pageManager").disabled(session.isProcessing)
