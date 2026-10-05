@@ -30,13 +30,14 @@ if not args.all_tests:
     command += ['-only-testing:MiNoteUITests/' + ('SelectionCommandUITests' if args.selection_tests else 'LassoUITests')]
 command += ['CODE_SIGNING_ALLOWED=NO','COMPILATION_CACHE_ENABLE_CACHING=NO','test']
 snapshots = {}
+clipboard_frames = {}
 asset_hashes = {}
 errors = []
 with log.open('x') as output:
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
     for line in process.stdout:
         output.write(line); output.flush()
-        marker = next((m for m in ['MINOTE_LASSO_STAGE ', 'MINOTE_SELECTION_STAGE '] if m in line),None)
+        marker = next((m for m in ['MINOTE_LASSO_STAGE ', 'MINOTE_SELECTION_STAGE ', 'MINOTE_CLIPBOARD_STAGE '] if m in line),None)
         if marker is None:
             continue
         try:
@@ -58,6 +59,9 @@ with log.open('x') as output:
             assert len(page['strokes']) == meta['count'], (meta, len(page['strokes']))
             assert meta['phase'] not in snapshots
             snapshots[meta['phase']] = doc
+            if marker == 'MINOTE_CLIPBOARD_STAGE ':
+                clipboard_frames[meta['phase']] = meta['pasteFrames']
+                (evidence / (meta['phase']+'.frames')).write_text(json.dumps(meta['pasteFrames']))
             asset_hashes[meta['phase']] = {asset['id']:hashlib.sha256((directory / 'assets' / (asset['id']+'.pdf')).read_bytes()).hexdigest() for asset in doc['pdfAssets']}
             if meta['phase'].startswith('pdf'):
                 assert len(doc['pdfAssets'])==1
@@ -79,7 +83,11 @@ try:
     if selection or args.selection_tests or args.all_tests:
         from selection_evidence import verify
         verify(selection)
-    snapshots = {k:v for k,v in snapshots.items() if k not in selection}
+    clipboard = {k:v for k,v in snapshots.items() if k.startswith('clip')}
+    if clipboard:
+        from clipboard_evidence import verify as verify_clipboard
+        verify_clipboard(clipboard,clipboard_frames)
+    snapshots = {k:v for k,v in snapshots.items() if k not in selection and k not in clipboard}
     if args.selection_tests and not args.all_tests:
         raise SystemExit(0)
     phases = ['pen1','move1','pen2','undoPen2','undoMove','undoPen1','redoPen1','redoMove','redoPen2','eraseMoved','undoErase','redoErase','restoreErase','zoom','rotation','portrait','relaunch']

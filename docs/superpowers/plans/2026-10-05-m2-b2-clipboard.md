@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-26-minote-product-design.md` 객체 복사·안정 ID·호환성. 선행 M2-B 결과와 `docs/format/document-v3.md`, `docs/format/backup-v1.md`.
 
-**상태:** 2026-10-05 실행 중. Task1 Core97/0와 Task2 app101/0·actualUI1/0·read-only14JSON 검증 완료. Task3/4는 대기. 정확한 재개 위치는 PROGRESS를 읽는다.
+**상태:** 2026-10-05 실행 중. Task1 Core97/0와 Task2 app101/0·actualUI1/0·read-only14JSON 검증 완료. Task3 app107/0·Core97/0·Node40/0·5fixture check를 완료했고 Task4 양OS 마감은 대기. 정확한 재개 위치는 PROGRESS를 읽는다.
 
 ## Global Constraints
 
@@ -65,11 +65,11 @@
 
 **Interfaces:** Task2의 소유 stamp와 transition을 소비해 영속/독립 교환 결과 제공.
 
-- [ ] RED: paste autosave/relaunch/새 library `.minote` 복원에서 UUID·필기값·다른 metadata·원본 PDF bytes 유지, 선택/Undo 초기화.
-- [ ] RED: 실제 backup writer gate/ENOSPC와 지연 provider/raw Undo/Redo 양 stack 보존, retry 후 정확한 재생. 기다리는 동안 입력한 필기를 버리지 않는다.
-- [ ] RED: zoom1/2/5·scroll·4crop rotation마다 실제 production host 화면 pixel과 PDF 출력에서 paste 위치 일치, selection outline 출력 제외, 원본 SHA 불변. 단순 좌표 왕복을 실제 화면 검증으로 표시하지 않는다.
-- [ ] actual app payload/pasted fixture→independent JS decode/paste fresh UUID manifest 및 추가 편집→iPad owned native edit/Undo/save/reopen. 모든 scalar/metadata 비교, 예상 JSON 복사 금지.
-- [ ] 관련 app/core/Node/fixture check GREEN, 문서 포맷/provenance와 PROGRESS/commit.
+- [x] RED: paste autosave/relaunch/새 library `.minote` 복원에서 UUID·필기값·다른 metadata·원본 PDF bytes 유지, 선택/Undo 초기화.
+- [x] RED: 실제 backup writer gate/ENOSPC와 지연 provider/raw Undo/Redo 양 stack 보존, retry 후 정확한 재생. 기다리는 동안 입력한 필기를 버리지 않는다.
+- [x] RED: zoom1/2/5·scroll·4crop rotation마다 실제 production host 화면 pixel과 PDF 출력에서 paste 위치 일치, selection outline 출력 제외, 원본 SHA 불변. 단순 좌표 왕복을 실제 화면 검증으로 표시하지 않는다.
+- [x] actual app payload/pasted fixture→independent JS decode/paste fresh UUID manifest 및 추가 편집→iPad owned native edit/Undo/save/reopen. 모든 scalar/metadata 비교, 예상 JSON 복사 금지.
+- [x] 관련 app/core/Node/fixture check GREEN, 문서 포맷/provenance와 PROGRESS/commit.
 
 ### Task 4: 양OS 마감·한번 리뷰·기록
 

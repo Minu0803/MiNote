@@ -128,6 +128,33 @@ import XCTest
         for asset in imported.pdfAssets { XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent(asset.relativePath)),bytes) }
     }
 
+    func testIndependentClipboardFixtureRemainsEditableThroughOwnedHistorySaveAndReopen() async throws {
+        let imported=try fixtureDocument("clipboard-edited"), pasted=try fixtureDocument("clipboard-pasted")
+        XCTAssertEqual(imported.revision,pasted.revision+3)
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:root) }
+        try FileManager.default.createDirectory(at:root.appendingPathComponent("assets"),withIntermediateDirectories:true)
+        let bytes=try Data(contentsOf:fixtureURL("source",extension:"pdf"))
+        for a in imported.pdfAssets { try bytes.write(to:root.appendingPathComponent(a.relativePath)) }
+        let store=DocumentStore(directory:root); try await store.save(imported)
+        let s=EditorSession(store:store,saveDelay:.seconds(60)); await s.loadIfNeeded(); XCTAssertEqual(s.document,imported)
+        let canvas=InkCanvasView(), ref=CanvasReference(); ref.canvas=canvas; canvas.drawing=s.drawing
+        let c=NoteCanvas.Coordinator(session:s,reference:ref); c.attach(to:canvas)
+        try s.selectInk(polygon:[.init(x:-1000,y:-1000),.init(x:2000,y:-1000),.init(x:2000,y:2000),.init(x:-1000,y:2000)])
+        let payload=try InkClipboardCodec.decode(XCTUnwrap(s.copySelectedInk()))
+        try c.inkUndo?.paste(payload,dx:60,dy:60); XCTAssertEqual(s.currentPage?.strokes.count,(imported.pages[0].strokes.count)*2)
+        canvas.undoManager?.undo(); XCTAssertEqual(s.currentPage?.strokes,imported.pages[0].strokes)
+        c.canvasViewDidBeginUsingTool(canvas); c.apply(PKDrawing(strokes:canvas.drawing.strokes+[sampleStroke(offset:320)]),to:canvas); c.capture(canvas)
+        let added=try XCTUnwrap(s.currentPage?.strokes); XCTAssertEqual(Array(added.dropLast()),imported.pages[0].strokes)
+        c.canvasViewDidBeginUsingTool(canvas); c.apply(PKDrawing(strokes:[canvas.drawing.strokes.last!]),to:canvas); c.capture(canvas)
+        canvas.undoManager?.undo(); XCTAssertEqual(s.currentPage?.strokes,added)
+        canvas.undoManager?.undo(); XCTAssertEqual(s.currentPage?.strokes,imported.pages[0].strokes)
+        await s.flush(); let expected=s.document, reopened=EditorSession(store:store); await reopened.loadIfNeeded()
+        XCTAssertEqual(reopened.document,expected); XCTAssertEqual(expected?.pages,imported.pages); XCTAssertEqual(expected?.deletedPages,imported.deletedPages)
+        XCTAssertTrue(reopened.selectedStrokeIDs.isEmpty); XCTAssertEqual(s.saveState,.saved); XCTAssertNil(s.operationError)
+        for a in imported.pdfAssets { XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent(a.relativePath)),bytes) }
+    }
+
     func testGenerateV3PencilKitFixture() throws {
         var document = try PortableFixture.make()
         document.pages[0].paper = .grid; document.pages[0].isBookmarked = true

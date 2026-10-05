@@ -24,6 +24,132 @@ import PDFKit
         try session.selectInk(polygon:[.init(x:80,y:100),.init(x:90,y:100),.init(x:90,y:110),.init(x:80,y:110)])
         XCTAssertEqual(session.selectedStrokeIDs.count,1)
     }
+    func testClipboardAutosaveBackupAndActualGeneratorPreserveOtherPagesAndPDFBytes() async throws {
+        let root=try directory(), store=try await fixture(in:root.appendingPathComponent("source"))
+        let registry=ExportFileRegistry(root:root.appendingPathComponent("exports"))
+        let s=EditorSession(store:store,saveDelay:.milliseconds(15),exportRegistry:registry); await s.loadIfNeeded()
+        try selectAll(s); let data=try XCTUnwrap(s.copySelectedInk()), payload=try InkClipboardCodec.decode(data)
+        await s.selectPage(0); let before=try XCTUnwrap(s.document)
+        let canvas=InkCanvasView(), ref=CanvasReference(); ref.canvas=canvas; canvas.drawing=s.drawing
+        let c=NoteCanvas.Coordinator(session:s,reference:ref); c.attach(to:canvas)
+        try c.inkUndo?.paste(payload,dx:30,dy:-15)
+        let expected=try XCTUnwrap(s.document), added=Array(expected.pages[0].strokes.dropFirst(before.pages[0].strokes.count))
+        XCTAssertEqual(expected.pages.dropFirst(),before.pages.dropFirst()); XCTAssertEqual(expected.deletedPages,before.deletedPages)
+        XCTAssertEqual(expected.pdfAssets,before.pdfAssets); XCTAssertEqual(added.count,payload.strokes.count)
+        for _ in 0..<100 where s.saveState != .saved { try await Task.sleep(for:.milliseconds(20)) }
+        XCTAssertEqual(s.saveState,.saved); let disk=try await store.load(); XCTAssertEqual(disk?.document,expected)
+        let reopened=EditorSession(store:store); await reopened.loadIfNeeded(); XCTAssertEqual(reopened.document,expected)
+        XCTAssertTrue(reopened.selectedStrokeIDs.isEmpty)
+        let exported=await s.exportBackup(), file=try XCTUnwrap(exported)
+        let library=LibrarySession(store:LibraryStore(directory:root.appendingPathComponent("library")),exportRegistry:registry)
+        await library.load(); await library.restoreBackup(from:file.url,folderID:nil)
+        let id=try XCTUnwrap(library.notes.first?.id); await library.openNote(id)
+        let restored=try XCTUnwrap(library.selectedEditor); var restoredDoc=try XCTUnwrap(restored.document); XCTAssertEqual(restoredDoc.title,expected.title+" (복원)"); restoredDoc.title=expected.title; XCTAssertEqual(restoredDoc,expected)
+        XCTAssertTrue(restored.selectedStrokeIDs.isEmpty)
+        let restoredCanvas=InkCanvasView(), restoredRef=CanvasReference(); restoredRef.canvas=restoredCanvas
+        let restoredC=NoteCanvas.Coordinator(session:restored,reference:restoredRef); restoredC.attach(to:restoredCanvas)
+        XCTAssertFalse(restoredCanvas.undoManager?.canUndo ?? true)
+        let bytes=try Data(contentsOf:fixtureURL("source",extension:"pdf"))
+        for a in expected.pdfAssets {
+            XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent("source/\(a.relativePath)")),bytes)
+            XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent("library/notes/\(id.uuidString)/\(a.relativePath)")),bytes)
+        }
+        try await registry.release(file.lease)
+        let output=FileManager.default.urls(for:.documentDirectory,in:.userDomainMask)[0].appendingPathComponent("PortableInkGenerated")
+        try FileManager.default.createDirectory(at:output,withIntermediateDirectories:true)
+        try data.write(to:output.appendingPathComponent("clipboard-payload.json"),options:.atomic)
+        try DocumentCodec.encode(before).write(to:output.appendingPathComponent("clipboard-target.json"),options:.atomic)
+        try DocumentCodec.encode(expected).write(to:output.appendingPathComponent("clipboard-pasted.json"),options:.atomic)
+        let command:[String:Any]=["kind":"pasteStrokes","pageID":before.pages[0].id.uuidString,"newIDs":added.map { $0.id.uuidString },"dx":30,"dy":-15,"expectedRevision":before.revision]
+        try JSONSerialization.data(withJSONObject:command,options:.sortedKeys).write(to:output.appendingPathComponent("clipboard-command.json"),options:.atomic)
+    }
+    func testClipboardENOSPCAndBackupBusyKeepBothSystemStacksAndPendingInput() async throws {
+        for busy in [false,true] { for redo in [false,true] {
+            let root=try directory(), fault=SelectionWriteFault(), gate=SelectionBlockingGate()
+            let store=DocumentStore(directory:root,atomicWriter:{ data,url in
+                if fault.fails(url) { throw POSIXError(.ENOSPC) }; try data.write(to:url,options:.atomic)
+            })
+            let service=NoteBackup(chunkWriter:{ handle,data in try handle.write(contentsOf:data); if busy { gate.blockOnce() } })
+            let s=EditorSession(store:store,saveDelay:.seconds(60),exportRegistry:ExportFileRegistry(root:root.appendingPathComponent("exports")),backupService:service)
+            await s.loadIfNeeded(); s.receiveDrawing(PKDrawing(strokes:[sampleStroke()])); await s.flush(); try selectAll(s)
+            let payload=try InkClipboardCodec.decode(XCTUnwrap(s.copySelectedInk()))
+            let canvas=InkCanvasView(), ref=CanvasReference(); ref.canvas=canvas; canvas.drawing=s.drawing
+            let c=NoteCanvas.Coordinator(session:s,reference:ref); c.attach(to:canvas)
+            try c.inkUndo?.paste(payload,dx:30,dy:-15); let edited=try XCTUnwrap(s.currentPage?.strokes)
+            if redo { canvas.undoManager?.undo() }
+            if busy { await s.flush() }; let before=s.document, drawing=s.drawing
+            let primary=try Data(contentsOf:root.appendingPathComponent("document.json")), backup=try Data(contentsOf:root.appendingPathComponent("document.backup.json"))
+            let canUndo=canvas.undoManager?.canUndo, canRedo=canvas.undoManager?.canRedo
+            var job:Task<ExportedFile?,Never>?
+            if busy { job=Task { await s.exportBackup() }; let entered=await Task.detached { gate.waitForEntry() }.value; XCTAssertTrue(entered) }
+            else { fault.arm(); s.receiveDrawing(drawing); s.retrySave(); await s.flush(); if case .failed = s.saveState {} else { XCTFail("Expected actual ENOSPC") } }
+            XCTAssertThrowsError(try c.inkUndo?.paste(payload,dx:30,dy:-15))
+            canvas.undoManager?.undo(); canvas.undoManager?.redo()
+            XCTAssertEqual(s.document,before); XCTAssertEqual(s.drawing,drawing)
+            XCTAssertEqual(canvas.undoManager?.canUndo,canUndo); XCTAssertEqual(canvas.undoManager?.canRedo,canRedo)
+            XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent("document.json")),primary)
+            XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent("document.backup.json")),backup)
+            if busy {
+                c.canvasViewDidBeginUsingTool(canvas); c.apply(PKDrawing(strokes:canvas.drawing.strokes+[sampleStroke(offset:320)]),to:canvas); ref.captureDrawing(in:s)
+                let withLate=s.currentPage?.strokes; gate.released.signal(); let file=await job?.value
+                XCTAssertNil(file); XCTAssertEqual(s.currentPage?.strokes,withLate)
+                canvas.undoManager?.undo(); XCTAssertEqual(s.document?.pages,before?.pages)
+            } else {
+                fault.disarm(); s.retrySave(); await s.flush(); XCTAssertEqual(s.saveState,.saved)
+                if redo { canvas.undoManager?.redo(); XCTAssertEqual(s.currentPage?.strokes,edited) }
+                else { canvas.undoManager?.undo(); XCTAssertEqual(s.currentPage?.strokes,payload.strokes) }
+            }
+        } }
+    }
+    func testClipboardViewportPlacementUsesActualNativeScreenAndPDFAtEveryRotationZoomAndScroll() async throws {
+        let root=try directory(), bytes=try PDFFixture.data(), prepared=try await PDFImporter().prepare(data:bytes,filename:"source.pdf")
+        let folder=root.appendingPathComponent("note"), store=DocumentStore(directory:folder)
+        try FileManager.default.createDirectory(at:folder.appendingPathComponent("assets"),withIntermediateDirectories:true)
+        try bytes.write(to:folder.appendingPathComponent(prepared.asset.relativePath))
+        var ink=testInk(); for i in ink.points.indices { ink.points[i].y=120 }
+        var doc=NoteDocument(title:"Clipboard pixels",pages:prepared.pages,pdfAssets:[prepared.asset])
+        for i in doc.pages.indices { var original=ink; original.id=UUID(); doc.pages[i].strokes=[original] }
+        try await store.save(doc)
+        let s=EditorSession(store:store,saveDelay:.seconds(60),exportRegistry:ExportFileRegistry(root:root.appendingPathComponent("exports"))); await s.loadIfNeeded()
+        for i in 0..<4 {
+            await s.selectPage(i); try selectAll(s); let data=try XCTUnwrap(s.copySelectedInk())
+            let provider=NSItemProvider(); provider.registerDataRepresentation(forTypeIdentifier:InkClipboardAccess.typeIdentifier,visibility:.all) { done in done(data,nil); return nil }
+            let current=try XCTUnwrap(s.currentPage), host=PageZoomHost(frame:CGRect(x:0,y:0,width:834,height:900))
+            host.configurePage(size:CGSize(width:current.width,height:current.height),pdfPage:s.currentPDFPage)
+            let ref=CanvasReference(); ref.canvas=host.canvas; ref.host=host
+            let c=NoteCanvas.Coordinator(session:s,reference:ref); c.attach(to:host.canvas); c.apply(s.drawing,to:host.canvas)
+            let previous=UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).first(where: \.isKeyWindow)
+            let window=UIWindow(frame:host.bounds); window.rootViewController=UIViewController(); window.rootViewController?.view.addSubview(host); window.makeKeyAndVisible(); host.layoutIfNeeded()
+            let scroll=try XCTUnwrap(host.subviews.first as? UIScrollView)
+            for zoom in [1.0,2.0,5.0] {
+                scroll.zoomScale=scroll.minimumZoomScale*zoom
+                host.layoutIfNeeded(); scroll.layoutIfNeeded()
+                let minX = -scroll.contentInset.left, minY = -scroll.contentInset.top
+                let maxX = max(minX,scroll.contentSize.width+scroll.contentInset.right-scroll.bounds.width)
+                let maxY = max(minY,scroll.contentSize.height+scroll.contentInset.bottom-scroll.bounds.height)
+                scroll.setContentOffset(.init(x:min(maxX,max(minX,180*scroll.zoomScale-scroll.bounds.width/2)),y:min(maxY,max(minY,220*scroll.zoomScale-scroll.bounds.height/2))),animated:false)
+                await ref.pasteInk(from:[provider],in:s)
+                XCTAssertEqual(s.currentPage?.strokes.count,2); XCTAssertNil(s.operationError)
+                try await Task.sleep(for:.milliseconds(200))
+                let format=UIGraphicsImageRendererFormat(); format.scale=1
+                let image=UIGraphicsImageRenderer(size:host.bounds.size,format:format).image { _ in XCTAssertTrue(host.drawHierarchy(in:host.bounds,afterScreenUpdates:true)) }
+                let a=XCTAttachment(image:image); a.name="clipboard-screen-r\(i*90)-z\(zoom)"; a.lifetime = .keepAlways; add(a)
+                // Independent visible viewport midpoint, not the production page-coordinate helper.
+                let middle=CGPoint(x:host.bounds.midX,y:host.bounds.midY), color=pixel(image,at:middle)
+                XCTAssertGreaterThan(color[2],150,"rotation \(i*90) zoom \(zoom)"); XCTAssertLessThan(color[0],100,"rotation \(i*90) zoom \(zoom) offset \(scroll.contentOffset)")
+                let pasted=try XCTUnwrap(s.currentPage?.strokes.last)
+                let file=await s.exportPDF(), output=try XCTUnwrap(file), pdf=try XCTUnwrap(PDFDocument(url:output.url)), page=try XCTUnwrap(pdf.page(at:i))
+                let raster=renderPDFPage(page,size:try PDFGeometry(page:page).size)
+                let center=CGPoint(x:130+pasted.transform.tx,y:120+pasted.transform.ty), exported=pixel(raster,at:center)
+                XCTAssertGreaterThan(exported[2],150); XCTAssertLessThan(exported[0],100)
+                let outline=pixel(raster,at:CGPoint(x:center.x,y:center.y-14)); XCTAssertLessThan(abs(Int(outline[2])-Int(outline[0])),25)
+                try await s.exportRegistry.release(output.lease)
+                host.canvas.undoManager?.undo(); XCTAssertEqual(s.currentPage?.strokes,current.strokes)
+            }
+            host.removeFromSuperview(); window.isHidden=true; previous?.makeKeyAndVisible()
+        }
+        XCTAssertEqual(try Data(contentsOf:folder.appendingPathComponent(prepared.asset.relativePath)),bytes)
+    }
     func testSelectionAutosaveAndBackupRestoreKeepAllIdentitiesMetadataAndAssetBytes() async throws {
         let root=try directory(), store=try await fixture(in:root.appendingPathComponent("source"))
         let registry=ExportFileRegistry(root:root.appendingPathComponent("exports"))

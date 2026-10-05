@@ -1,6 +1,6 @@
 import XCTest
 import PencilKit
-import MiNoteCore
+@testable import MiNoteCore
 @testable import MiNote
 
 @MainActor final class InkClipboardTests: XCTestCase {
@@ -126,6 +126,42 @@ import MiNoteCore
         gate.complete(Data("late".utf8))
         XCTAssertEqual(s.document,before)
     }
+    func testDelayedProviderRejectsUnreportedFinalCanvasAndNativeUndoKeepsNewInput() async throws {
+        let (s,canvas,ref,c)=try await setup(); try selectAll(s)
+        let data=try XCTUnwrap(s.copySelectedInk()), original=s.currentPage?.strokes, gate=ClipboardProviderGate(), p=NSItemProvider()
+        p.registerDataRepresentation(forTypeIdentifier:InkClipboardAccess.typeIdentifier,visibility:.all) { done in gate.install(done); return nil }
+        let request=Task { await ref.pasteInk(from:[p],in:s,viewportCenter:.init(x:300,y:400)) }
+        for _ in 0..<100 where !gate.ready { try await Task.sleep(for:.milliseconds(10)) }
+        c.canvasViewDidBeginUsingTool(canvas); c.apply(PKDrawing(strokes:canvas.drawing.strokes+[sampleStroke(offset:200)]),to:canvas)
+        gate.complete(data); await request.value
+        let latest=try XCTUnwrap(s.currentPage?.strokes); XCTAssertEqual(latest.count,2); XCTAssertNotNil(s.operationError)
+        c.capture(canvas); canvas.undoManager?.undo(); XCTAssertEqual(s.currentPage?.strokes,original)
+        canvas.undoManager?.redo(); XCTAssertEqual(s.currentPage?.strokes,latest)
+    }
+    func testProviderCompletionWhileActualBackupWriterIsBusyCannotPasteOrConsumeStacks() async throws {
+        let dir=root(), backupGate=ClipboardBackupGate()
+        let service=NoteBackup(chunkWriter:{ handle,data in try handle.write(contentsOf:data); backupGate.block() })
+        let s=EditorSession(store:DocumentStore(directory:dir),saveDelay:.seconds(60),exportRegistry:ExportFileRegistry(root:dir.appendingPathComponent("exports")),backupService:service); await s.loadIfNeeded()
+        let canvas=InkCanvasView(), ref=CanvasReference(); ref.canvas=canvas
+        let c=NoteCanvas.Coordinator(session:s,reference:ref); c.attach(to:canvas)
+        c.canvasViewDidBeginUsingTool(canvas); c.apply(PKDrawing(strokes:[sampleStroke()]),to:canvas); c.capture(canvas); try selectAll(s)
+        let bytes=try XCTUnwrap(s.copySelectedInk()), gate=ClipboardProviderGate(), p=NSItemProvider()
+        p.registerDataRepresentation(forTypeIdentifier:InkClipboardAccess.typeIdentifier,visibility:.all) { done in gate.install(done); return nil }
+        let request=Task { await ref.pasteInk(from:[p],in:s,viewportCenter:.init(x:300,y:400)) }
+        for _ in 0..<100 where !gate.ready { try await Task.sleep(for:.milliseconds(10)) }
+        let backup=Task { await s.exportBackup() }, entered=await Task.detached { backupGate.waitForEntry() }.value
+        XCTAssertTrue(entered); XCTAssertTrue(s.isProcessing)
+        let before=s.document, drawing=s.drawing, undo=canvas.undoManager?.canUndo, redo=canvas.undoManager?.canRedo
+        let primary=try Data(contentsOf:dir.appendingPathComponent("document.json")), recovery=try Data(contentsOf:dir.appendingPathComponent("document.backup.json"))
+        gate.complete(bytes); await request.value; canvas.undoManager?.undo(); canvas.undoManager?.redo()
+        XCTAssertEqual(s.document,before); XCTAssertEqual(s.drawing,drawing)
+        XCTAssertEqual(canvas.undoManager?.canUndo,undo); XCTAssertEqual(canvas.undoManager?.canRedo,redo)
+        XCTAssertEqual(try Data(contentsOf:dir.appendingPathComponent("document.json")),primary)
+        XCTAssertEqual(try Data(contentsOf:dir.appendingPathComponent("document.backup.json")),recovery)
+        backupGate.released.signal(); let file=await backup.value; if let file { try await s.exportRegistry.release(file.lease) }
+        canvas.undoManager?.undo(); XCTAssertTrue(s.currentPage?.strokes.isEmpty == true)
+        canvas.undoManager?.redo(); XCTAssertEqual(s.document?.pages,before?.pages)
+    }
     func testFileProviderAndOversizedOrFailedProviderReadAreBounded() async throws {
         let data=try InkClipboardCodec.encode(InkClipboardPayload(strokes:InkAdapter.encode(PKDrawing(strokes:[sampleStroke()]),preserving:[])))
         let url=root().appendingPathExtension("json"); try data.write(to:url); defer { try? FileManager.default.removeItem(at:url) }
@@ -143,4 +179,11 @@ private final class ClipboardProviderGate: @unchecked Sendable {
     var ready:Bool { lock.withLock { callback != nil } }
     func install(_ callback:@escaping (Data?,Error?)->Void) { lock.withLock { self.callback=callback } }
     func complete(_ data:Data) { let action=lock.withLock { let c=callback; callback=nil; return c }; action?(data,nil) }
+}
+
+private final class ClipboardBackupGate: @unchecked Sendable {
+    let entered=DispatchSemaphore(value:0), released=DispatchSemaphore(value:0)
+    private let lock=NSLock(); private var used=false
+    func waitForEntry() -> Bool { entered.wait(timeout:.now()+5) == .success }
+    func block() { let first=lock.withLock { if used { return false }; used=true; return true }; if first { entered.signal(); _=released.wait(timeout:.now()+8) } }
 }

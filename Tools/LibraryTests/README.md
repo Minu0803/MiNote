@@ -59,3 +59,18 @@ native pen/move/pen Undo3/Redo3, moved-stroke erasure, zoom/rotation/relaunch,
 and a90-degree cropped PDF's unchanged registered asset SHA against the original
 fixture. Xcode or observer failure remains a failure. There are no app test
 hooks, data seeding, simulator erasure or app-document writes by this helper.
+
+## Actual clipboard evidence (M2-B2)
+
+`python3 clipboard_evidence.py <device> <DerivedData> <new-result.xcresult>` runs
+native user clipboard UI, retains14 saved JSON boundaries plus actual AX
+viewport/page frames, and verifies source preservation, fresh UUIDs, every ink
+value, independent inverse placement, same target-page Undo/Redo, different-note
+paste and relaunch. First pages may omit lastOpenedPageID; active-first fallback
+is part of the document contract. Layout pixel rounding is included in the
+observed frames; placement tolerance is1e-6 page points and other values exact.
+
+The existing `lasso_evidence.py --all-tests` also observes clipboard stages,
+adding14 boundaries to the previous43 (total57 per OS). All helpers read app data
+without seeding, rewriting documents or erasing simulators. Programmatic
+provider/cancellation/PDF tests and physical Pencil checks are separate.

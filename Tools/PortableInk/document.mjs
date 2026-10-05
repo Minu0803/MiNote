@@ -155,6 +155,7 @@ export function writeDocument(document) {
 }
 export function applyEdit(document, command) {
   validateDocument(document);
+  if (command?.kind === "pasteStrokes") return applyPasteEdit(document,command);
   if (command?.kind === "deleteStrokes" || command?.kind === "duplicateStrokes") return applySelectionEdit(document,command);
   const fields = {
     translateStroke: ['kind','pageID','strokeID','dx','dy'],
@@ -215,4 +216,37 @@ function applySelectionEdit(document,command) {
     }));
   } else target.strokes=target.strokes.filter(s=>!selected.has(s.id.toLowerCase()));
   result.revision+=1; validateDocument(result); return result;
+}
+
+// Independent version1 ink payload decoder, used by the exchange lab.
+export function readInkClipboard(text) {
+  if(typeof text!=='string' || new TextEncoder().encode(text).length>8*1024*1024) fail('Clipboard byte limit');
+  const payload=JSON.parse(text);
+  function exact(value,keys) { shape(value,keys,'clipboard'); if(keys.some(k=>!Object.hasOwn(value,k))) fail('Missing clipboard field'); }
+  exact(payload,['schemaVersion','strokes']);
+  if(payload.schemaVersion!==1 || !Array.isArray(payload.strokes) || !payload.strokes.length || payload.strokes.length>2000) fail('Clipboard version/stroke limit');
+  let count=0; const ids=new Set();
+  for(const s of payload.strokes) {
+    exact(s,['id','tool','color','points','transform','randomSeed','creationTime']);
+    exact(s.color,['red','green','blue','alpha']); exact(s.transform,['a','b','c','d','tx','ty']);
+    if(!Array.isArray(s.points) || s.points.length>100000-count) fail('Clipboard point limit');
+    count+=s.points.length;
+    for(const p of s.points) exact(p,['x','y','timeOffset','width','height','opacity','force','azimuth','altitude','secondaryScale']);
+    stroke(s,ids);
+  }
+  return payload;
+}
+function applyPasteEdit(document,command) {
+  shape(command,['kind','pageID','payload','newIDs','dx','dy','expectedRevision'],'paste');
+  uuid(command.pageID,'pageID'); integer(command.expectedRevision,'expectedRevision');
+  if(command.expectedRevision!==document.revision) fail('Stale paste revision');
+  const page=document.pages.find(p=>sameID(p.id,command.pageID)); if(!page) fail('Paste active page missing');
+  number(command.dx,'dx'); number(command.dy,'dy');
+  const payload=readInkClipboard(JSON.stringify(command.payload));
+  if(!Array.isArray(command.newIDs) || command.newIDs.length!==payload.strokes.length) fail('Fresh paste ID count');
+  command.newIDs.forEach(id=>{ uuid(id,'freshID'); if(payload.strokes.some(s=>sameID(s.id,id))) fail('Paste must replace source identity'); });
+  if(document.revision===Number.MAX_SAFE_INTEGER) fail('Paste revision limit');
+  const result=structuredClone(document), target=result.pages.find(p=>sameID(p.id,page.id));
+  target.strokes.push(...payload.strokes.map((s,i)=>{ const p=structuredClone(s); p.id=command.newIDs[i]; p.transform.tx+=command.dx; p.transform.ty+=command.dy; return p; }));
+  result.revision++; validateDocument(result); return result;
 }
