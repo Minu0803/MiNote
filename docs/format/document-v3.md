@@ -60,3 +60,11 @@ JS는 v2 입력을 v2로, v3 입력을 v3로 출력한다. v3 active-page 획 �
 원래 native drawing을 유지하며 UUID별 현재 canonical value와 이동 전후 historical aliases를 구분한다. 다른 UUID 사이 provenance가 모호하면 추측하지 않고 오류로 현재 화면/정상 저장본을 보존한다. Undo 이력/aliases는 현재 캔버스 수명에만 존재하며 페이지 전환·복원·재실행 때 초기화한다.
 
 actual app의 `lasso-source.json` revision40에서 PDF 페이지 획을 (30,-15) 이동해 `lasso-moved.json` revision41을 만들었다. 독립 JS가 같은 이동 결과 전체를 비교하고 추가 편집한 `lasso-edited.json` revision44를 iPad가 다시 편집/Undo/Redo/save/reopen한다. schema v3/catalog v1/backup v1은 변경하지 않았다.
+
+## M2-B 선택 획 삭제·같은 페이지 복제
+
+공통 명령은 문서 전체·기대 revision·활성 pageID·선택 UUID subset을 검사한다. 삭제는 현재 선택 획만 제거하고 나머지 순서/값/ID를 유지한다. 복제는 선택한 원본을 문서 순서대로 배열 끝에 추가한다. 각 복제본의 UUID만 새로 만들고 tx/ty에 (20,20)pt를 더하며 점·색상·도구·seed·시간·선형 affine은 그대로 둔다. 유한 페이지 밖 위치도 자르지 않는다. 빈 선택은 revision 한도에서도 no-op지만 잘못된 문서의 검증을 생략하지 않는다.
+
+삭제 후 선택은 비우고 복제 후에는 복제본만 선택한다. 명령과 Undo/Redo는 revision+1이며, 성공한 Undo/Redo는 선택을 비운다. 명령 직전 live canvas를 캡처해 늦은 delegate보다 최종 필기를 먼저 보존한다. 명시적 snapshot 적용 후 canonical history는 현재 획으로 확정하며 제거된 UUID가 새 동일 모양 획과 경쟁하지 않는다. 현재 UUID의 historical aliases는 유지하고 Undo는 정확한 native/portable snapshot에서 제거된 UUID를 복구한다. 실제 native erase에서 남은 UUID를 확정할 수 없으면 추측하지 않고 정상 저장본과 현재 화면을 보존한다.
+
+`selection-source` revision40 → 실제 앱 `selection-duplicated`41 → `selection-deleted`42의 모든 값을 독립 JS 명령과 비교한다. UUID-only `selection-commands.json`은 새 clone UUID를 공유하며 기대 획 값을 복사하지 않는다. 독립 추가 편집 `selection-edited`45는 iPad의 production owned Undo로 재편집·저장·재열기한다. schema/catalog/backup 버전은 바꾸지 않았다. 클립보드 payload는 M2-B2 후속이며 아직 구현하지 않았다.

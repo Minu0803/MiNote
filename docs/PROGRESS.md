@@ -1,19 +1,35 @@
 # MiNote 개발 진행 기록
 
-## M2-B 실행 체크포인트 (2026-10-05)
+## M2-B 완료·재개 지점 (2026-10-05)
+
+- **M2-B 완료**: 선택 획 삭제·같은 페이지 복제, native Undo/Redo·자동 저장/재실행·백업·독립 JSON 왕복. 다음은 **M2-B2 clipboard 복사/다른 페이지·노트 붙여넣기**, 계획만 작성했고 미구현이다. 이번 실행에서는 clipboard에 접근하지 않았다.
+- 위치 `/Users/minwookim/Documents/GitHub/MiNote`, 브랜치 `main`, 시작 기준 `ea605bc83d3b264fe262ce1f784031f96e3dda00`. Core `9ce253c`, 앱/실제 UI `0a05bbd`, 영속·독립 왕복 `93de1ba`, 리뷰 화면 test 보완 `3cd7d6f8457c7f1109a8d3a68fe5a86ecbb9b3fc`. 마지막 문서 커밋은 이 기록을 포함하는 Git HEAD/`git log -1 --oneline`으로 확인한다.
+- 최신 검증: **Core91통과/0실패, Node36통과/0실패**, v2/v3/lasso/selection fixture check 각 exit0. 각 OS **app94통과/0실패 + 일반UI11통과/fixture-only2skip/0실패**, 43 저장 JSON 경계와 원본 PDF SHA observer exit0. Skip은 이번 실행에서 전용 이주/빈 설치 환경을 재준비하지 않은 두 테스트이며 통과로 계산하지 않는다. 기존 M1-C 전용 시험 근거를 보존한다.
+- 18.6 전체 `minote-m2b18-final`의 제품/UI는 그대로다. 리뷰의 test-only 화면 보완 후 앱 전체 `minote-m2b18-review-app-green`을 다시 실행했다. 26.4는 새 DD `/private/tmp/minote-m2b-dd26-final`, cacheOFF 전체 `minote-m2b26-final`에 보완을 포함했다. 로그·xcresult·ink-evidence·observer는 `/private/tmp`에 보존한다. 정확한 명령과 증거 구분은 [M2-B milestone](milestones/2026-10-05-m2-b-delete-and-duplicate.md)에 있다.
+- 최종 리뷰 한 번: Critical0/Important1/Minor0. Important는 회전 PDF test host에 drawing이 없어 실제 화면 증거가 빠진 검증 공백이었다. 실제 pixel white255 RED(exit65)→production coordinator로 drawing 적용→GREEN. 네 회전·zoom1/2/5·삭제 뒤 화면16장과 PDF output을 검사했다. 제품 코드 결함은 보고되지 않았으며 추가 리뷰는 하지 않았다. 프로그램 화면 rendering과 실제 finger UI, 물리 Pencil 검증을 구분한다.
+- 마지막 Notion 반영 **2026-10-05T03:01:05.588Z (12:01:05 KST)**. async `task_9b1b2ebf939042f5b141f426ba351ef4` succeeded 후 재조회에서 기존 48,143자 전체 prefix·이전 첨부 유지, M2-B 제목 한 번·양 OS native 검증표·리뷰 수정·제한·다음 계획만 확인. 새 이미지는 외부 업로드하지 않았다.
+- 진행 중 제품 변경/장애물 없음. 단계 마감 문서·화면과 다음 계획을 마지막 docs 커밋에 보존한다. 기존 실패/RED/캐시 권한 실패/오래된 container 경로 부재는 아래 당시 기록과 로그에 그대로 남긴다. 최종 인계 gate는 새 시뮬레이터 시험이 아니라 보존된 실제 결과·JSON·Notion receipt·문서 상태를 대조한다.
+- 미검증: 실제 Pencil 지연·손바닥·발열·장시간/큰 실제 문서·전체 접근성·외부 공유/provider 호환. 다른 플랫폼 제품·동기화/협업, clipboard·텍스트·이미지·검색·혼합 객체 등은 후속이다. 페이지 전환·복원·relaunch에서 Undo/선택/aliases가 초기화되는 기존 수명 제한을 유지한다.
+- **다음 첫 작업**: AGENTS→이 문서→Git 상태→`docs/superpowers/plans/2026-10-05-m2-b2-clipboard.md`→M2-B native history/identity/final capture 회귀 읽기→Core clipboard payload/paste의 missing API RED. 완료된 M2-B를 반복하지 않는다. 다음 계획의 8MiB/2,000획/100,000점은 미구현 보수 기본값이며 실기기 측정치가 아니다.
+- 이번 에이전트는 branch/worktree/PR/push 또는 원격 새 조회를 수행하지 않았다. 시작 추적 ref보다10앞섰지만, 종료 문서 작업 시 추적 `origin/main`은 `0a05bbd`로 갱신돼 있었다. 따라서 이번 전체 변경이 원격에 없다고 주장하지 않는다. 실제 원격은 새 조회하지 않았으며, 마지막 상태는 Git으로 대조한다. 최종 커밋/clean 확인이 뒤따른다.
+
+## M2-B 실행 체크포인트 — 당시 기록 (2026-10-05)
+
+아래는 실행 중 기록이며 최신 완료·재개 상태는 위 절을 따른다.
+
 - 시작: main clean, 기준 `ea605bc83d3b264fe262ce1f784031f96e3dda00`, 추적 origin/main보다10앞섬(원격 새 조회 없음).
 - 범위: 선택 획 삭제·같은 페이지 복제만. M2-B2 clipboard는 다음 계획만.
 - Task1 진행: core 명령의 ID/순서/metadata·validation·빈 선택/overflow RED부터 시작. RED: missing delete/duplicate API exit1 (`minote-m2b-core-red-authorized.log`); 구현 후 전체 core91/0 exit0 (`minote-m2b-core-green.log`). sandbox 캐시 실패는 RED 근거와 분리.
 - Task1 커밋 `9ce253c`. Task2 API RED/실제 UI missing-button RED 후 session·실제 Undo·캡처·버튼 구현. 관련 app22/0 exit0 (`minote-m2b-app-green1`). 실제 selection UI2/0 + read-only22경계 JSON observer exit0 (`minote-m2b-ui-green1`), 전체 app88/0 exit0 (`minote-m2b-task2-allapp`).
-- 최종 리뷰: `/root/m2b_code_review` Critical0/Important1/Minor0. Important는 회전 PDF 화면 test host에 drawing 미적용으로 실제 화면 pixel 증거가 없었던 것. 실제 UIKit drawHierarchy 원본·복제본·삭제 pixel RED 추가, pre-review18 전체94app/0 + 일반UI11통과/fixture-only2skip/0실패 및43 liveJSON/원본PDF SHA observer exit0 (`minote-m2b18-final`). focused screen RED에서 빈 canvas의 white255로 실제 pixel 실패 확인(exit65, `minote-m2b-screen-red`). production coordinator.apply로 drawing을 적용한 뒤 전체 app94/0 GREEN exit0 (`minote-m2b18-review-app-green`). Important 화면 증거 보완 완료, 제품 코드 변경 없음. 다음26.4 새DD/cacheOFF 전체. 제품 코드는93de1ba이며 화면 test 보완은 미커밋. 제품 결함은 보고되지 않았으나 검증 공백을 완료로 넘기지 않는다.
+- 최종 리뷰: `/root/m2b_code_review` Critical0/Important1/Minor0. Important는 회전 PDF 화면 test host에 drawing 미적용으로 실제 화면 pixel 증거가 없었던 것. 실제 UIKit drawHierarchy 원본·복제본·삭제 pixel RED 추가, pre-review18 전체94app/0 + 일반UI11통과/fixture-only2skip/0실패 및43 liveJSON/원본PDF SHA observer exit0 (`minote-m2b18-final`). focused screen RED에서 빈 canvas의 white255로 실제 pixel 실패 확인(exit65, `minote-m2b-screen-red`). production coordinator.apply로 drawing을 적용한 뒤 전체 app94/0 GREEN exit0 (`minote-m2b18-review-app-green`). Important 화면 증거 보완 완료, 제품 코드 변경 없음. 리뷰 수정 커밋 `3cd7d6f`.26.4 새DD `/private/tmp/minote-m2b-dd26-final`/cacheOFF 전체 실행 중 (`minote-m2b26-final`), 아직26 전체/Notion 완료 표시 안 함. 제품 코드는93de1ba이며 화면 test 보완은 미커밋. 제품 결함은 보고되지 않았으나 검증 공백을 완료로 넘기지 않는다.
 - 다음 clipboard 계획만: `docs/superpowers/plans/2026-10-05-m2-b2-clipboard.md`, 코드는 미구현/clipboard 접근 없음. 최종OS/리뷰수정/Notion 완료 전 M2-B 완료 표시 안 함.
 - 직접 main 구현, 마지막 한 번 fresh review, no push. 기존 시뮬레이터·기록 보존.
 - Task3 검증 중: 영속·ENOSPC·busy/양 stack·이전 generation·4회전 pixel 앱11/0 (`minote-m2b-persistence2`). 최초1실패는 빈 라이브러리 restore ID 기대 오류이며 기존 계약에 맞춰 수정, 제품 저장 로직 변경 없음.
 - 실제 app 생성 selection source/duplicate/delete/UUID manifest 회수. Xcode 재설치가 container UUID를 바꾸므로 생성 전용 경로를 rg로 확인(이전 하드코딩 경로 부재 보존); Node 동일 명령 비교·추가편집 전체36/0 (`minote-m2b-node-exchange-green2`). 앱 소비자는 bundle fixture 없음 RED (`minote-m2b-task3-allapp`) 확인, 새 fixture 포함 전체 app94/0 exit0 (`minote-m2b-task3-allapp-green`). v2/v3/lasso/selection check 각exit0.
-- 현재 재개: Task3 app94/0·Node36/0·check 완료, 전체 core fixture 확인→기록/커밋. Task3 커밋 `93de1ba`, core91/0 (`minote-m2b-core-exchange`). Task4 fresh `/root/m2b_code_review` read-only 진행, 양OS 전체18→26 순차 및 Notion/인계 남음.
+- 현재 재개: `3cd7d6f`에서26.4 새DD/cacheOFF 전체 app94/0+일반UI11통과/fixture-only2skip/0실패,43JSON/PDF SHA observer exit0 (`minote-m2b26-final`).18.6/26.4 완료/한번리뷰 보완 완료. 이제 Notion 최신 fetch→결과 append/재조회→문서 완료/commit/clean. 다음 clipboard 코드는 이번에 구현하지 않는다.
 
 ## 현재 상태
-- 완료 단계: **M0-A**, **M0-B**, **M0-C**, **M1-A**, **M1-B**, **M1-C**, **M2-A — 올가미 획 전체 선택·평행 이동·통합 Undo/Redo·저장/백업/독립 왕복**
+- 완료 단계: **M0-A**, **M0-B**, **M0-C**, **M1-A**, **M1-B**, **M1-C**, **M2-A — 올가미 획 전체 선택·평행 이동**, **M2-B — 선택 획 삭제·같은 페이지 복제·통합 이력/저장/백업/독립 왕복**
 - 작업 공간: `/Users/minwookim/Documents/GitHub/MiNote`
 - 브랜치: `main`
 - 시작 기준 커밋: `9695ab6`; 사전 모델·저장소 체크포인트: `dfa943d`
@@ -27,9 +43,9 @@
 - 이전 실행: **2026-10-03 M1-A 완료**. 기준 `fd4def6`; 마지막 코드 `d968701`. 시작 시 main clean, origin/main보다 로컬 6커밋 앞섬(원격 새 조회 없음). 모든 구현은 main에 커밋했고 push하지 않았다.
 - 이전 단계: **M1-B 완료**. 기준 80d14c2, 마지막 기능 코드 1d67d9a, 테스트/체크포인트 fddbd66. main에서 직접 구현했고 push하지 않았다. 원격은 새 조회하지 않았으며 추적 ref와 현재 원격을 혼동하지 않는다.
 - 이전 M1-C 결과: **2026-10-04 M1-C 완료**. 기준19e10af96dcc130593299b966cd3ed3e08a738ba, 시작main clean/추적origin/main보다8커밋 앞섬(원격 새 조회 없음). 구현4649208/ab1bd27/c94a93a/68ba26f, 한 번 리뷰 수정a64b490, 최종 Files 시험30e9f8c. 기본main에서 직접 커밋했으며 이 실행에서는 push 명령을 수행하지 않았다. 종료 확인 시 origin/main 추적ref는c94a93a로 갱신되어 있으므로 전체 변경이 로컬에만 있다고 주장하지 않는다. 실제 원격은 새 조회하지 않았다. 최종 인계 문서 커밋은 이 기록을 포함하는 마지막 docs 커밋(`git log -1 --oneline`)과 Git 상태로 확인한다.
-- 현재 결과: **2026-10-04 M2-A 완료**. 시작기준29835c2(main clean/추적ref보다5앞섬), core97255f8/app913dc02/영속·왕복f28139d/한번리뷰수정d50a5e3ce43ecd6a33bdf586628ea01e7ff0f569. 마지막제품코드는d50a5e3이며양OS최종전체·observer가통과했고Notion기록/재조회완료. 기본main직접작업/no branch/worktree/PR/push, 원격미조회. 최종인계문서커밋은이기록을포함하는마지막docs커밋과`git log -1 --oneline`/Git상태로확인한다. 다음은 **M2-B 선택 획 삭제·같은페이지복제**, `docs/superpowers/plans/2026-10-04-m2-b-delete-and-duplicate.md` 계획만/미구현. clipboard는M2-B2로분리. 재개는AGENTS→이문서→Git/계획→InkCommands·InkUndoCoordinator·캡처회귀읽기→M2-B Task1 삭제/복제 RED. 완료된M2-A/M1-C를반복하지않는다.
-- 마지막 Notion 반영: **2026-10-04T09:42:10.046Z (18:42:10 KST)**. async succeeded 후18:44 KST재조회:기존본문전체/이전첨부보존(서명query만정규화),M2-A제목1회·양OS검증표·리뷰2수정·실기기대기·다음계획만확인. M2-A새이미지외부전송없음. 이전M1-C13:22:23KST/M1-B/M1-A반영근거는아래기록에보존한다.
-- 최신 검증(M2-A): **core87/0, Node32/0**, v2/v3/lasso check각exit0;리뷰관련18/0. 최종18.6/26.4각 **app83/0 + 일반UI9통과/fixture-only2skip/0실패·xcode/observer exit0**. 기준제품d50a5e3,로그/result `minote-m2a18-review-final`, `minote-m2a26-review-final` (/private/tmp/),JSON각21경계·원본PDF SHA검사. 첫전체18(f28139d)의PDFnavigation실패/exit65와집중진단1/0은보존하며최종성공과분리한다. fixture-only이주/빈설치이동은이번에재수행하지않았고앞선M1-C근거를따른다.
+- 이전 M2-A 결과: **2026-10-04 M2-A 완료**. 시작기준29835c2(main clean/추적ref보다5앞섬), core97255f8/app913dc02/영속·왕복f28139d/한번리뷰수정d50a5e3ce43ecd6a33bdf586628ea01e7ff0f569. 마지막제품코드는d50a5e3이며양OS최종전체·observer가통과했고Notion기록/재조회완료. 기본main직접작업/no branch/worktree/PR/push, 원격미조회. 최종인계문서커밋은이기록을포함하는마지막docs커밋과`git log -1 --oneline`/Git상태로확인한다. 다음은 **M2-B 선택 획 삭제·같은페이지복제**, `docs/superpowers/plans/2026-10-04-m2-b-delete-and-duplicate.md` 계획만/미구현. clipboard는M2-B2로분리. 재개는AGENTS→이문서→Git/계획→InkCommands·InkUndoCoordinator·캡처회귀읽기→M2-B Task1 삭제/복제 RED. 완료된M2-A/M1-C를반복하지않는다.
+- 이전 M2-A Notion 반영: **2026-10-04T09:42:10.046Z (18:42:10 KST)**. async succeeded 후18:44 KST재조회:기존본문전체/이전첨부보존(서명query만정규화),M2-A제목1회·양OS검증표·리뷰2수정·실기기대기·다음계획만확인. M2-A새이미지외부전송없음. 이전M1-C13:22:23KST/M1-B/M1-A반영근거는아래기록에보존한다.
+- 이전 검증(M2-A): **core87/0, Node32/0**, v2/v3/lasso check각exit0;리뷰관련18/0. 최종18.6/26.4각 **app83/0 + 일반UI9통과/fixture-only2skip/0실패·xcode/observer exit0**. 기준제품d50a5e3,로그/result `minote-m2a18-review-final`, `minote-m2a26-review-final` (/private/tmp/),JSON각21경계·원본PDF SHA검사. 첫전체18(f28139d)의PDFnavigation실패/exit65와집중진단1/0은보존하며최종성공과분리한다. fixture-only이주/빈설치이동은이번에재수행하지않았고앞선M1-C근거를따른다.
 - 미검증/이월: 실기기 Pencil·손바닥·발열·장시간/큰 실제 문서·전체 접근성·외부 provider/공유 앱별 호환. 강제 중단 restore stage와 export lease의 durable ownership 자동 회수는 후속이며 현재는 보수적으로 보호/보류한다. 일반 ZIP/폴더·Undo·클라우드 백업/동기화/다른 플랫폼은 미구현이다.
 
 ## M0-B 완료 결과와 이전 재개 지점
@@ -524,3 +540,12 @@
 - 다음M2-B계획은4Task/원본순서와값불변·새UUID복제(20,20)·삭제선택해제·native이력/queuedcapture·ENOSPC/busy·PDFpixel/백업/독립소비자·양OS와한번리뷰다. 외부clipboard/다른page배치는M2-B2로분리해목표를유지한다. M2-B코드는없다. 첫작업은Git상태/계획대조후InkCommands delete/duplicate API없는RED다.
 - main에코드체크포인트4개를커밋했다(97255f8/913dc02/f28139d/d50a5e3). 마지막문서commit으로본기록/AGENTS/README/format/완료plan/다음plan/실제PNG를보존하고clean을확인한다. push/원격fresh조회없음. stage코드/검증완료와최종인계검사를합쳐새시뮬레이터명령이라고표시하지않는다.
 - 최종인계gate `scripts/task-done ...m2-a-lasso-move.md 4 f28139d -- python3 .superpowers/sdd/2026-10-04-m2-a-lasso-move/final-evidence-check.py` exit0. 보존된양OS실제case/21JSON/observerreceipt·core87/Node32·Notionprefix/새제목1회·다음plan미구현·제품코드d50a5e3불변·Gitdiff를검사하고Task4ledger complete를기록했다. 새로운시뮬레이터시험을실행한명령이아니다. 마지막docs/화면commit과clean확인으로마감한다.
+
+
+### M2-B 종료·인계 — 2026-10-05
+
+선택 삭제·같은 페이지 복제와 native 필기/명령 통합 이력, 자동 저장·재실행·편집 원본 백업·독립 명령 왕복을 완료했다. 다섯 Review Focus의 실제 회귀를 확인했고 한 번의 리뷰 Important 화면 검증 공백은 RED→수정→GREEN으로 보완했다. 제품 스키마/저장 계약/원본 PDF는 유지했다.
+
+양 OS 최종 결과, 한 번 리뷰 판단 보류 항목, 기술 결정과 비용, 실패/skip, Notion 반영/기존 기록 보존은 위 완료 절과 milestone에 연결했다. 다음 M2-B2는 계획만 작성하며 첫 작업/한도를 남겼다. 실제 화면 PNG는 로컬 docs/assets에 보존했다. 모든 기존 simulator 데이터/로그/기록을 유지한다. 최종 docs 커밋에 이 인계 문서들을 포함하고 main clean을 확인한다. push는 실행하지 않는다.
+
+최종 인계 검사 `python3 .superpowers/sdd/2026-10-04-m2-b-delete-and-duplicate/final-evidence-check.py` exit0. 보존된 Core91/Node36·양 OS app94/일반UI11+2skip·43JSON/observer·화면 수정·Notion prefix/새 제목 한 번·다음 계획 미구현·제품 코드 불변·Git diff를 확인했다. 새 시뮬레이터 시험 명령은 아니다. Task4 ledger의 종료 범위는 최종 docs commit 뒤 `task-done`으로 기록한다.

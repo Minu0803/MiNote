@@ -2,11 +2,13 @@
 
 iPad-first handwriting notes, built to keep its document format portable across platforms.
 
-## Implemented: local library, pages, writing, lasso movement, multiple PDFs and editable backups
+## Implemented: local library, pages, writing, selected ink editing, multiple PDFs and editable backups
 
 The app opens a local library. Create a note, open its A4 page, and write with Pencil or, by choice, a finger. It includes pen and highlighter tools, stroke erasing, color and width controls, undo and redo, zoom, autosave, save retry and restoration after relaunch.
 
 Use **올가미** to select whole strokes on paper or PDF, then drag inside the selection to translate them in page coordinates. Selection count and **선택 해제** are available. Drag previews leave the actual ink untouched until release; cancellation, zero movement, zoom and rotation do not edit the document. Selection intersects the interpolated stroke centre line, including the lasso boundary, rather than the brush's outer edge. Native ink and movements share the production canvas's explicit UndoManager history, including final canvas capture and guarded system Undo/Redo. IDs and source PDFs survive saving, reopening, editable backups and independent JSON edits. See [M2-A results](docs/milestones/2026-10-04-m2-a-lasso-move.md).
+
+Use **선택 삭제** (trash icon) or **복제** (duplicate icon) while lasso selection is active. Clones keep the original ink values with fresh UUIDs, append in original order and move by (20,20) page points. Delete clears selection; duplicate selects its clones; successful Undo/Redo clears selection. Final canvas capture, save failure guards, same-page native history and independent JSON exchange apply to both commands. See [M2-B results](docs/milestones/2026-10-05-m2-b-delete-and-duplicate.md).
 
 Create and rename notes and folders, move them into nested folders, view recent changes, and send notes to the trash or restore them. Each note keeps independent ink, pages and PDF assets. Closing the editor flushes its latest ink before returning to the library; save failures retain that editor. Existing single-note installations migrate automatically while their original files remain intact. Same-name folders have consistent disambiguated paths. See [the library format](docs/format/library-v1.md).
 Use **PDF 가져오기** to select a PDF from Files. MiNote keeps the original pages and inserts each PDF after the selected page. Several PDFs, including files with the same name, retain separate immutable assets. Each page keeps its own editable ink, and reopening the app restores the last selected page. PDF crop boxes and 0/90/180/270-degree rotation use the same document coordinates for display and export.
@@ -42,6 +44,7 @@ node --test Tools/PortableInk/*.test.mjs
 node Tools/PortableInk/roundtrip.mjs --check
 node Tools/PortableInk/roundtrip.mjs --v3 --check
 node Tools/PortableInk/roundtrip.mjs --lasso --check
+node Tools/PortableInk/roundtrip.mjs --selection --check
 swift test --package-path Packages/MiNoteCore
 
 xcodebuild -project MiNote.xcodeproj -scheme MiNote \
@@ -55,12 +58,14 @@ M1-C passed 31 Node tests and both v2/v3 fixture checks, 78 core tests and 64 ap
 
 M2-A passed 87 core tests, 32 Node tests and all three fixture checks. Both 18.6 and 26.4 final whole runs passed 83 app tests and 9 regular UI tests with 2 fixture-only skips, plus the live saved-ink/PDF-hash observer on each OS. A fresh review found two history gaps, each reproduced and fixed with regression tests. The first pre-review 18.6 command failed PDF navigation; its focused diagnostic passed without reproducing the cause, and the corrected source passed both final whole runs. Actual input, read-only saved JSON and programmatic delegate regressions are recorded separately in [M2-A results](docs/milestones/2026-10-04-m2-a-lasso-move.md).
 
+M2-B passed 91 core tests, 36 Node tests and all four fixture checks. Both OS runs passed 94 app tests and 11 regular UI tests, with 2 fixture-only skips and no failures; each live observer verified 43 saved JSON boundaries and the original PDF hashes. One fresh review found a missing screen-rendering assertion in a test host. The actual pixel regression failed on its empty canvas, then passed after applying the drawing through the production coordinator. The 18.6 evidence combines the unchanged-product whole UI run with a subsequent whole app run containing this test fix; the fresh 26.4 whole run includes the fix. See [M2-B results](docs/milestones/2026-10-05-m2-b-delete-and-duplicate.md) for commands, failures retained and limits.
+
 ## Current limits
 
 - Multiple PDFs per note, up to 1,000 active plus retained deleted pages and 500 MiB of registered PDF assets. Permanent page removal retains the previous valid recovery copy; its PDF references stay protected until backup rotation.
 - Imports are limited to 100 MB, 500 pages and 2,000 points per page edge. Password-protected, truncated and unsupported files are rejected. These are conservative limits, not a real-device performance guarantee.
 - Stroke identities are matched across the whole surviving order. If identical strokes leave more than one possible ID mapping, saving fails explicitly and retains both visible ink and the prior saved document. Stroke reordering is not supported yet.
-- Undo history and selection start again when switching pages, restoring a backup or relaunching. Partial erasing, selected-stroke deletion/duplication, clipboard copy/paste, resize/rotation, text and images are future work.
+- Undo history and selection start again when switching pages, restoring a backup or relaunching. Partial erasing, clipboard copy/paste, resize/rotation, text and images are future work.
 - Export may normalize the raw PDF MediaBox origin. Visible crop geometry, rotation and ink placement are preserved; the source asset and its stored metadata stay unchanged.
 - Backups use the stored-only ZIP32 format with a 640 MiB archive limit and 128 MiB document-JSON limit. General compressed ZIP, folder-wide backups and cloud synchronization are not supported.
 - Known unused PDF assets and inactive registered outputs can be cleaned safely. Unknown files, invalid snapshots, interrupted restore staging and output leases left by process interruption remain protected; automatic ownership recovery is future work and disk usage may accumulate.
@@ -73,9 +78,10 @@ M2-A passed 87 core tests, 32 Node tests and all three fixture checks. Both 18.6
 - **M1-B implemented:** Page management, blank/ruled/grid paper, bookmarks, deleted-page recovery and multiple PDFs per note.
 - **M1-C implemented:** Editable `.minote` backup/restore, confirmed permanent removal, journal recovery and safe file cleanup.
 - **M2-A implemented:** Whole-stroke lasso selection/translation, unified native undo/redo, stable IDs and save/backup verification.
-- **Next M2-B, plan only:** Selected-stroke deletion and same-page duplication. Clipboard copy/paste follows as a separate M2-B2 unit.
+- **M2-B implemented:** Selected-stroke deletion, same-page duplication and stable IDs across native history/save/backup/independent exchange.
+- **Next M2-B2, plan only:** Clipboard copy and paste across pages and notes.
 - **Later M2 units:** Text, images, title/folder and existing PDF-text search, then mixed-object portability.
 - **M3:** Performance and real-device Pencil, palm and thermal checks.
 - **Later:** Advanced editing, sync, collaboration and other platforms.
 
-This is a local technical foundation, not the completed iPad product. Sync and other platform apps are not implemented. See [the next M2-B plan](docs/superpowers/plans/2026-10-04-m2-b-delete-and-duplicate.md) and [the product roadmap](docs/superpowers/specs/2026-09-26-minote-product-design.md).
+This is a local technical foundation, not the completed iPad product. Sync and other platform apps are not implemented. See [the next M2-B2 plan](docs/superpowers/plans/2026-10-05-m2-b2-clipboard.md) and [the product roadmap](docs/superpowers/specs/2026-09-26-minote-product-design.md).

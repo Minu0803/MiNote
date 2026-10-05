@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-26-minote-product-design.md` 객체 편집·안정 ID·포트폴리오용 검증. 이전 결과 `docs/milestones/2026-10-04-m2-a-lasso-move.md`; 계약 `docs/format/document-v3.md`, `docs/format/backup-v1.md`.
 
-**상태:** 계획만 작성했다. M2-B 코드는 미구현이다. 재개 시 M2-A 최종 기록/실제 Git 상태를 먼저 대조한다.
+**상태:** 2026-10-05 Task1~4 완료. 양 OS 검증·한 번의 리뷰 화면 회귀 보완·Notion 반영/재조회를 완료했다. 정확한 명령·실패/skip·다음 시작점은 PROGRESS와 milestone에 보존한다. 다음 M2-B2는 계획만 작성했고 미구현이다.
 
 ## Global Constraints
 
@@ -44,40 +44,42 @@
 
 **Interfaces:** 현재 InkCommands/DocumentCodec/NoteDocument를 소비하고 위 `delete`/`duplicate` API를 제공한다.
 
-- [ ] RED: 선택 2/전체 4획 삭제 시 남은 2획 값/순서/ID, 다른 활성/삭제 페이지·PDF·용지·책갈피 불변, revision+1. 빈 선택은 rev Int64.max에서도 무변경.
-- [ ] RED: (20,20) 복제 시 원본 4획 그대로 + 선택 2획 순서의 새 UUID 복제본, 점/선형 변환 불변, tx/ty +20, revision+1. 겹친 동일 모양 2획도 별개 ID다.
-- [ ] RED: 없는/다른/삭제 page ID·다른 page stroke ID·stale revision·NaN/Infinity·합산 overflow·revision 한도를 거부하고 입력은 그대로다. 잘못된 문서에 빈 선택이라고 검증을 생략하지 않는다.
-- [ ] `swift test --package-path Packages/MiNoteCore --filter InkCommandTests` 실제 RED 확인 → API 구현 → GREEN/전체 core → PROGRESS → main commit.
+- [x] RED: 선택 2/전체 4획 삭제 시 남은 2획 값/순서/ID, 다른 활성/삭제 페이지·PDF·용지·책갈피 불변, revision+1. 빈 선택은 rev Int64.max에서도 무변경.
+- [x] RED: (20,20) 복제 시 원본 4획 그대로 + 선택 2획 순서의 새 UUID 복제본, 점/선형 변환 불변, tx/ty +20, revision+1. 겹친 동일 모양 2획도 별개 ID다.
+- [x] RED: 없는/다른/삭제 page ID·다른 page stroke ID·stale revision·NaN/Infinity·합산 overflow·revision 한도를 거부하고 입력은 그대로다. 잘못된 문서에 빈 선택이라고 검증을 생략하지 않는다.
+- [x] `swift test --package-path Packages/MiNoteCore --filter InkCommandTests` 실제 RED 확인 → API 구현 → GREEN/전체 core → PROGRESS → main commit.
 
 ### Task 2: 선택 편집과 실제 native 이력
 
 **Interfaces:** Task1 API를 소비하고 EditorSession transition/InkUndoCoordinator/CanvasReference의 위 API와 toolbar 버튼을 제공한다.
 
-- [ ] RED: 실제 UI pen → 선택 복제 → pen → Undo3/Redo3의 획 수·위치·모든 ID/순서. 다른 흐름 pen → 선택 삭제 → Undo/Redo → 추가 pen/획 지우개/Undo가 현재 페이지에서 이어진다. 매 저장 경계의 JSON은 외부 read-only observer로 검증한다. 가짜 manager나 프로그램 입력만으로 실제 UI gate를 대체하지 않는다.
-- [ ] RED: 같은 모양 2획/복제본/두 번째 복제 후 정확한 선택 대상·ID, 새 획 append/erase/Undo 뒤 alias provenance. 모호한 다른 UUID는 현재 화면/정상 disk 보존 오류로 처리한다.
-- [ ] RED: delegate A→final B canvas capture→delete/duplicate→queued B callback에서 B와 명령 각각 한 Undo/Redo. 빈 선택은 이력을 추가하지 않고 기존 Redo를 지우지 않는다. 실패 명령도 문서/선택/이력을 바꾸지 않는다.
-- [ ] 위 app API/공통 transition 등록/버튼 구현 → 관련 app tests/실제 UI GREEN → PROGRESS → main commit. M2-A system Undo eligibility와 capture-before-delegate 회귀를 유지한다.
+- [x] RED: 실제 UI pen → 선택 복제 → pen → Undo3/Redo3의 획 수·위치·모든 ID/순서. 다른 흐름 pen → 선택 삭제 → Undo/Redo → 추가 pen/획 지우개/Undo가 현재 페이지에서 이어진다. 매 저장 경계의 JSON은 외부 read-only observer로 검증한다. 가짜 manager나 프로그램 입력만으로 실제 UI gate를 대체하지 않는다.
+- [x] RED: 같은 모양 2획/복제본/두 번째 복제 후 정확한 선택 대상·ID, 새 획 append/erase/Undo 뒤 alias provenance. 모호한 다른 UUID는 현재 화면/정상 disk 보존 오류로 처리한다.
+- [x] RED: delegate A→final B canvas capture→delete/duplicate→queued B callback에서 B와 명령 각각 한 Undo/Redo. 빈 선택은 이력을 추가하지 않고 기존 Redo를 지우지 않는다. 실패 명령도 문서/선택/이력을 바꾸지 않는다.
+- [x] 위 app API/공통 transition 등록/버튼 구현 → 관련 app tests/실제 UI GREEN → PROGRESS → main commit. M2-A system Undo eligibility와 capture-before-delegate 회귀를 유지한다.
 
 ### Task 3: 저장·백업·PDF·독립 왕복
 
 **Interfaces:** Task2 session/history를 소비하고 같은 UUID 계약으로 저장/복원/독립 편집이 검증된 선택 명령을 제공한다.
 
-- [ ] RED: 삭제/복제 후 autosave/reopen/`.minote` 새 노트 복원에서 모든 IDs/metadata/PDF bytes 유지, 선택/Undo는 복원하지 않음. 실패하지 않는 복제본만 새 UUID다.
-- [ ] RED: backup 실제 writer gate/ENOSPC에서 직접 manager Undo/Redo stack 보존·현재 drawing/양 disk 보존·retry 후 정확한 replay; 구조/page 전환의 이전 callback/명령 거부. queued final input도 유지한다.
-- [ ] RED: 0/90/180/270 crop PDF 복제 (20,20)의 실제 pixel·삭제 원위치·선택 테두리 비출력·원본 SHA 불변.
-- [ ] actual app 생성 source/복제 fixture → independent JS의 동일 삭제/복제 결과 비교 → JS 추가 편집 → iPad 재편집/Undo/save/reopen. 도구의 명령으로 구현한 독립 소비자가 비교하며 단순 기대 JSON 복사로 대체하지 않는다.
-- [ ] 관련 core/app/Node fixture 검증 GREEN → PROGRESS → main commit. tool README와 fixture provenance를 기록한다.
+- [x] RED: 삭제/복제 후 autosave/reopen/`.minote` 새 노트 복원에서 모든 IDs/metadata/PDF bytes 유지, 선택/Undo는 복원하지 않음. 실패하지 않는 복제본만 새 UUID다.
+- [x] RED: backup 실제 writer gate/ENOSPC에서 직접 manager Undo/Redo stack 보존·현재 drawing/양 disk 보존·retry 후 정확한 replay; 구조/page 전환의 이전 callback/명령 거부. queued final input도 유지한다.
+- [x] RED: 0/90/180/270 crop PDF 복제 (20,20)의 실제 pixel·삭제 원위치·선택 테두리 비출력·원본 SHA 불변.
+- [x] actual app 생성 source/복제 fixture → independent JS의 동일 삭제/복제 결과 비교 → JS 추가 편집 → iPad 재편집/Undo/save/reopen. 도구의 명령으로 구현한 독립 소비자가 비교하며 단순 기대 JSON 복사로 대체하지 않는다.
+- [x] 관련 core/app/Node fixture 검증 GREEN → PROGRESS → main commit. tool README와 fixture provenance를 기록한다.
 
 ### Task 4: 양 OS 검증·리뷰·인계
 
 **Interfaces:** Task1~3 결과를 소비하고 완료 여부/근거/미검증/다음 시작점을 저장소와 Notion에 제공한다.
 
-- [ ] core/Node/v2·v3·선택 명령 fixture check와 app 전체/실제 UI를18.6→26.4 순차 실행,26 새 DerivedData/cacheOFF. 실제 입력·save/relaunch·기존 PDF/library/backup 동작을 포함한다. 기존 simulator/user 데이터 삭제나 reseed 없음.
-- [ ] fresh reviewer 한 번, Review Focus 전부 전달. Important는 원인 확인/실제 RED→수정→GREEN 뒤 마감하고 declined 항목을 판단한다. 실기기 결과를 가정하지 않는다.
-- [ ] AGENTS/PROGRESS/README/milestone/Notion append·재조회로 실제 결과를 기록한다. 다음 M2-B2 clipboard는 계획만 작성한다. main commit/clean, no push.
+- [x] core/Node/v2·v3·선택 명령 fixture check와 app 전체/실제 UI를18.6→26.4 순차 실행,26 새 DerivedData/cacheOFF. 실제 입력·save/relaunch·기존 PDF/library/backup 동작을 포함한다. 기존 simulator/user 데이터 삭제나 reseed 없음.
+- [x] fresh reviewer 한 번, Review Focus 전부 전달. Important는 원인 확인/실제 RED→수정→GREEN 뒤 마감하고 declined 항목을 판단한다. 실기기 결과를 가정하지 않는다.
+- [x] AGENTS/PROGRESS/README/milestone/Notion append·재조회로 실제 결과를 기록한다. 다음 M2-B2 clipboard는 계획만 작성한다. main commit/clean, no push.
 
 ## 계획 자기 점검과 재개
 
 현재 페이지 삭제·복제에만 scope를 고정했고 Foundation 명령→native 이력→영속/교환→전체 gate 순서를 유지했다. 다섯 Review Focus마다 해당 Task의 회귀가 있다. API 이름/반환형은 위 파일별 계약과 일치한다. 새 schema/외부 클립보드/후속 객체를 끼워 넣지 않는다.
 
 첫 작업: AGENTS→PROGRESS→이 계획→Git 상태 대조, `InkCommands`, `InkCanvasView`, `InkUndoCoordinator`, `NoteCanvas` 캡처와 M2-A 최종 회귀 읽기 → Task1 두 명령의 RED. M2-A를 다시 구현하지 않는다. 사용자 지정 직접 구현/단계 끝 한 번 리뷰 방식을 유지한다.
+
+실행 보충: 기존 영속·복구 제품 경계는 Task3에서 새 명령 통합 검증이 바로 GREEN이었다. JS grouped API/왕복 fixture 소비자는 RED→GREEN. 초기 restore ID 테스트 기대 오류와 앱 container UUID 변경은 기록에 분리했다. 최종 리뷰 Important1 화면 공백은 실제 UIView pixel RED→GREEN으로 보완하며 완료 전 체크한다.
