@@ -1,7 +1,7 @@
 import MiNoteCore
 import PencilKit
 
-/// Native gestures and portable moves share the production canvas UndoManager.
+/// Native gestures and portable commands share the production canvas UndoManager.
 @MainActor final class InkUndoCoordinator {
     private final class Entry {
         let page: UUID, generation: UUID
@@ -17,9 +17,11 @@ import PencilKit
     private let applyDrawing: (PKDrawing) -> Void
     private let onChange: () -> Void
     private var nativeEntry: Entry?
+    private let ownerPage: UUID?, ownerGeneration: UUID
     init(canvas: PKCanvasView, session: EditorSession, applyDrawing: @escaping (PKDrawing) -> Void, onChange: @escaping () -> Void) {
         self.canvas=canvas; self.session=session; self.applyDrawing=applyDrawing; self.onChange=onChange
         let page=session.currentPage?.id, generation=session.canvasGeneration
+        ownerPage=page; ownerGeneration=generation
         (canvas as? InkCanvasView)?.canReplayInkHistory = { [weak session] in
             guard let session else { return false }
             return session.canReplayInkHistory && session.currentPage?.id == page && session.canvasGeneration == generation
@@ -38,11 +40,21 @@ import PencilKit
         onChange()
     }
     func move(dx: Double, dy: Double) throws {
-        guard let session, let manager=canvas?.undoManager else { throw DocumentError.invalidDocument("실행 취소를 사용할 수 없습니다.") }
-        nativeEntry=nil
-        guard let t=try session.translateSelectedInk(dx:dx,dy:dy) else { return }
+        try perform(action:"획 이동") { try $0.translateSelectedInk(dx:dx,dy:dy) }
+    }
+    func deleteSelection() throws {
+        try perform(action:"선택 삭제") { try $0.deleteSelectedInk() }
+    }
+    func duplicateSelection(dx: Double, dy: Double) throws {
+        try perform(action:"획 복제") { try $0.duplicateSelectedInk(dx:dx,dy:dy) }
+    }
+    private func perform(action: String, command: (EditorSession) throws -> InkTransition?) throws {
+        guard let session, let manager=canvas?.undoManager,
+              session.currentPage?.id == ownerPage, session.canvasGeneration == ownerGeneration else { throw DocumentError.staleRevision }
+        guard let t=try command(session) else { return }
+        nativeEntry=nil // A failed/no-op command must leave the native gesture and Redo intact.
         applyWithoutRegistration(session.drawing,manager:manager)
-        register(Entry(page:t.pageID,generation:t.generation,before:t.before,after:t.after,beforeDrawing:t.beforeDrawing,afterDrawing:t.afterDrawing),reverse:false,manager:manager,action:"획 이동")
+        register(Entry(page:t.pageID,generation:t.generation,before:t.before,after:t.after,beforeDrawing:t.beforeDrawing,afterDrawing:t.afterDrawing),reverse:false,manager:manager,action:action)
         onChange()
     }
     private func register(_ entry: Entry, reverse: Bool, manager: UndoManager, action: String) {
@@ -68,6 +80,7 @@ import PencilKit
             } else {
                 try session.restoreUnserializedInk(targetDrawing,replacing:expectedDrawing,portable:to,pageID:entry.page,generation:entry.generation)
             }
+            session.clearInkSelection()
             applyWithoutRegistration(session.drawing,manager:manager)
             register(entry,reverse:!reverse,manager:manager,action:action)
         } catch { session.operationError=error.localizedDescription }

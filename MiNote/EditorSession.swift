@@ -116,8 +116,8 @@ final class EditorSession: ObservableObject {
     }
 
     /// Called for PencilKit changes and for explicit save/flush events.
-    func receiveDrawing(_ updatedDrawing: PKDrawing) {
-        if updatedDrawing != drawing { clearInkSelection() }
+    func receiveDrawing(_ updatedDrawing: PKDrawing, preservingSelection: Bool = false) {
+        if updatedDrawing != drawing, !preservingSelection { clearInkSelection() }
         drawing = updatedDrawing
         guard var current = document else { return }
         do {
@@ -126,6 +126,7 @@ final class EditorSession: ObservableObject {
             let strokes = try InkAdapter.encode(updatedDrawing, preserving: history, aliases:moveAliases[pageID] ?? [])
             let prior = current.pages[currentPageIndex].strokes
             hasUnserializedDrawing = false
+            if preservingSelection { selectedStrokeIDs.formIntersection(Set(strokes.map(\.id))) }
             guard strokes != prior else {
                 if savedRevision == current.revision { saveState = .saved }
                 else { saveState = .saving; if !isProcessing { scheduleSave() } }
@@ -188,6 +189,31 @@ final class EditorSession: ObservableObject {
         try acceptInkCommand(next,before:page.strokes,native:moved)
         return transition
     }
+    func deleteSelectedInk() throws -> InkTransition? {
+        guard canApplyInkCommand, let base=document, let page=currentPage else { throw DocumentError.invalidDocument("필기를 저장한 뒤 삭제해 주세요.") }
+        let next=try InkCommands.delete(strokeIDs:selectedStrokeIDs,pageID:page.id,expectedRevision:base.revision,in:base)
+        guard next != base else { return nil }
+        let native=PKDrawing(strokes:zip(drawing.strokes,page.strokes).filter { !selectedStrokeIDs.contains($0.1.id) }.map { $0.0 })
+        let transition=try acceptSelectionCommand(next,before:page.strokes,native:native)
+        clearInkSelection()
+        return transition
+    }
+    func duplicateSelectedInk(dx: Double, dy: Double) throws -> InkTransition? {
+        guard canApplyInkCommand, let base=document, let page=currentPage else { throw DocumentError.invalidDocument("필기를 저장한 뒤 복제해 주세요.") }
+        let next=try InkCommands.duplicate(strokeIDs:selectedStrokeIDs,pageID:page.id,dx:dx,dy:dy,expectedRevision:base.revision,in:base)
+        guard next != base else { return nil }
+        let clones=Array(next.pages[currentPageIndex].strokes.dropFirst(page.strokes.count))
+        let native=PKDrawing(strokes:drawing.strokes + (try InkAdapter.decode(clones)).strokes)
+        let transition=try acceptSelectionCommand(next,before:page.strokes,native:native)
+        selectedStrokeIDs=Set(clones.map(\.id))
+        return transition
+    }
+    private func acceptSelectionCommand(_ next: NoteDocument, before: [InkStroke], native: PKDrawing) throws -> InkTransition {
+        let transition=InkTransition(pageID:next.pages[currentPageIndex].id,generation:canvasGeneration,
+            before:before,after:next.pages[currentPageIndex].strokes,beforeDrawing:drawing,afterDrawing:native)
+        try acceptInkCommand(next,before:before,native:native)
+        return transition
+    }
     func restoreInk(_ target: [InkStroke], replacing expected: [InkStroke], pageID: UUID, generation: UUID, native: PKDrawing? = nil) throws {
         guard canApplyInkCommand, var next=document, currentPage?.id == pageID,
               canvasGeneration == generation, currentPage?.strokes == expected,
@@ -200,12 +226,11 @@ final class EditorSession: ObservableObject {
         let page=next.pages[currentPageIndex]
         let native=try supplied ?? InkAdapter.decode(page.strokes)
         guard try InkAdapter.encode(native,preserving:page.strokes) == page.strokes else { throw DocumentError.staleRevision }
-        var aliases=moveAliases[page.id] ?? [], history=histories[page.id] ?? []
+        var aliases=moveAliases[page.id] ?? []
         for stroke in before+page.strokes where !aliases.contains(stroke) { aliases.append(stroke) }
-        for stroke in page.strokes {
-            if let i=history.firstIndex(where: { $0.id == stroke.id }) { history[i]=stroke } else { history.append(stroke) }
-        }
-        moveAliases[page.id]=aliases; histories[page.id]=history
+        // Explicit snapshots establish current provenance. Removed UUIDs must not
+        // compete with a new identical stroke; Undo reinstates them from its snapshot.
+        moveAliases[page.id]=aliases; histories[page.id]=page.strokes
         document=next; drawing=native; hasUnserializedDrawing=false
         invalidateThumbnails(); saveState = .saving; scheduleSave()
     }

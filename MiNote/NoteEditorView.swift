@@ -145,6 +145,12 @@ struct NoteEditorView: View {
             if brush == .lasso {
                 Text("선택 \(session.selectedStrokeIDs.count)획").font(.caption.monospacedDigit())
                     .accessibilityIdentifier("selectionCount")
+                Button { canvasReference.deleteSelectedInk(in:session) } label: { Image(systemName:"trash") }
+                    .accessibilityLabel("선택 삭제").accessibilityIdentifier("deleteSelectedInk")
+                    .disabled(!session.canApplyInkCommand || session.selectedStrokeIDs.isEmpty)
+                Button { canvasReference.duplicateSelectedInk(in:session) } label: { Image(systemName:"plus.square.on.square") }
+                    .accessibilityLabel("복제").accessibilityIdentifier("duplicateSelectedInk")
+                    .disabled(!session.canApplyInkCommand || session.selectedStrokeIDs.isEmpty)
                 Button("선택 해제") { session.clearInkSelection() }
                     .accessibilityIdentifier("clearSelection").disabled(session.isProcessing || session.selectedStrokeIDs.isEmpty)
             }

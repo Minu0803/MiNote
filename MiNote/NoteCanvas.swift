@@ -19,6 +19,23 @@ final class CanvasReference: ObservableObject {
         refresh()
     }
 
+    func deleteSelectedInk(in session: EditorSession) {
+        applySelectionCommand(in:session) { try $0.deleteSelection() }
+    }
+    func duplicateSelectedInk(in session: EditorSession) {
+        applySelectionCommand(in:session) { try $0.duplicateSelection(dx:20,dy:20) }
+    }
+    private func applySelectionCommand(in session: EditorSession, command: (InkUndoCoordinator) throws -> Void) {
+        do {
+            guard session.canApplyInkCommand, let canvas, let coordinator=captureCoordinator,
+                  coordinator.session === session, coordinator.reference === self,
+                  coordinator.isCurrent, let undo=coordinator.inkUndo else { throw DocumentError.staleRevision }
+            coordinator.capture(canvas,preservingSelection:true)
+            try command(undo)
+        } catch { session.operationError=error.localizedDescription }
+        refresh()
+    }
+
     func undo(in session: EditorSession) {
         guard session.canReplayInkHistory else { return }
         session.clearInkSelection()
@@ -259,10 +276,11 @@ struct NoteCanvas: UIViewRepresentable {
             isApplyingSessionDrawing=true; canvas.drawing=drawing; isApplyingSessionDrawing=false
             if enabled { manager?.enableUndoRegistration() }
         }
-        func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
+        func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) { capture(canvasView) }
+        func capture(_ canvasView: PKCanvasView, preservingSelection: Bool = false) {
             guard !isApplyingSessionDrawing, pageID == session.currentPage?.id, generation == session.canvasGeneration else { return }
             let before=session.serializedVisibleInk, oldDrawing=session.drawing
-            session.receiveDrawing(canvasView.drawing)
+            session.receiveDrawing(canvasView.drawing,preservingSelection:preservingSelection)
             inkUndo?.recordNativeChange(before:before,drawing:oldDrawing)
             reference.refresh()
         }

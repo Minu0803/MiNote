@@ -16,6 +16,7 @@ parser.add_argument('device')
 parser.add_argument('derived_data', type=Path)
 parser.add_argument('result', type=Path)
 parser.add_argument('--all-tests', action='store_true')
+parser.add_argument('--selection-tests', action='store_true')
 args = parser.parse_args()
 log = args.result.with_suffix('.log')
 evidence = args.result.with_suffix('.ink-evidence')
@@ -26,7 +27,7 @@ command = ['xcodebuild','-project','MiNote.xcodeproj','-scheme','MiNote',
            '-destination',f'platform=iOS Simulator,id={args.device}', '-derivedDataPath',str(args.derived_data),
            '-resultBundlePath',str(args.result),'-parallel-testing-enabled','NO','-collect-test-diagnostics','never']
 if not args.all_tests:
-    command += ['-only-testing:MiNoteUITests/LassoUITests']
+    command += ['-only-testing:MiNoteUITests/' + ('SelectionCommandUITests' if args.selection_tests else 'LassoUITests')]
 command += ['CODE_SIGNING_ALLOWED=NO','COMPILATION_CACHE_ENABLE_CACHING=NO','test']
 snapshots = {}
 asset_hashes = {}
@@ -35,10 +36,11 @@ with log.open('x') as output:
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
     for line in process.stdout:
         output.write(line); output.flush()
-        if 'MINOTE_LASSO_STAGE ' not in line:
+        marker = next((m for m in ['MINOTE_LASSO_STAGE ', 'MINOTE_SELECTION_STAGE '] if m in line),None)
+        if marker is None:
             continue
         try:
-            meta = json.loads(line.split('MINOTE_LASSO_STAGE ',1)[1])
+            meta = json.loads(line.split(marker,1)[1])
             container = Path(subprocess.check_output(['xcrun','simctl','get_app_container',args.device,'com.minote.foundation','data'],text=True).strip())
             root = container / 'Documents' / 'MiNote'
             catalog = json.loads((root / 'library.json').read_bytes())
@@ -73,6 +75,13 @@ if status:
     raise SystemExit(status)
 try:
     assert not errors, errors
+    selection = {k:v for k,v in snapshots.items() if k.startswith(('dup','del'))}
+    if selection or args.selection_tests or args.all_tests:
+        from selection_evidence import verify
+        verify(selection)
+    snapshots = {k:v for k,v in snapshots.items() if k not in selection}
+    if args.selection_tests and not args.all_tests:
+        raise SystemExit(0)
     phases = ['pen1','move1','pen2','undoPen2','undoMove','undoPen1','redoPen1','redoMove','redoPen2','eraseMoved','undoErase','redoErase','restoreErase','zoom','rotation','portrait','relaunch']
     pdf_phases = ['pdfPen','pdfMove','pdfZoom','pdfRelaunch']
     assert set(snapshots) == set(phases+pdf_phases), list(snapshots)

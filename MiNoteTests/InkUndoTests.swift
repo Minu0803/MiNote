@@ -4,6 +4,119 @@ import MiNoteCore
 @testable import MiNote
 
 @MainActor final class InkUndoTests: XCTestCase {
+    private func selectionBox(_ session: EditorSession, x: Double = 0, y: Double = 0, size: Double = 1000) throws {
+        try session.selectInk(polygon:[.init(x:x,y:y),.init(x:x+size,y:y),.init(x:x+size,y:y+size),.init(x:x,y:y+size)])
+    }
+    func testDuplicateDeleteRepeatedCloneNativeEditsAndUndoKeepExactIdentities() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:root) }
+        let store=DocumentStore(directory:root), session=EditorSession(store:store,saveDelay:.seconds(60)); await session.loadIfNeeded()
+        let canvas=InkCanvasView(), reference=CanvasReference(); reference.canvas=canvas
+        let c=NoteCanvas.Coordinator(session:session,reference:reference); c.attach(to:canvas)
+        c.canvasViewDidBeginUsingTool(canvas); c.apply(PKDrawing(strokes:[sampleStroke(),sampleStroke()]),to:canvas); c.canvasViewDrawingDidChange(canvas)
+        let original=try XCTUnwrap(session.currentPage?.strokes)
+        try selectionBox(session); reference.duplicateSelectedInk(in:session)
+        let once=try XCTUnwrap(session.currentPage?.strokes)
+        XCTAssertEqual(once.count,4); XCTAssertEqual(Array(once.prefix(2)),original)
+        XCTAssertEqual(session.selectedStrokeIDs,Set(once.suffix(2).map(\.id)))
+        reference.duplicateSelectedInk(in:session)
+        let twice=try XCTUnwrap(session.currentPage?.strokes)
+        XCTAssertEqual(twice.count,6); XCTAssertEqual(Set(twice.map(\.id)).count,6)
+        XCTAssertEqual(twice[4].transform.tx,45); XCTAssertEqual(twice[4].transform.ty,46)
+        reference.deleteSelectedInk(in:session)
+        XCTAssertEqual(session.currentPage?.strokes,once); XCTAssertTrue(session.selectedStrokeIDs.isEmpty)
+        canvas.undoManager?.undo(); XCTAssertEqual(session.currentPage?.strokes,twice)
+        XCTAssertTrue(session.selectedStrokeIDs.isEmpty)
+        canvas.undoManager?.redo(); XCTAssertEqual(session.currentPage?.strokes,once)
+        c.canvasViewDidBeginUsingTool(canvas); c.apply(PKDrawing(strokes:canvas.drawing.strokes+[sampleStroke(offset:200)]),to:canvas); c.canvasViewDrawingDidChange(canvas)
+        let added=try XCTUnwrap(session.currentPage?.strokes)
+        XCTAssertEqual(Array(added.prefix(4)),once); XCTAssertEqual(added.count,5)
+        c.canvasViewDidBeginUsingTool(canvas); c.apply(PKDrawing(strokes:Array(canvas.drawing.strokes.prefix(4))),to:canvas); c.canvasViewDrawingDidChange(canvas)
+        XCTAssertEqual(session.currentPage?.strokes,once)
+        canvas.undoManager?.undo(); XCTAssertEqual(session.currentPage?.strokes,added)
+        canvas.undoManager?.undo(); XCTAssertEqual(session.currentPage?.strokes,once)
+        XCTAssertNil(session.operationError); await session.flush(); XCTAssertEqual(session.saveState,.saved)
+    }
+    func testCaptureFinalCanvasBeforeEachCommandRetainsSelectionAndNativeUndoBoundary() async throws {
+        for duplicate in [false,true] {
+            let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at:root) }
+            let store=DocumentStore(directory:root), session=EditorSession(store:store,saveDelay:.seconds(60)); await session.loadIfNeeded()
+            let canvas=InkCanvasView(), reference=CanvasReference(); reference.canvas=canvas
+            let c=NoteCanvas.Coordinator(session:session,reference:reference); c.attach(to:canvas)
+            c.canvasViewDidBeginUsingTool(canvas); c.apply(PKDrawing(strokes:[sampleStroke()]),to:canvas); c.canvasViewDrawingDidChange(canvas)
+            let a=try XCTUnwrap(session.currentPage?.strokes); try selectionBox(session)
+            // Final B of the SAME gesture includes more native ink; callback has not arrived yet.
+            c.apply(PKDrawing(strokes:canvas.drawing.strokes+[sampleStroke(offset:200)]),to:canvas)
+            if duplicate { reference.duplicateSelectedInk(in:session) } else { reference.deleteSelectedInk(in:session) }
+            let commanded=try XCTUnwrap(session.currentPage?.strokes)
+            XCTAssertEqual(commanded.count,duplicate ? 3 : 1); XCTAssertEqual(session.document?.revision,3)
+            c.canvasViewDrawingDidChange(canvas) // delayed native delegate sees the current live canvas
+            XCTAssertEqual(session.currentPage?.strokes,commanded)
+            canvas.undoManager?.undo()
+            let b=try XCTUnwrap(session.currentPage?.strokes)
+            XCTAssertEqual(b.count,2); XCTAssertEqual(b[0],a[0]); XCTAssertTrue(session.selectedStrokeIDs.isEmpty)
+            canvas.undoManager?.undo(); XCTAssertEqual(session.currentPage?.strokes,[]); XCTAssertFalse(canvas.undoManager?.canUndo ?? true)
+            canvas.undoManager?.redo(); XCTAssertEqual(session.currentPage?.strokes,b)
+            canvas.undoManager?.redo(); XCTAssertEqual(session.currentPage?.strokes,commanded)
+            XCTAssertEqual(session.document?.revision,7); XCTAssertNil(session.operationError)
+            await session.flush(); let disk=try await store.load(); XCTAssertEqual(disk?.document,session.document)
+        }
+    }
+    func testEmptyAndFailedSelectionCommandsPreserveRedoAndSelectedValues() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:root) }
+        let session=EditorSession(store:DocumentStore(directory:root),saveDelay:.seconds(60)); await session.loadIfNeeded()
+        let canvas=InkCanvasView(), reference=CanvasReference(); reference.canvas=canvas
+        let c=NoteCanvas.Coordinator(session:session,reference:reference); c.attach(to:canvas)
+        c.canvasViewDidBeginUsingTool(canvas); c.apply(PKDrawing(strokes:[sampleStroke()]),to:canvas); c.canvasViewDrawingDidChange(canvas)
+        try selectionBox(session); reference.duplicateSelectedInk(in:session)
+        let expected=try XCTUnwrap(session.document); canvas.undoManager?.undo()
+        let before=session.document
+        XCTAssertTrue(canvas.undoManager?.canRedo ?? false)
+        try c.inkUndo?.duplicateSelection(dx:20,dy:20); try c.inkUndo?.deleteSelection()
+        XCTAssertEqual(session.document,before); XCTAssertTrue(canvas.undoManager?.canRedo ?? false)
+        try selectionBox(session); let ids=session.selectedStrokeIDs
+        XCTAssertThrowsError(try c.inkUndo?.duplicateSelection(dx:.nan,dy:20))
+        XCTAssertEqual(session.document,before); XCTAssertEqual(session.selectedStrokeIDs,ids)
+        XCTAssertTrue(canvas.undoManager?.canRedo ?? false)
+        canvas.undoManager?.redo(); XCTAssertEqual(session.currentPage?.strokes,expected.pages[0].strokes)
+        XCTAssertTrue(session.selectedStrokeIDs.isEmpty)
+    }
+    func testDeleteOfIdenticalSelectionDoesNotLeaveDeadIdentityCandidatesForNextInput() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:root) }
+        let session=EditorSession(store:DocumentStore(directory:root),saveDelay:.seconds(60)); await session.loadIfNeeded()
+        session.receiveDrawing(PKDrawing(strokes:[sampleStroke(),sampleStroke()]))
+        try selectionBox(session); _=try session.deleteSelectedInk()
+        session.receiveDrawing(PKDrawing(strokes:[sampleStroke()]))
+        XCTAssertEqual(session.strokeCount,1); XCTAssertEqual(session.serializedVisibleInk?.count,1)
+        XCTAssertNil(session.operationError); await session.flush(); XCTAssertEqual(session.saveState,.saved)
+    }
+    func testAmbiguousNativeEraseAfterCloneDeleteUndoKeepsVisibleInkAndBothSavedFiles() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:root) }
+        let store=DocumentStore(directory:root), session=EditorSession(store:store,saveDelay:.seconds(60)); await session.loadIfNeeded()
+        let canvas=InkCanvasView(), reference=CanvasReference(); reference.canvas=canvas
+        let c=NoteCanvas.Coordinator(session:session,reference:reference); c.attach(to:canvas)
+        c.canvasViewDidBeginUsingTool(canvas); c.apply(PKDrawing(strokes:[sampleStroke(),sampleStroke()]),to:canvas); c.canvasViewDrawingDidChange(canvas)
+        try selectionBox(session); reference.duplicateSelectedInk(in:session); reference.deleteSelectedInk(in:session)
+        canvas.undoManager?.undo(); await session.flush()
+        let good=try XCTUnwrap(session.document), nativeGood=session.drawing
+        let primary=try Data(contentsOf:root.appendingPathComponent("document.json")), backup=try Data(contentsOf:root.appendingPathComponent("document.backup.json"))
+        c.canvasViewDidBeginUsingTool(canvas)
+        let ambiguous=PKDrawing(strokes:Array(nativeGood.strokes.dropFirst()))
+        c.apply(ambiguous,to:canvas); c.canvasViewDrawingDidChange(canvas)
+        XCTAssertEqual(session.drawing,ambiguous); XCTAssertNil(session.serializedVisibleInk)
+        XCTAssertEqual(session.document,good); XCTAssertFalse(session.canApplyInkCommand)
+        await session.flush()
+        XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent("document.json")),primary)
+        XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent("document.backup.json")),backup)
+        canvas.undoManager?.undo(); XCTAssertEqual(session.document,good); XCTAssertEqual(session.drawing,nativeGood)
+        XCTAssertEqual(session.saveState,.saved)
+        canvas.undoManager?.redo(); XCTAssertEqual(session.drawing,ambiguous); XCTAssertNil(session.serializedVisibleInk)
+        canvas.undoManager?.undo(); XCTAssertEqual(session.document,good); XCTAssertEqual(session.saveState,.saved)
+    }
     func testCaptureBeforeQueuedDelegateRecordsFinalInkForUndoRedoAndSave() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at:root) }
