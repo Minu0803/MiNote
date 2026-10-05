@@ -20,6 +20,172 @@ import PDFKit
         for asset in document.pdfAssets { try bytes.write(to:root.appendingPathComponent(asset.relativePath)) }
         let store=DocumentStore(directory:root); try await store.save(document); return store
     }
+    private func selectOriginalPDFInk(_ session: EditorSession) throws {
+        try session.selectInk(polygon:[.init(x:80,y:100),.init(x:90,y:100),.init(x:90,y:110),.init(x:80,y:110)])
+        XCTAssertEqual(session.selectedStrokeIDs.count,1)
+    }
+    func testSelectionAutosaveAndBackupRestoreKeepAllIdentitiesMetadataAndAssetBytes() async throws {
+        let root=try directory(), store=try await fixture(in:root.appendingPathComponent("source"))
+        let registry=ExportFileRegistry(root:root.appendingPathComponent("exports"))
+        let session=EditorSession(store:store,saveDelay:.milliseconds(15),exportRegistry:registry); await session.loadIfNeeded()
+        let before=try XCTUnwrap(session.document)
+        try selectAll(session); _=try session.duplicateSelectedInk(dx:20,dy:20)
+        let clone=try XCTUnwrap(session.currentPage?.strokes.last)
+        try selectOriginalPDFInk(session); _=try session.deleteSelectedInk()
+        let expected=try XCTUnwrap(session.document)
+        XCTAssertEqual(expected.pages[1].strokes,[clone]); XCTAssertEqual(expected.revision,before.revision+2)
+        XCTAssertEqual(expected.pages[0],before.pages[0]); XCTAssertEqual(expected.pages.dropFirst(2),before.pages.dropFirst(2))
+        XCTAssertEqual(expected.deletedPages,before.deletedPages); XCTAssertEqual(expected.pdfAssets,before.pdfAssets)
+        for _ in 0..<100 where session.saveState != .saved { try await Task.sleep(for:.milliseconds(20)) }
+        XCTAssertEqual(session.saveState,.saved)
+        let disk=try await store.load(); XCTAssertEqual(disk?.document,expected)
+        let reopened=EditorSession(store:store); await reopened.loadIfNeeded()
+        XCTAssertEqual(reopened.document,expected); XCTAssertTrue(reopened.selectedStrokeIDs.isEmpty)
+        let exported=await session.exportBackup(), file=try XCTUnwrap(exported)
+        let library=LibrarySession(store:LibraryStore(directory:root.appendingPathComponent("library")),exportRegistry:registry)
+        await library.load(); await library.restoreBackup(from:file.url,folderID:nil)
+        let id=try XCTUnwrap(library.notes.first?.id); XCTAssertEqual(id,expected.id) // Empty library preserves document identity; collisions allocate a fresh ID.
+        await library.openNote(id); let restored=try XCTUnwrap(library.selectedEditor), document=try XCTUnwrap(restored.document)
+        XCTAssertEqual(document.pages,expected.pages); XCTAssertEqual(document.deletedPages,expected.deletedPages)
+        XCTAssertEqual(document.pdfAssets,expected.pdfAssets); XCTAssertEqual(document.revision,expected.revision)
+        XCTAssertTrue(restored.selectedStrokeIDs.isEmpty)
+        let canvas=InkCanvasView(), reference=CanvasReference(); reference.canvas=canvas
+        let coordinator=NoteCanvas.Coordinator(session:restored,reference:reference); coordinator.attach(to:canvas)
+        XCTAssertFalse(canvas.undoManager?.canUndo ?? true); XCTAssertFalse(canvas.undoManager?.canRedo ?? true)
+        let bytes=try Data(contentsOf:fixtureURL("source",extension:"pdf"))
+        for asset in document.pdfAssets {
+            XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent("library/notes/\(id.uuidString)/\(asset.relativePath)")),bytes)
+            XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent("source/\(asset.relativePath)")),bytes)
+        }
+        try await registry.release(file.lease)
+    }
+    func testSelectionENOSPCBlocksSystemUndoAndRedoWithoutConsumingEitherStack() async throws {
+        for duplicate in [false,true] { for redo in [false,true] {
+            let root=try directory(), fault=SelectionWriteFault()
+            let store=DocumentStore(directory:root,atomicWriter:{ data,url in
+                if fault.fails(url) { throw POSIXError(.ENOSPC) }; try data.write(to:url,options:.atomic)
+            })
+            let session=EditorSession(store:store,saveDelay:.seconds(60)); await session.loadIfNeeded()
+            session.receiveDrawing(PKDrawing(strokes:[sampleStroke()])); await session.flush()
+            let original=try XCTUnwrap(session.currentPage?.strokes)
+            let primary=try Data(contentsOf:root.appendingPathComponent("document.json")), backup=try Data(contentsOf:root.appendingPathComponent("document.backup.json"))
+            let canvas=InkCanvasView(), reference=CanvasReference(); reference.canvas=canvas; canvas.drawing=session.drawing
+            let c=NoteCanvas.Coordinator(session:session,reference:reference); c.attach(to:canvas)
+            try selectAll(session)
+            if duplicate { reference.duplicateSelectedInk(in:session) } else { reference.deleteSelectedInk(in:session) }
+            let edited=try XCTUnwrap(session.currentPage?.strokes)
+            if redo { canvas.undoManager?.undo() }
+            let before=try XCTUnwrap(session.document), native=session.drawing, ids=session.selectedStrokeIDs
+            let canUndo=canvas.undoManager?.canUndo, canRedo=canvas.undoManager?.canRedo
+            fault.arm(); await session.flush()
+            guard case .failed = session.saveState else { return XCTFail("ENOSPC required") }
+            XCTAssertThrowsError(try c.inkUndo?.deleteSelection()); XCTAssertThrowsError(try c.inkUndo?.duplicateSelection(dx:20,dy:20))
+            canvas.undoManager?.undo(); canvas.undoManager?.redo()
+            XCTAssertEqual(session.document,before); XCTAssertEqual(session.drawing,native); XCTAssertEqual(session.selectedStrokeIDs,ids)
+            XCTAssertEqual(canvas.undoManager?.canUndo,canUndo); XCTAssertEqual(canvas.undoManager?.canRedo,canRedo)
+            XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent("document.json")),primary)
+            XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent("document.backup.json")),backup)
+            fault.disarm(); session.retrySave(); await session.flush(); XCTAssertEqual(session.saveState,.saved)
+            let recovered=try await store.load(); XCTAssertEqual(recovered?.document,before)
+            if redo { canvas.undoManager?.redo() } else { canvas.undoManager?.undo() }
+            XCTAssertEqual(session.currentPage?.strokes,redo ? edited : original)
+            XCTAssertEqual(session.document?.revision,before.revision+1); XCTAssertNil(session.operationError)
+            await session.flush(); let replayed=try await store.load(); XCTAssertEqual(replayed?.document,session.document)
+        } }
+    }
+    func testSelectionBusyBackupRetainsStacksLateInputAndRejectsOldGenerationCommands() async throws {
+        for redo in [false,true] {
+            let root=try directory(), store=try await fixture(in:root.appendingPathComponent("source")), gate=SelectionBlockingGate()
+            let service=NoteBackup(chunkWriter:{ handle,data in try handle.write(contentsOf:data); gate.blockOnce() })
+            let session=EditorSession(store:store,saveDelay:.seconds(60),exportRegistry:ExportFileRegistry(root:root.appendingPathComponent("exports")),backupService:service)
+            await session.loadIfNeeded()
+            let canvas=InkCanvasView(), reference=CanvasReference(); reference.canvas=canvas; canvas.drawing=session.drawing
+            let c=NoteCanvas.Coordinator(session:session,reference:reference); c.attach(to:canvas)
+            try selectAll(session); reference.duplicateSelectedInk(in:session)
+            let edited=try XCTUnwrap(session.currentPage?.strokes)
+            if redo { canvas.undoManager?.undo() }
+            await session.flush(); let before=try XCTUnwrap(session.document)
+            let canUndo=canvas.undoManager?.canUndo, canRedo=canvas.undoManager?.canRedo
+            let job=Task { await session.exportBackup() }, entered=await Task.detached { gate.waitForEntry() }.value
+            XCTAssertTrue(entered); XCTAssertTrue(session.isProcessing)
+            XCTAssertThrowsError(try c.inkUndo?.deleteSelection()); XCTAssertThrowsError(try c.inkUndo?.duplicateSelection(dx:20,dy:20))
+            canvas.undoManager?.undo(); canvas.undoManager?.redo()
+            XCTAssertEqual(session.document,before); XCTAssertEqual(canvas.undoManager?.canUndo,canUndo); XCTAssertEqual(canvas.undoManager?.canRedo,canRedo)
+            if !redo {
+                c.canvasViewDidBeginUsingTool(canvas)
+                c.apply(PKDrawing(strokes:canvas.drawing.strokes+[sampleStroke(offset:240)]),to:canvas)
+                reference.captureDrawing(in:session) // Final native input before its queued delegate.
+                c.canvasViewDrawingDidChange(canvas)
+                XCTAssertEqual(session.strokeCount,3); XCTAssertEqual(Array(session.currentPage!.strokes.prefix(2)),edited)
+            }
+            gate.released.signal(); let file=await job.value
+            if redo { let output=try XCTUnwrap(file); try await session.exportRegistry.release(output.lease); canvas.undoManager?.redo(); XCTAssertEqual(session.currentPage?.strokes,edited) }
+            else { XCTAssertNil(file); XCTAssertNotNil(session.operationError); canvas.undoManager?.undo(); XCTAssertEqual(session.currentPage?.strokes,edited) }
+            await session.flush(); let latest=try await store.load(); XCTAssertEqual(latest?.document,session.document)
+            await session.selectPage(0); let current=session.document
+            XCTAssertThrowsError(try c.inkUndo?.deleteSelection()); XCTAssertThrowsError(try c.inkUndo?.duplicateSelection(dx:20,dy:20))
+            reference.deleteSelectedInk(in:session); reference.duplicateSelectedInk(in:session)
+            c.apply(PKDrawing(strokes:[sampleStroke(offset:400)]),to:canvas); c.canvasViewDrawingDidChange(canvas)
+            canvas.undoManager?.undo(); canvas.undoManager?.redo()
+            XCTAssertEqual(session.document,current)
+        }
+    }
+    func testSelectionPDFCloneAndDeleteRenderInPageCoordinatesAtEveryCropRotation() async throws {
+        let root=try directory(), bytes=try PDFFixture.data(), prepared=try await PDFImporter().prepare(data:bytes,filename:"source.pdf")
+        let store=DocumentStore(directory:root.appendingPathComponent("note"))
+        try FileManager.default.createDirectory(at:root.appendingPathComponent("note/assets"),withIntermediateDirectories:true)
+        try bytes.write(to:root.appendingPathComponent("note/\(prepared.asset.relativePath)"))
+        var ink=testInk(); for i in ink.points.indices { ink.points[i].y=120 }
+        var doc=NoteDocument(title:"Clone pixels",pages:prepared.pages,pdfAssets:[prepared.asset])
+        for i in doc.pages.indices { var copy=ink; copy.id=UUID(); doc.pages[i].strokes=[copy] }
+        try await store.save(doc)
+        let session=EditorSession(store:store,saveDelay:.seconds(60),exportRegistry:ExportFileRegistry(root:root.appendingPathComponent("exports"))); await session.loadIfNeeded()
+        for i in 0..<4 {
+            await session.selectPage(i); try selectAll(session); _=try session.duplicateSelectedInk(dx:20,dy:20)
+            let host=PageZoomHost(frame:CGRect(x:0,y:0,width:834,height:900)), page=try XCTUnwrap(session.currentPage)
+            host.configurePage(size:CGSize(width:page.width,height:page.height),pdfPage:session.currentPDFPage); host.layoutIfNeeded()
+            let scroll=try XCTUnwrap(host.subviews.first as? UIScrollView)
+            for zoom in [1.0,2.0,5.0] {
+                scroll.zoomScale=scroll.minimumZoomScale*zoom
+                let a=host.lasso.convert(host.convert(CGPoint(x:130,y:120),from:host.canvas),from:host)
+                let b=host.lasso.convert(host.convert(CGPoint(x:150,y:140),from:host.canvas),from:host)
+                XCTAssertEqual(b.x-a.x,20,accuracy:0.0001); XCTAssertEqual(b.y-a.y,20,accuracy:0.0001)
+            }
+        }
+        let export1=await session.exportPDF(), first=try XCTUnwrap(export1), pdf1=try XCTUnwrap(PDFDocument(url:first.url))
+        for i in 0..<4 {
+            let page=try XCTUnwrap(pdf1.page(at:i)), image=renderPDFPage(page,size:try PDFGeometry(page:page).size)
+            for point in [CGPoint(x:130,y:120),CGPoint(x:150,y:140)] { let color=pixel(image,at:point); XCTAssertGreaterThan(color[2],150); XCTAssertLessThan(color[0],100) }
+            await session.selectPage(i)
+            try session.selectInk(polygon:[.init(x:95,y:115),.init(x:105,y:115),.init(x:105,y:125),.init(x:95,y:125)])
+            XCTAssertEqual(session.selectedStrokeIDs.count,1); _=try session.deleteSelectedInk()
+        }
+        let export2=await session.exportPDF(), second=try XCTUnwrap(export2), pdf2=try XCTUnwrap(PDFDocument(url:second.url))
+        for i in 0..<4 {
+            let page=try XCTUnwrap(pdf2.page(at:i)), image=renderPDFPage(page,size:try PDFGeometry(page:page).size)
+            let color=pixel(image,at:CGPoint(x:150,y:140)), old=pixel(image,at:CGPoint(x:130,y:120)), outline=pixel(image,at:CGPoint(x:150,y:128))
+            XCTAssertGreaterThan(color[2],150); XCTAssertLessThan(color[0],100)
+            XCTAssertLessThan(Int(old[2])-Int(old[0]),25); XCTAssertEqual(outline[0],outline[2])
+        }
+        XCTAssertEqual(try Data(contentsOf:root.appendingPathComponent("note/\(prepared.asset.relativePath)")),bytes)
+        try await session.exportRegistry.release(first.lease); try await session.exportRegistry.release(second.lease)
+    }
+    func testGenerateActualSelectionV3Fixtures() async throws {
+        let root=try directory(), store=try await fixture(in:root), session=EditorSession(store:store,saveDelay:.seconds(60)); await session.loadIfNeeded()
+        let source=try XCTUnwrap(session.document); try selectAll(session); _=try session.duplicateSelectedInk(dx:20,dy:20)
+        let duplicated=try XCTUnwrap(session.document), clones=Array(duplicated.pages[1].strokes.dropFirst(source.pages[1].strokes.count))
+        try selectOriginalPDFInk(session); _=try session.deleteSelectedInk(); let deleted=try XCTUnwrap(session.document)
+        let output=FileManager.default.urls(for:.documentDirectory,in:.userDomainMask)[0].appendingPathComponent("PortableInkGenerated")
+        try FileManager.default.createDirectory(at:output,withIntermediateDirectories:true)
+        for (name,document) in [("selection-source",source),("selection-duplicated",duplicated),("selection-deleted",deleted)] {
+            try DocumentCodec.encode(document).write(to:output.appendingPathComponent(name+".json"),options:.atomic)
+        }
+        let manifest:[[String:Any]]=[
+            ["kind":"duplicateStrokes","pageID":source.pages[1].id.uuidString,"strokeIDs":source.pages[1].strokes.map { $0.id.uuidString },"newIDs":clones.map { $0.id.uuidString },"dx":20,"dy":20,"expectedRevision":source.revision],
+            ["kind":"deleteStrokes","pageID":source.pages[1].id.uuidString,"strokeIDs":source.pages[1].strokes.map { $0.id.uuidString },"expectedRevision":duplicated.revision]]
+        try JSONSerialization.data(withJSONObject:manifest,options:[.prettyPrinted,.sortedKeys]).write(to:output.appendingPathComponent("selection-commands.json"),options:.atomic)
+        XCTAssertEqual(deleted.pages[1].strokes,clones)
+    }
     func testMoveAutosavesAndEditableBackupRestoresAllMetadataAndPDFBytes() async throws {
         let root=try directory(), source=root.appendingPathComponent("source"), store=try await fixture(in:source)
         let registry=ExportFileRegistry(root:root.appendingPathComponent("exports"))

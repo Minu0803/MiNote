@@ -155,6 +155,7 @@ export function writeDocument(document) {
 }
 export function applyEdit(document, command) {
   validateDocument(document);
+  if (command?.kind === "deleteStrokes" || command?.kind === "duplicateStrokes") return applySelectionEdit(document,command);
   const fields = {
     translateStroke: ['kind','pageID','strokeID','dx','dy'],
     deleteStroke: ['kind','pageID','strokeID'], appendStroke: ['kind','pageID','stroke'],
@@ -182,4 +183,36 @@ export function applyEdit(document, command) {
   result.revision += 1;
   validateDocument(result);
   return result;
+}
+
+// Selection commands preserve original order and require caller-provided fresh
+// UUIDs, so independently reproduced fixtures do not depend on a shared RNG.
+function applySelectionEdit(document,command) {
+  const duplicate=command.kind==='duplicateStrokes';
+  shape(command,duplicate ? ['kind','pageID','strokeIDs','newIDs','dx','dy','expectedRevision'] : ['kind','pageID','strokeIDs','expectedRevision'],'선택 명령');
+  uuid(command.pageID,'pageID'); integer(command.expectedRevision,'expectedRevision');
+  if(document.revision!==command.expectedRevision) fail('stale revision');
+  const page=document.pages.find(p=>sameID(p.id,command.pageID));
+  if(!page) fail('활성 페이지가 없습니다.');
+  if(!Array.isArray(command.strokeIDs)) fail('선택 UUID 목록이 필요합니다.');
+  const selected=new Set();
+  for(const id of command.strokeIDs) { uuid(id,'strokeID'); if(selected.has(id.toLowerCase())) fail('중복 선택 UUID'); selected.add(id.toLowerCase()); }
+  const originals=page.strokes.filter(s=>selected.has(s.id.toLowerCase()));
+  if(originals.length!==selected.size) fail('선택 획이 현재 페이지에 없습니다.');
+  if(duplicate) {
+    number(command.dx,'dx'); number(command.dy,'dy');
+    if(!Array.isArray(command.newIDs) || command.newIDs.length!==originals.length) fail('복제 UUID 수가 다릅니다.');
+    for(const id of command.newIDs) uuid(id,'newID');
+  }
+  if(selected.size===0) return document;
+  if(document.revision===Number.MAX_SAFE_INTEGER) fail('revision 한도');
+  const result=structuredClone(document), target=result.pages.find(p=>sameID(p.id,page.id));
+  if(duplicate) {
+    target.strokes.push(...originals.map((stroke,index)=>{
+      const clone=structuredClone(stroke); clone.id=command.newIDs[index];
+      clone.transform.tx+=command.dx; clone.transform.ty+=command.dy;
+      return clone;
+    }));
+  } else target.strokes=target.strokes.filter(s=>!selected.has(s.id.toLowerCase()));
+  result.revision+=1; validateDocument(result); return result;
 }

@@ -6,7 +6,9 @@
 - Task1 진행: core 명령의 ID/순서/metadata·validation·빈 선택/overflow RED부터 시작. RED: missing delete/duplicate API exit1 (`minote-m2b-core-red-authorized.log`); 구현 후 전체 core91/0 exit0 (`minote-m2b-core-green.log`). sandbox 캐시 실패는 RED 근거와 분리.
 - Task1 커밋 `9ce253c`. Task2 API RED/실제 UI missing-button RED 후 session·실제 Undo·캡처·버튼 구현. 관련 app22/0 exit0 (`minote-m2b-app-green1`). 실제 selection UI2/0 + read-only22경계 JSON observer exit0 (`minote-m2b-ui-green1`), 전체 app88/0 exit0 (`minote-m2b-task2-allapp`).
 - 직접 main 구현, 마지막 한 번 fresh review, no push. 기존 시뮬레이터·기록 보존.
-- 현재 재개: Task2 전체 app/실제 UI 완료. 다음 Task3 영속/PDF/JS 왕복 검증.
+- Task3 검증 중: 영속·ENOSPC·busy/양 stack·이전 generation·4회전 pixel 앱11/0 (`minote-m2b-persistence2`). 최초1실패는 빈 라이브러리 restore ID 기대 오류이며 기존 계약에 맞춰 수정, 제품 저장 로직 변경 없음.
+- 실제 app 생성 selection source/duplicate/delete/UUID manifest 회수. Xcode 재설치가 container UUID를 바꾸므로 생성 전용 경로를 rg로 확인(이전 하드코딩 경로 부재 보존); Node 동일 명령 비교·추가편집 전체36/0 (`minote-m2b-node-exchange-green2`). 앱 소비자는 bundle fixture 없음 RED (`minote-m2b-task3-allapp`) 확인, 새 fixture 포함 전체 app94/0 exit0 (`minote-m2b-task3-allapp-green`). v2/v3/lasso/selection check 각exit0.
+- 현재 재개: Task3 app94/0·Node36/0·check 완료, 전체 core fixture 확인→기록/커밋. 다음 Task4 양OS 전체+한번 fresh review+Notion.
 
 ## 현재 상태
 - 완료 단계: **M0-A**, **M0-B**, **M0-C**, **M1-A**, **M1-B**, **M1-C**, **M2-A — 올가미 획 전체 선택·평행 이동·통합 Undo/Redo·저장/백업/독립 왕복**

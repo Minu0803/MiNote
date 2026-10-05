@@ -1,0 +1,23 @@
+[
+  {
+    "dx" : 20,
+    "dy" : 20,
+    "expectedRevision" : 40,
+    "kind" : "duplicateStrokes",
+    "newIDs" : [
+      "9725B2EB-E303-4FE5-A0F9-9A98AADD2464"
+    ],
+    "pageID" : "00000000-0000-4000-8000-000000000011",
+    "strokeIDs" : [
+      "00000000-0000-4000-8000-000000000105"
+    ]
+  },
+  {
+    "expectedRevision" : 41,
+    "kind" : "deleteStrokes",
+    "pageID" : "00000000-0000-4000-8000-000000000011",
+    "strokeIDs" : [
+      "00000000-0000-4000-8000-000000000105"
+    ]
+  }
+]

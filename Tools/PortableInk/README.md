@@ -46,3 +46,24 @@ The shared `lasso-source`, `lasso-moved` and `lasso-edited` fixtures retain sche
 v3, PDF assets, deleted pages, paper, bookmarks and IDs. The existing browser
 lab still edits one stroke at a time; this check is format/command verification,
 not a separate shipping platform app.
+
+## M2-B selected stroke exchange
+
+```sh
+node Tools/PortableInk/roundtrip.mjs --selection --check
+```
+
+`selection-source`, `selection-duplicated` and `selection-deleted` are generated
+by `SelectionSessionTests.testGenerateActualSelectionV3Fixtures` using the real
+PencilKit adapter and EditorSession. `selection-commands.json` supplies the
+selected IDs and fresh clone UUID produced by that app run. JavaScript
+independently filters/copies strokes and adds (20,20) to document translation;
+it never copies the app's expected output. Full semantic values are compared
+at both command boundaries before three further JS edits produce
+`selection-edited.json` (revision45). The iPad reverse test uses the production
+InkCanvasView/owned UndoManager, then edits, undoes, saves and reopens it.
+
+`applyEdit` also accepts `deleteStrokes`/`duplicateStrokes` with exact
+`expectedRevision`. Clone UUIDs map to original document order; conflicting or
+invalid identities/geometry are rejected without mutation. Browser UI remains
+the single-stroke lab; no clipboard or shipping second platform was added.
