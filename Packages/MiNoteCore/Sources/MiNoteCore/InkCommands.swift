@@ -2,6 +2,25 @@ import Foundation
 
 /// Translation uses page coordinates; control points and linear transforms stay intact.
 public enum InkCommands {
+    public static func paste(strokes: [InkStroke], pageID: UUID, dx: Double, dy: Double,
+                             expectedRevision: Int64, in document: NoteDocument) throws -> NoteDocument {
+        let index = try selectedPage([], pageID: pageID, revision: expectedRevision, document: document)
+        guard dx.isFinite, dy.isFinite else { throw DocumentError.invalidDocument("붙여넣기 좌표") }
+        guard !strokes.isEmpty else { return document }
+        try InkClipboardCodec.validate(InkClipboardPayload(strokes: strokes))
+        guard document.revision < Int64.max else { throw DocumentError.invalidDocument("리비전 한도") }
+        var result = document
+        for source in strokes {
+            var pasted = source; pasted.id = UUID()
+            pasted.transform.tx += dx; pasted.transform.ty += dy
+            result.pages[index].strokes.append(pasted)
+        }
+        result.revision += 1
+        try DocumentCodec.validate(result)
+        _ = try InkClipboardCodec.bounds(of: Array(result.pages[index].strokes.suffix(strokes.count)))
+        return result
+    }
+
     public static func delete(strokeIDs: Set<UUID>, pageID: UUID,
                               expectedRevision: Int64, in document: NoteDocument) throws -> NoteDocument {
         let index = try selectedPage(strokeIDs, pageID: pageID, revision: expectedRevision, document: document)

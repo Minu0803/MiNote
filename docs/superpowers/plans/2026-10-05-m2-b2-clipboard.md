@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-26-minote-product-design.md` 객체 복사·안정 ID·호환성. 선행 M2-B 결과와 `docs/format/document-v3.md`, `docs/format/backup-v1.md`.
 
-**상태:** 계획만 작성, M2-B2 미구현. 완료된 M2-B 결과/진행 기록/Git 상태를 확인한 후 다음 실행에서 진행한다.
+**상태:** 2026-10-05 실행 중. Task1 Core97/0 검증 완료, Task2 앱/native clipboard 연결을 시작한다. Task3/4는 대기. 정확한 재개 위치는 PROGRESS를 읽는다.
 
 ## Global Constraints
 
@@ -48,9 +48,9 @@
 
 **Interfaces:** 기존 InkStroke/DocumentCodec를 소비, 위 codec/bounds/InkCommands.paste를 제공한다.
 
-- [ ] RED: pen/marker·같은 모양/다른 UUID가 encode/decode에서 완전히 같고 affine bbox를 한 번 계산한다. 8MiB+1/2,001획/100,001점·empty payload·unknown key/미래 버전/중복 ID/NaN/singular/overflow는 거부한다.
-- [ ] RED: 선택 두 획 paste는 원본 문서·다른 페이지/삭제 페이지/PDF metadata 불변, 새 UUID 두 개 append/rev+1. empty command는 Int64.max에서도 no-op지만 문서 검증을 생략하지 않는다. stale/wrong/deleted page/revision overflow는 입력 불변 오류.
-- [ ] `swift test --package-path Packages/MiNoteCore --filter InkClipboardTests`에서 missing API RED → 최소 구현 → 전체 `swift test --package-path Packages/MiNoteCore` 0fail → PROGRESS/commit.
+- [x] RED: pen/marker·같은 모양/다른 UUID가 encode/decode에서 완전히 같고 affine bbox를 한 번 계산한다. 8MiB+1/2,001획/100,001점·empty payload·unknown key/미래 버전/중복 ID/NaN/singular/overflow는 거부한다.
+- [x] RED: 선택 두 획 paste는 원본 문서·다른 페이지/삭제 페이지/PDF metadata 불변, 새 UUID 두 개 append/rev+1. empty command는 Int64.max에서도 no-op지만 문서 검증을 생략하지 않는다. stale/wrong/deleted page/revision overflow는 입력 불변 오류.
+- [x] `swift test --package-path Packages/MiNoteCore --filter InkClipboardTests`에서 missing API RED → 최소 구현 → 전체 `swift test --package-path Packages/MiNoteCore` 0fail → PROGRESS/commit.
 
 ### Task 2: 사용자 실행 clipboard와 native Undo 경계
 

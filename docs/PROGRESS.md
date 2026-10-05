@@ -1,5 +1,11 @@
 # MiNote 개발 진행 기록
 
+## M2-B2 실행 체크포인트 (2026-10-05)
+
+- main clean에서 시작, 기준60de2b0, 추적 origin/main보다3앞섬(원격 새 조회 없음).
+- 현재 Task1: Foundation clipboard payload·한도·엄격 검증·붙여넣기 명령의 RED 작성. Task2 사용자 실행 paste control/소유 stamp, Task3 저장·PDF·독립왕복, Task4 양OS·한번리뷰·Notion 순서다. 완료된 M2-B를 반복하지 않는다.
+- Task1 RED: missing InkClipboardPayload/InkCommands.paste exit1 (`minote-clipboard-core-red-authorized.log`). 최초 sandbox 캐시 실패는 기능 RED와 분리했다. 최소 구현 후 전체 Core97/0 exit0 (`minote-clipboard-core-green1.log`). payload JSON 한도/재귀 unknown key/affine 한 번 적용/새 UUID·metadata·빈 선택/overflow 검증 완료. Task2 앱/native clipboard는 아직 미구현, Notion 반영 없음. clipboard는 사용자 명시적 복사/붙여넣기에서만 접근한다. 실기기 검증 대기는 유지한다.
+
 ## M2-B 완료·재개 지점 (2026-10-05)
 
 - **M2-B 완료**: 선택 획 삭제·같은 페이지 복제, native Undo/Redo·자동 저장/재실행·백업·독립 JSON 왕복. 다음은 **M2-B2 clipboard 복사/다른 페이지·노트 붙여넣기**, 계획만 작성했고 미구현이다. 이번 실행에서는 clipboard에 접근하지 않았다.
