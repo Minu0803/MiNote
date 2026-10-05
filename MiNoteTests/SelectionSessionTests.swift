@@ -130,6 +130,30 @@ import PDFKit
             XCTAssertEqual(session.document,current)
         }
     }
+    private func assertScreenInk(_ host: PageZoomHost, original: Bool, phase: String) async throws {
+        let previous=UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).first(where: \.isKeyWindow)
+        let window=UIWindow(frame:host.bounds); window.rootViewController=UIViewController()
+        window.rootViewController?.view.addSubview(host); window.makeKeyAndVisible()
+        defer { host.removeFromSuperview(); window.isHidden=true; previous?.makeKeyAndVisible() }
+        host.layoutIfNeeded()
+        let scroll=try XCTUnwrap(host.subviews.first as? UIScrollView)
+        // Keep both expected positions visible at every production zoom scale.
+        scroll.setContentOffset(CGPoint(x:max(-scroll.contentInset.left,140*scroll.zoomScale-scroll.bounds.width/2),
+            y:max(-scroll.contentInset.top,130*scroll.zoomScale-scroll.bounds.height/2)),animated:false)
+        try await Task.sleep(for:.milliseconds(200))
+        let format=UIGraphicsImageRendererFormat(); format.scale=1
+        let image=UIGraphicsImageRenderer(size:host.bounds.size,format:format).image { _ in
+            XCTAssertTrue(host.drawHierarchy(in:host.bounds,afterScreenUpdates:true))
+        }
+        let attachment=XCTAttachment(image:image); attachment.name=phase; attachment.lifetime = .keepAlways; add(attachment)
+        for (point,present) in [(CGPoint(x:130,y:120),original),(CGPoint(x:150,y:140),true)] {
+            let screen=host.convert(point,from:host.canvas)
+            guard host.bounds.contains(screen) else { return XCTFail("Expected ink must be visible: \(phase) \(screen)") }
+            let color=pixel(image,at:screen)
+            if present { XCTAssertGreaterThan(color[2],150,phase); XCTAssertLessThan(color[0],100,phase) }
+            else { XCTAssertLessThan(Int(color[2])-Int(color[0]),25,phase) }
+        }
+    }
     func testSelectionPDFCloneAndDeleteRenderInPageCoordinatesAtEveryCropRotation() async throws {
         let root=try directory(), bytes=try PDFFixture.data(), prepared=try await PDFImporter().prepare(data:bytes,filename:"source.pdf")
         let store=DocumentStore(directory:root.appendingPathComponent("note"))
@@ -144,12 +168,16 @@ import PDFKit
             await session.selectPage(i); try selectAll(session); _=try session.duplicateSelectedInk(dx:20,dy:20)
             let host=PageZoomHost(frame:CGRect(x:0,y:0,width:834,height:900)), page=try XCTUnwrap(session.currentPage)
             host.configurePage(size:CGSize(width:page.width,height:page.height),pdfPage:session.currentPDFPage); host.layoutIfNeeded()
+            let reference=CanvasReference(); reference.canvas=host.canvas
+            let coordinator=NoteCanvas.Coordinator(session:session,reference:reference); coordinator.attach(to:host.canvas)
+            coordinator.apply(session.drawing,to:host.canvas)
             let scroll=try XCTUnwrap(host.subviews.first as? UIScrollView)
             for zoom in [1.0,2.0,5.0] {
                 scroll.zoomScale=scroll.minimumZoomScale*zoom
                 let a=host.lasso.convert(host.convert(CGPoint(x:130,y:120),from:host.canvas),from:host)
                 let b=host.lasso.convert(host.convert(CGPoint(x:150,y:140),from:host.canvas),from:host)
                 XCTAssertEqual(b.x-a.x,20,accuracy:0.0001); XCTAssertEqual(b.y-a.y,20,accuracy:0.0001)
+                try await assertScreenInk(host,original:true,phase:"selection-screen-clone-r\(i*90)-z\(zoom)")
             }
         }
         let export1=await session.exportPDF(), first=try XCTUnwrap(export1), pdf1=try XCTUnwrap(PDFDocument(url:first.url))
@@ -159,6 +187,12 @@ import PDFKit
             await session.selectPage(i)
             try session.selectInk(polygon:[.init(x:95,y:115),.init(x:105,y:115),.init(x:105,y:125),.init(x:95,y:125)])
             XCTAssertEqual(session.selectedStrokeIDs.count,1); _=try session.deleteSelectedInk()
+            let host=PageZoomHost(frame:CGRect(x:0,y:0,width:834,height:900)), current=try XCTUnwrap(session.currentPage)
+            host.configurePage(size:CGSize(width:current.width,height:current.height),pdfPage:session.currentPDFPage)
+            let reference=CanvasReference(); reference.canvas=host.canvas
+            let coordinator=NoteCanvas.Coordinator(session:session,reference:reference); coordinator.attach(to:host.canvas)
+            coordinator.apply(session.drawing,to:host.canvas)
+            try await assertScreenInk(host,original:false,phase:"selection-screen-delete-r\(i*90)")
         }
         let export2=await session.exportPDF(), second=try XCTUnwrap(export2), pdf2=try XCTUnwrap(PDFDocument(url:second.url))
         for i in 0..<4 {

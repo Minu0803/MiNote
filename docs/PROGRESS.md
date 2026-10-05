@@ -5,10 +5,12 @@
 - 범위: 선택 획 삭제·같은 페이지 복제만. M2-B2 clipboard는 다음 계획만.
 - Task1 진행: core 명령의 ID/순서/metadata·validation·빈 선택/overflow RED부터 시작. RED: missing delete/duplicate API exit1 (`minote-m2b-core-red-authorized.log`); 구현 후 전체 core91/0 exit0 (`minote-m2b-core-green.log`). sandbox 캐시 실패는 RED 근거와 분리.
 - Task1 커밋 `9ce253c`. Task2 API RED/실제 UI missing-button RED 후 session·실제 Undo·캡처·버튼 구현. 관련 app22/0 exit0 (`minote-m2b-app-green1`). 실제 selection UI2/0 + read-only22경계 JSON observer exit0 (`minote-m2b-ui-green1`), 전체 app88/0 exit0 (`minote-m2b-task2-allapp`).
+- 최종 리뷰: `/root/m2b_code_review` Critical0/Important1/Minor0. Important는 회전 PDF 화면 test host에 drawing 미적용으로 실제 화면 pixel 증거가 없었던 것. 실제 UIKit drawHierarchy 원본·복제본·삭제 pixel RED 추가, pre-review18 전체94app/0 + 일반UI11통과/fixture-only2skip/0실패 및43 liveJSON/원본PDF SHA observer exit0 (`minote-m2b18-final`). focused screen RED에서 빈 canvas의 white255로 실제 pixel 실패 확인(exit65, `minote-m2b-screen-red`). production coordinator.apply로 drawing을 적용한 뒤 전체 app94/0 GREEN exit0 (`minote-m2b18-review-app-green`). Important 화면 증거 보완 완료, 제품 코드 변경 없음. 다음26.4 새DD/cacheOFF 전체. 제품 코드는93de1ba이며 화면 test 보완은 미커밋. 제품 결함은 보고되지 않았으나 검증 공백을 완료로 넘기지 않는다.
+- 다음 clipboard 계획만: `docs/superpowers/plans/2026-10-05-m2-b2-clipboard.md`, 코드는 미구현/clipboard 접근 없음. 최종OS/리뷰수정/Notion 완료 전 M2-B 완료 표시 안 함.
 - 직접 main 구현, 마지막 한 번 fresh review, no push. 기존 시뮬레이터·기록 보존.
 - Task3 검증 중: 영속·ENOSPC·busy/양 stack·이전 generation·4회전 pixel 앱11/0 (`minote-m2b-persistence2`). 최초1실패는 빈 라이브러리 restore ID 기대 오류이며 기존 계약에 맞춰 수정, 제품 저장 로직 변경 없음.
 - 실제 app 생성 selection source/duplicate/delete/UUID manifest 회수. Xcode 재설치가 container UUID를 바꾸므로 생성 전용 경로를 rg로 확인(이전 하드코딩 경로 부재 보존); Node 동일 명령 비교·추가편집 전체36/0 (`minote-m2b-node-exchange-green2`). 앱 소비자는 bundle fixture 없음 RED (`minote-m2b-task3-allapp`) 확인, 새 fixture 포함 전체 app94/0 exit0 (`minote-m2b-task3-allapp-green`). v2/v3/lasso/selection check 각exit0.
-- 현재 재개: Task3 app94/0·Node36/0·check 완료, 전체 core fixture 확인→기록/커밋. 다음 Task4 양OS 전체+한번 fresh review+Notion.
+- 현재 재개: Task3 app94/0·Node36/0·check 완료, 전체 core fixture 확인→기록/커밋. Task3 커밋 `93de1ba`, core91/0 (`minote-m2b-core-exchange`). Task4 fresh `/root/m2b_code_review` read-only 진행, 양OS 전체18→26 순차 및 Notion/인계 남음.
 
 ## 현재 상태
 - 완료 단계: **M0-A**, **M0-B**, **M0-C**, **M1-A**, **M1-B**, **M1-C**, **M2-A — 올가미 획 전체 선택·평행 이동·통합 Undo/Redo·저장/백업/독립 왕복**
