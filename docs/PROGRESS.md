@@ -1,5 +1,12 @@
 # MiNote 개발 진행 기록
 
+## M2-B 실행 체크포인트 (2026-10-05)
+- 시작: main clean, 기준 `ea605bc83d3b264fe262ce1f784031f96e3dda00`, 추적 origin/main보다10앞섬(원격 새 조회 없음).
+- 범위: 선택 획 삭제·같은 페이지 복제만. M2-B2 clipboard는 다음 계획만.
+- Task1 진행: core 명령의 ID/순서/metadata·validation·빈 선택/overflow RED부터 시작. RED: missing delete/duplicate API exit1 (`minote-m2b-core-red-authorized.log`); 구현 후 전체 core91/0 exit0 (`minote-m2b-core-green.log`). sandbox 캐시 실패는 RED 근거와 분리.
+- 직접 main 구현, 마지막 한 번 fresh review, no push. 기존 시뮬레이터·기록 보존.
+- Task1 완료: 삭제는 선택만 제거, 복제는 선택 순서대로 새 UUID+20pt append. 다른 metadata·PDF·삭제 페이지 불변. 다음 Task2 실제 canvas/history/버튼 및 실제 UI RED.
+
 ## 현재 상태
 - 완료 단계: **M0-A**, **M0-B**, **M0-C**, **M1-A**, **M1-B**, **M1-C**, **M2-A — 올가미 획 전체 선택·평행 이동·통합 Undo/Redo·저장/백업/독립 왕복**
 - 작업 공간: `/Users/minwookim/Documents/GitHub/MiNote`
